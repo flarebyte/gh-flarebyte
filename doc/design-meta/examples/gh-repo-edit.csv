@@ -1,0 +1,24 @@
+flag,alias,value_type,description,disable_syntax
+--accept-visibility-change-consequences,,boolean,Accept consequences of changing repository visibility,
+--add-topic,,strings,Add repository topic,
+--allow-forking,,boolean,Allow forking of an organization repository,--allow-forking=false
+--allow-update-branch,,boolean,Allow PR head branch behind base branch to be updated,--allow-update-branch=false
+--default-branch,,name,Set default branch name,
+--delete-branch-on-merge,,boolean,Delete head branch when PRs are merged,--delete-branch-on-merge=false
+--description,-d,string,Repository description,
+--enable-advanced-security,,boolean,Enable GitHub Advanced Security,--enable-advanced-security=false
+--enable-auto-merge,,boolean,Enable auto-merge,--enable-auto-merge=false
+--enable-discussions,,boolean,Enable discussions,--enable-discussions=false
+--enable-issues,,boolean,Enable issues,--enable-issues=false
+--enable-merge-commit,,boolean,Enable merge commits for PRs,--enable-merge-commit=false
+--enable-projects,,boolean,Enable projects,--enable-projects=false
+--enable-rebase-merge,,boolean,Enable rebase merging for PRs,--enable-rebase-merge=false
+--enable-secret-scanning,,boolean,Enable secret scanning,--enable-secret-scanning=false
+--enable-secret-scanning-push-protection,,boolean,Enable secret scanning push protection,--enable-secret-scanning-push-protection=false
+--enable-squash-merge,,boolean,Enable squash merging for PRs,--enable-squash-merge=false
+--enable-wiki,,boolean,Enable wiki,--enable-wiki=false
+--homepage,-h,URL,Repository homepage URL,
+--remove-topic,,strings,Remove repository topic,
+--squash-merge-commit-message,,enum,Default squash merge commit message behavior: default|pr-title|pr-title-commits|pr-title-description,
+--template,,boolean,Make repository available as a template repository,--template=false
+--visibility,,enum,Change visibility: public|private|internal,requires --accept-visibility-change-consequences
