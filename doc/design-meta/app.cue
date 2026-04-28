@@ -48,7 +48,7 @@ reports: [{
 		}]
 	}, {
 		title:       "03 Commands"
-		description: "User-facing extension commands and the underlying GitHub operations."
+		description: "User-facing extension commands and the config-driven sync path."
 		sections: [{
 			title:       "01 Command Matrix"
 			description: "User-facing extension actions and their purpose."
@@ -63,23 +63,45 @@ reports: [{
 			]
 		}, {
 			title:       "03 GitHub Flags"
-			description: "The lower-level `gh repo edit` knobs the extension maps onto."
+			description: "The existing `gh repo edit` knobs that `gh flarebyte repo update` applies from config."
 			notes: [
 				"gh.repo.edit.flags",
 			]
 		}]
 	}, {
-		title:       "04 Discovery"
-		description: "Repo discovery for the 'repos mine' workflow."
+		title:       "04 Existing GitHub Behaviour"
+		description: "GitHub behaviors and command shapes that are examples of the external system, not new extension commands."
+		sections: [{
+			title:       "01 Labels"
+			description: "Label lifecycle and bulk label conventions that the extension synchronizes from cue config."
+			notes: [
+				"label.matrix",
+			]
+		}, {
+			title:       "02 Releases"
+			description: "Release creation and publication flows that remain existing gh behavior."
+			notes: [
+				"release.matrix",
+			]
+		}, {
+			title:       "03 Search"
+			description: "Search and content discovery shapes that are examples of current GitHub usage."
+			notes: [
+				"search.query",
+			]
+		}]
+	}, {
+		title:       "05 Discovery"
+		description: "Repo discovery for the 'repos mine' workflow, shown as an existing GitHub capability."
 		sections: [{
 			title:       "01 Repos Mine"
-			description: "How the extension discovers repositories the user contributes to."
+			description: "How the extension discovers repositories the user contributes to by leaning on existing GitHub data."
 			notes: [
 				"repo.discovery",
 			]
 		}]
 	}, {
-		title:       "05 Open Questions"
+		title:       "06 Open Questions"
 		description: "Pending decisions that should stay visible in the spec."
 		sections: [{
 			title:       "01 Decisions Pending"
@@ -95,59 +117,79 @@ notes: [
 	{
 		name:     "project.summary"
 		title:    "Project Summary"
-		markdown: "Flarebyte's `gh` extension manages GitHub repository state from a checked-in `.gh-flarebyte.cue` file so repo metadata can be synchronized deterministically."
-		labels:   ["overview", "summary"]
+		markdown: "Flarebyte's `gh` extension manages GitHub repository state from a checked-in `.gh-flarebyte.cue` file so repo metadata, labels, and repo settings can be synchronized deterministically. `gh flarebyte repo update` applies the config-driven `gh repo edit` changes."
+		labels:   ["overview", "summary", "sync"]
 	},
 	{
 		name:     "project.scope"
 		title:    "Project Scope"
-		markdown: "The extension is centered on repo bootstrap, reconciliation, audit, and repository discovery. It should keep local config and GitHub state aligned without requiring manual repetition of the same `gh repo edit` flags."
-		labels:   ["scope", "sync"]
+		markdown: "The extension is centered on repo bootstrap, reconciliation, audit, and repository discovery. Labels are synced from the Cue config, and repo-edit mutations are applied by `gh flarebyte repo update` rather than by manually repeating `gh repo edit` flags."
+		labels:   ["scope", "sync", "config"]
 	},
 	{
 		name:     "repo.config.example"
-		title:    "Repo Config Example"
+		title:    "Spec Config Example"
 		filepath: "examples/.gh-flarebyte.cue"
-		labels:   ["cue", "configuration", "example"]
+		labels:   ["cue", "configuration", "spec"]
 	},
 	{
 		name:     "repo.config.fields"
-		title:    "Repo Config Field Map"
+		title:    "Config Sync Field Map"
 		filepath: "examples/config-fields.csv"
 		arguments: ["format-csv=table"]
-		labels:   ["csv", "configuration", "mapping"]
+		labels:   ["csv", "configuration", "sync"]
 	},
 	{
 		name:     "sync.types"
 		title:    "Sync Types"
 		filepath: "examples/sync.ts"
-		labels:   ["typescript", "sync", "types"]
+		labels:   ["typescript", "sync", "spec"]
 	},
 	{
 		name:     "command.matrix"
-		title:    "Command Matrix"
+		title:    "Extension Command Matrix"
 		filepath: "examples/command-matrix.csv"
 		arguments: ["format-csv=table"]
-		labels:   ["csv", "commands", "matrix"]
+		labels:   ["csv", "commands", "spec"]
 	},
 	{
 		name:     "command.flows"
-		title:    "Command Flows"
+		title:    "Extension Command Flows"
 		filepath: "examples/command-flows.ts"
-		labels:   ["typescript", "commands", "workflow"]
+		labels:   ["typescript", "commands", "spec"]
+	},
+	{
+		name:     "label.matrix"
+		title:    "Existing Label Behaviour"
+		filepath: "examples/label-matrix.csv"
+		arguments: ["format-csv=table"]
+		labels:   ["csv", "labels", "existing-gh"]
+	},
+	{
+		name:     "release.matrix"
+		title:    "Existing Release Behaviour"
+		filepath: "examples/release-matrix.csv"
+		arguments: ["format-csv=table"]
+		labels:   ["csv", "releases", "existing-gh"]
+	},
+	{
+		name:     "search.query"
+		title:    "Existing Search Shapes"
+		filepath: "examples/search-query.ts"
+		labels:   ["typescript", "search", "existing-gh"]
 	},
 	{
 		name:     "gh.repo.edit.flags"
-		title:    "GitHub Repo Edit Flags"
+		title:    "Existing gh Repo Edit Flags"
 		filepath: "examples/gh-repo-edit.csv"
 		arguments: ["format-csv=table"]
-		labels:   ["csv", "github", "flags"]
+		labels:   ["csv", "github", "existing-gh"]
 	},
 	{
 		name:     "repo.discovery"
-		title:    "Repo Discovery"
+		title:    "Existing Discovery Shape"
 		filepath: "examples/repo-discovery.ts"
-		labels:   ["typescript", "discovery", "org"]
+		labels:   ["typescript", "discovery", "existing-gh"]
 	},
 	{
 		name:     "project.open-questions"
@@ -181,6 +223,24 @@ relationships: [
 		to:     "gh.repo.edit.flags"
 		label:  "backs_onto"
 		labels: ["commands", "github"]
+	},
+	{
+		from:   "command.matrix"
+		to:     "label.matrix"
+		label:  "extends_to"
+		labels: ["commands", "labels"]
+	},
+	{
+		from:   "command.matrix"
+		to:     "release.matrix"
+		label:  "extends_to"
+		labels: ["commands", "releases"]
+	},
+	{
+		from:   "command.matrix"
+		to:     "search.query"
+		label:  "extends_to"
+		labels: ["commands", "search"]
 	},
 	{
 		from:   "repo.discovery"

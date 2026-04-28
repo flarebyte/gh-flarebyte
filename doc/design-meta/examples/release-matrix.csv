@@ -1,0 +1,6 @@
+command,purpose,mode,important_flags,notes
+gh release create,create a release and optionally upload assets,write,--draft --prerelease --generate-notes,"Supports notes from file or stdin."
+gh release upload,attach assets to an existing release,write,--clobber,"Can replace an existing asset with the same name."
+gh release edit,change release state after creation,write,--draft=false,"Useful for publishing a reviewed draft."
+gh release create --discussion-category,open a discussion with the release,write,--discussion-category,"Keeps release conversation attached."
+gh release create --verify-tag,require the release tag to exist already,write,--verify-tag,"Useful for protected publication flows."

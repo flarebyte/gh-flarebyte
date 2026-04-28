@@ -1,0 +1,6 @@
+command,purpose,mode,important_flags,notes
+gh label create,create a new label with color and description,write,--color --description,"Use force when reapplying an existing label."
+gh label list,list labels for a repository,read,--json,"Useful for scripting and filtering with jq."
+gh label view,inspect a single label,read,none,"Shows the current label state."
+gh label edit,rename or recolor a label,write,--name --color --description,"Supports atomic updates."
+gh label delete,remove a label,write,--yes,"Keep scripted use non-interactive."

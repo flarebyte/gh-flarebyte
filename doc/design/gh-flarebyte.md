@@ -12,7 +12,7 @@ Why the checked-in config file exists.
 
 #### Project Summary
 
-Flarebyte's `gh` extension manages GitHub repository state from a checked-in `.gh-flarebyte.cue` file so repo metadata can be synchronized deterministically.
+Flarebyte's `gh` extension manages GitHub repository state from a checked-in `.gh-flarebyte.cue` file so repo metadata, labels, and repo settings can be synchronized deterministically. `gh flarebyte repo update` applies the config-driven `gh repo edit` changes.
 
 ### 02 Scope
 
@@ -20,7 +20,7 @@ The operational boundary for the extension.
 
 #### Project Scope
 
-The extension is centered on repo bootstrap, reconciliation, audit, and repository discovery. It should keep local config and GitHub state aligned without requiring manual repetition of the same `gh repo edit` flags.
+The extension is centered on repo bootstrap, reconciliation, audit, and repository discovery. Labels are synced from the Cue config, and repo-edit mutations are applied by `gh flarebyte repo update` rather than by manually repeating `gh repo edit` flags.
 
 ## 02 Configuration
 
@@ -30,7 +30,7 @@ Canonical repo configuration and the field map used for sync.
 
 The repo-local `.gh-flarebyte.cue` file.
 
-#### Repo Config Example
+#### Spec Config Example
 
 ```cue
 package ghflarebyte
@@ -86,7 +86,7 @@ repository: {
 
 How config fields map onto GitHub repository settings.
 
-#### Repo Config Field Map
+#### Config Sync Field Map
 
 | field | kind | managed_by | notes | sync_direction |
 | --- | --- | --- | --- | --- |
@@ -153,13 +153,13 @@ export type DriftItem = {
 
 ## 03 Commands
 
-User-facing extension commands and the underlying GitHub operations.
+User-facing extension commands and the config-driven sync path.
 
 ### 01 Command Matrix
 
 User-facing extension actions and their purpose.
 
-#### Command Matrix
+#### Extension Command Matrix
 
 | command | config_touchpoints | output | purpose | read_write |
 | --- | --- | --- | --- | --- |
@@ -167,13 +167,12 @@ User-facing extension actions and their purpose.
 | gh flarebyte repo update | .gh-flarebyte.cue -> GitHub repo state | updated remote repo state | reconcile GitHub repo metadata from local config | write |
 | gh flarebyte repo audit | .gh-flarebyte.cue and GitHub state | drift report | compare local config with remote GitHub state | read |
 | gh flarebyte repos mine | none | relevant repo list | list repositories the user contributes to within an org | read |
-| gh repo edit | remote repo flags only | updated repository settings | apply low-level GitHub repo mutations | write |
 
 ### 02 Command Flows
 
 TypeScript examples that show the intended command sequences.
 
-#### Command Flows
+#### Extension Command Flows
 
 ```ts
 export type CommandFlow = {
@@ -211,9 +210,9 @@ export const commandFlows: CommandFlow[] = [
 
 ### 03 GitHub Flags
 
-The lower-level `gh repo edit` knobs the extension maps onto.
+The existing `gh repo edit` knobs that `gh flarebyte repo update` applies from config.
 
-#### GitHub Repo Edit Flags
+#### Existing gh Repo Edit Flags
 
 | alias | description | disable_syntax | flag | value_type |
 | --- | --- | --- | --- | --- |
@@ -241,15 +240,74 @@ The lower-level `gh repo edit` knobs the extension maps onto.
 |  | Make repository available as a template repository | --template=false | --template | boolean |
 |  | Change visibility: public\|private\|internal | requires --accept-visibility-change-consequences | --visibility | enum |
 
-## 04 Discovery
+## 04 Existing GitHub Behaviour
 
-Repo discovery for the 'repos mine' workflow.
+GitHub behaviors and command shapes that are examples of the external system, not new extension commands.
+
+### 01 Labels
+
+Label lifecycle and bulk label conventions that the extension synchronizes from cue config.
+
+#### Existing Label Behaviour
+
+| command | important_flags | mode | notes | purpose |
+| --- | --- | --- | --- | --- |
+| gh label create | --color --description | write | Use force when reapplying an existing label. | create a new label with color and description |
+| gh label list | --json | read | Useful for scripting and filtering with jq. | list labels for a repository |
+| gh label view | none | read | Shows the current label state. | inspect a single label |
+| gh label edit | --name --color --description | write | Supports atomic updates. | rename or recolor a label |
+| gh label delete | --yes | write | Keep scripted use non-interactive. | remove a label |
+
+### 02 Releases
+
+Release creation and publication flows that remain existing gh behavior.
+
+#### Existing Release Behaviour
+
+| command | important_flags | mode | notes | purpose |
+| --- | --- | --- | --- | --- |
+| gh release create | --draft --prerelease --generate-notes | write | Supports notes from file or stdin. | create a release and optionally upload assets |
+| gh release upload | --clobber | write | Can replace an existing asset with the same name. | attach assets to an existing release |
+| gh release edit | --draft=false | write | Useful for publishing a reviewed draft. | change release state after creation |
+| gh release create --discussion-category | --discussion-category | write | Keeps release conversation attached. | open a discussion with the release |
+| gh release create --verify-tag | --verify-tag | write | Useful for protected publication flows. | require the release tag to exist already |
+
+### 03 Search
+
+Search and content discovery shapes that are examples of current GitHub usage.
+
+#### Existing Search Shapes
+
+```ts
+export type SearchQuery = {
+  org: string;
+  topic?: string;
+  language?: string;
+  archived?: boolean;
+};
+
+export type CodeSearchRequest = {
+  org: string;
+  filename: string;
+  includeContent: boolean;
+};
+
+export type RepoContentRequest = {
+  repo: string;
+  path: string;
+  ref?: string;
+};
+```
+
+## 05 Discovery
+
+Repo discovery for the 'repos mine' workflow, shown as an existing GitHub capability.
 
 ### 01 Repos Mine
 
-How the extension discovers repositories the user contributes to.
+How the extension discovers repositories the user contributes to by leaning on existing GitHub data.
 
-#### Repo Discovery
+#### Existing Discovery Shape
 
 ```ts
 export type RepoDiscovery = {
@@ -267,7 +325,7 @@ export const repoDiscovery: RepoDiscovery = {
 };
 ```
 
-## 05 Open Questions
+## 06 Open Questions
 
 Pending decisions that should stay visible in the spec.
 
