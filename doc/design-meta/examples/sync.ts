@@ -28,6 +28,18 @@ export type BuildConfig = {
   language: "go" | "dart";
 };
 
+export type BuildTarget = {
+  os: "linux" | "darwin";
+  arch: "amd64" | "arm64";
+  label: string;
+};
+
+export type BuildPlan = {
+  outputDir: string;
+  checksumFile: string;
+  targets: BuildTarget[];
+};
+
 export type RepositoryConfig = {
   org: string;
   repo: string;
@@ -37,6 +49,7 @@ export type RepositoryConfig = {
   visibility: "public" | "private" | "internal";
   template: boolean;
   build: BuildConfig;
+  buildPlan: BuildPlan;
   topics: string[];
   labels: LabelConfig[];
   features: RepositoryFeatures;

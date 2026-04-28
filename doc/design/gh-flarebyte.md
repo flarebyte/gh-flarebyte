@@ -79,6 +79,14 @@ repository: {
 	build: {
 		language: "go"
 	}
+	buildPlan: {
+		outputDir: "build"
+		checksumFile: "build/checksums.txt"
+		targets: [
+			"linux/amd64",
+			"darwin/arm64",
+		]
+	}
 	topics: [
 		"gh-extension",
 		"github-cli",
@@ -134,6 +142,9 @@ How config fields map onto GitHub repository settings.
 | repository.visibility | enum | .gh-flarebyte.cue | Repository visibility: public, private, or internal. | local-to-remote |
 | repository.template | boolean | .gh-flarebyte.cue | Make the repository available as a template. | local-to-remote |
 | repository.build.language | enum | .gh-flarebyte.cue | Build language used by gh flarebyte build: go initially, dart later. | local-to-remote |
+| repository.buildPlan.outputDir | string | .gh-flarebyte.cue | Directory for built artifacts. | local-to-remote |
+| repository.buildPlan.checksumFile | string | .gh-flarebyte.cue | Checksum manifest for built artifacts. | local-to-remote |
+| repository.buildPlan.targets | list | .gh-flarebyte.cue | Target matrix for the build command. | local-to-remote |
 | repository.topics | list | .gh-flarebyte.cue | Topics should stay stable and sorted. | local-to-remote |
 | repository.labels | list | .gh-flarebyte.cue | Structured label definitions managed separately from topics. | local-to-remote |
 | repository.features.issues | boolean | .gh-flarebyte.cue | GitHub issues enabled or disabled. | local-to-remote |
@@ -175,7 +186,7 @@ Build language selection for gh flarebyte build.
 
 #### Build Config
 
-Build orchestration is driven by the Cue config. `gh flarebyte build` reads the configured language and uses a Go implementation initially, with Dart allowed later as a supported language.
+Build orchestration is driven by the Cue config. `gh flarebyte build` reads the configured language and uses a Go implementation initially, with Dart allowed later as a supported language. The command should write language-specific binaries under `build/`, emit a `build/checksums.txt` manifest, and keep the output layout stable across languages. The separate `buildPlan` block describes artifact paths and target matrix.
 
 ### 06 Sync Types
 
@@ -214,6 +225,18 @@ export type BuildConfig = {
   language: "go" | "dart";
 };
 
+export type BuildTarget = {
+  os: "linux" | "darwin";
+  arch: "amd64" | "arm64";
+  label: string;
+};
+
+export type BuildPlan = {
+  outputDir: string;
+  checksumFile: string;
+  targets: BuildTarget[];
+};
+
 export type RepositoryConfig = {
   org: string;
   repo: string;
@@ -223,6 +246,7 @@ export type RepositoryConfig = {
   visibility: "public" | "private" | "internal";
   template: boolean;
   build: BuildConfig;
+  buildPlan: BuildPlan;
   topics: string[];
   labels: LabelConfig[];
   features: RepositoryFeatures;
@@ -314,7 +338,7 @@ How build orchestration is driven from config.
 
 #### Build Command
 
-Build the project from the configured language. Start with Go only, but keep the config shape open for Dart so the command can grow without changing its contract.
+Build the project from the configured language. Start with Go only, but keep the config shape open for Dart so the command can grow without changing its contract. The first implementation should produce `build/<name>-<os>-<arch>` artifacts and a `build/checksums.txt` file, with the target matrix and output paths driven from config rather than shell scripts.
 
 ### 04 Init
 

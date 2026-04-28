@@ -196,7 +196,7 @@ notes: [
 	{
 		name:     "repo.build.config"
 		title:    "Build Config"
-		markdown: "Build orchestration is driven by the Cue config. `gh flarebyte build` reads the configured language and uses a Go implementation initially, with Dart allowed later as a supported language."
+		markdown: "Build orchestration is driven by the Cue config. `gh flarebyte build` reads the configured language and uses a Go implementation initially, with Dart allowed later as a supported language. The command should write language-specific binaries under `build/`, emit a `build/checksums.txt` manifest, and keep the output layout stable across languages. The separate `buildPlan` block describes artifact paths and target matrix."
 		labels:   ["configuration", "build", "spec"]
 	},
 	{
@@ -239,7 +239,7 @@ notes: [
 	{
 		name:     "command.build"
 		title:    "Build Command"
-		markdown: "Build the project from the configured language. Start with Go only, but keep the config shape open for Dart so the command can grow without changing its contract."
+		markdown: "Build the project from the configured language. Start with Go only, but keep the config shape open for Dart so the command can grow without changing its contract. The first implementation should produce `build/<name>-<os>-<arch>` artifacts and a `build/checksums.txt` file, with the target matrix and output paths driven from config rather than shell scripts."
 		labels:   ["commands", "build", "spec"]
 	},
 	{

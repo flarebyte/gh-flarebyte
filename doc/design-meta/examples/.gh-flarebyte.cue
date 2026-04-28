@@ -44,6 +44,14 @@ repository: {
 	build: {
 		language: "go"
 	}
+	buildPlan: {
+		outputDir: "build"
+		checksumFile: "build/checksums.txt"
+		targets: [
+			"linux/amd64",
+			"darwin/arm64",
+		]
+	}
 	topics: [
 		"gh-extension",
 		"github-cli",
