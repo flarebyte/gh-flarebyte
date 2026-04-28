@@ -18,7 +18,7 @@ gh repo edit my-org/my-repo \
 gh api repos/{owner}/{repo} \
   --jq '.security_and_analysis.secret_scanning,
         .security_and_analysis.secret_scanning_push_protection'
-        
+
 # Basic label
 gh label create bug --color FF0000 --description "Something is broken"
 
@@ -160,3 +160,39 @@ gh release create v1.2.3 ./dist/* \
 # 3. Publish
 gh release edit v1.2.3 \
   --draft=false
+
+
+ORG="my-org"
+FILE="dependabot.yml"
+
+# Repo with a file
+gh search code \
+  --owner "$ORG" \
+  --filename "$FILE" \
+  --json repository,path,url \
+  --limit 1000 \
+| jq -r '.[] | "\(.repository.nameWithOwner),\(.path),\(.url)"'
+
+
+ORG="my-org"
+FILE="dependabot.yml"
+
+# Bring back the file content as well
+gh search code \
+  --owner "$ORG" \
+  --filename "$FILE" \
+  --json repository,path \
+  --limit 1000 \
+| jq -c '.[]' | while read -r item; do
+  repo=$(echo "$item" | jq -r '.repository.nameWithOwner')
+  path=$(echo "$item" | jq -r '.path')
+
+  echo "===== $repo:$path ====="
+
+  gh api \
+    repos/$repo/contents/$path \
+    --jq '.content' \
+  | base64 --decode
+
+  echo
+done
