@@ -289,7 +289,39 @@ export const commandFlows: CommandFlow[] = [
 ];
 ```
 
-### 03 GitHub Flags
+### 03 Init
+
+What repo bootstrap does.
+
+#### Init Command
+
+Bootstrap a repository by seeding `.gh-flarebyte.cue` and applying the initial syncable repo settings.
+
+### 04 Update
+
+What reconciliation from cue config means.
+
+#### Update Command
+
+Reconcile the live GitHub repository from `.gh-flarebyte.cue`, including repo settings, topics, and label definitions.
+
+### 05 Audit
+
+What read-only drift checking means.
+
+#### Audit Command
+
+Compare the checked-in Cue config with GitHub and report drift without changing remote state.
+
+### 06 Repos Mine
+
+What repository discovery returns.
+
+#### Repos Mine Command
+
+List repositories the current user contributes to within an organization so the extension can discover target repos before sync.
+
+### 07 GitHub Flags
 
 The existing `gh repo edit` knobs that `gh flarebyte repo update` applies from config.
 

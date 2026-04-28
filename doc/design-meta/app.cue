@@ -80,7 +80,31 @@ reports: [{
 				"command.flows",
 			]
 		}, {
-			title:       "03 GitHub Flags"
+			title:       "03 Init"
+			description: "What repo bootstrap does."
+			notes: [
+				"command.init",
+			]
+		}, {
+			title:       "04 Update"
+			description: "What reconciliation from cue config means."
+			notes: [
+				"command.update",
+			]
+		}, {
+			title:       "05 Audit"
+			description: "What read-only drift checking means."
+			notes: [
+				"command.audit",
+			]
+		}, {
+			title:       "06 Repos Mine"
+			description: "What repository discovery returns."
+			notes: [
+				"command.repos.mine",
+			]
+		}, {
+			title:       "07 GitHub Flags"
 			description: "The existing `gh repo edit` knobs that `gh flarebyte repo update` applies from config."
 			notes: [
 				"gh.repo.edit.flags",
@@ -193,6 +217,30 @@ notes: [
 		title:    "Extension Command Flows"
 		filepath: "examples/command-flows.ts"
 		labels:   ["typescript", "commands", "spec"]
+	},
+	{
+		name:     "command.init"
+		title:    "Init Command"
+		markdown: "Bootstrap a repository by seeding `.gh-flarebyte.cue` and applying the initial syncable repo settings."
+		labels:   ["commands", "init", "spec"]
+	},
+	{
+		name:     "command.update"
+		title:    "Update Command"
+		markdown: "Reconcile the live GitHub repository from `.gh-flarebyte.cue`, including repo settings, topics, and label definitions."
+		labels:   ["commands", "update", "spec"]
+	},
+	{
+		name:     "command.audit"
+		title:    "Audit Command"
+		markdown: "Compare the checked-in Cue config with GitHub and report drift without changing remote state."
+		labels:   ["commands", "audit", "spec"]
+	},
+	{
+		name:     "command.repos.mine"
+		title:    "Repos Mine Command"
+		markdown: "List repositories the current user contributes to within an organization so the extension can discover target repos before sync."
+		labels:   ["commands", "discovery", "spec"]
 	},
 	{
 		name:     "label.matrix"
