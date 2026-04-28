@@ -35,7 +35,7 @@ reports: [{
 			]
 		}, {
 			title:       "02 Field Map"
-			description: "How config fields map onto GitHub repository settings."
+			description: "How config fields map onto GitHub sync targets and extension-local automation settings."
 			notes: [
 				"repo.config.fields",
 			]
@@ -183,13 +183,13 @@ notes: [
 	{
 		name:     "project.summary"
 		title:    "Project Summary"
-		markdown: "Flarebyte's `gh` extension manages GitHub repository state from a checked-in `.gh-flarebyte.cue` file so repo metadata, topics, labels, and repo settings can be synchronized deterministically. `gh flarebyte repo update` applies the config-driven `gh repo edit` changes."
+		markdown: "Flarebyte's `gh` extension manages GitHub repository state from a checked-in `.gh-flarebyte.cue` file so repo metadata, topics, labels, and repo settings can be synchronized deterministically. The same file also carries top-level `build` and `release` blocks that drive local extension commands. `gh flarebyte repo update` applies the config-driven `gh repo edit` changes."
 		labels:   ["overview", "summary", "sync"]
 	},
 	{
 		name:     "project.scope"
 		title:    "Project Scope"
-		markdown: "The extension is centered on repo bootstrap, reconciliation, audit, and repository discovery. Topics are flat strings, labels are structured objects, and repo-edit mutations are applied by `gh flarebyte repo update` rather than by manually repeating `gh repo edit` flags."
+		markdown: "The extension is centered on repo bootstrap, reconciliation, audit, repository discovery, build, and release. Topics are flat strings, labels are structured objects, repo-edit mutations are applied by `gh flarebyte repo update` rather than by manually repeating `gh repo edit` flags, and build and release automation remain extension-local configuration rather than GitHub repository state."
 		labels:   ["scope", "sync", "config"]
 	},
 	{
@@ -208,25 +208,25 @@ notes: [
 	{
 		name:     "repo.build.config"
 		title:    "Build Config"
-		markdown: "Build orchestration is driven by the Cue config. `gh flarebyte build` reads the configured language and uses a Go implementation initially, with Dart allowed later as a supported language. The command should write language-specific binaries under `build/`, emit a `build/checksums.txt` manifest, and keep the output layout stable across languages. The separate `buildPlan` block describes artifact paths and target matrix."
+		markdown: "Build orchestration is driven by a top-level `build` block in the Cue config. `gh flarebyte build` reads the configured language and uses a Go implementation initially, with Dart allowed later as a supported language. The command should write language-specific binaries under the configured output directory, emit the configured checksum manifest, and keep the output layout stable across languages. Targets are expressed as `os-arch` strings such as `linux-amd64`."
 		labels:   ["configuration", "build", "spec"]
 	},
 	{
 		name:     "repo.release.config"
 		title:    "Release Config"
-		markdown: "Release publication is driven by the Cue config. `gh flarebyte release` should use the configured release tag prefix, source version, artifact layout, and release notes policy to publish a GitHub release from the build outputs."
+		markdown: "Release publication is driven by a top-level `release` block in the Cue config. `gh flarebyte release` should use the configured release tag prefix, source version, artifact layout, release notes policy, and optional `releaseNotesFilePath` to publish a GitHub release from the build outputs."
 		labels:   ["configuration", "release", "spec"]
 	},
 	{
 		name:     "repo.topics.config"
 		title:    "Topic Sync"
-		markdown: "Topics are kept as a flat string list in the cue config and synchronized directly to the repository topics list."
+		markdown: "Topics are kept as a flat string list in the cue config and synchronized as the complete desired repository topics set. If applying the config would delete remote topics, `gh flarebyte repo update` should fail unless the user explicitly confirms deletions."
 		labels:   ["configuration", "topics", "spec"]
 	},
 	{
 		name:     "repo.labels.config"
 		title:    "Label Sync"
-		markdown: "Labels use a structured list of objects in the cue config so name, color, and description can be reconciled separately from repository topics."
+		markdown: "Labels use a structured list of objects in the cue config so name, color, and description can be reconciled separately from repository topics. The config represents the complete desired label set; labels missing from config should be treated as deletions and require explicit confirmation before update."
 		labels:   ["configuration", "labels", "spec"]
 	},
 	{
@@ -257,25 +257,25 @@ notes: [
 	{
 		name:     "command.build"
 		title:    "Build Command"
-		markdown: "Build the project from the configured language. Start with Go only, but keep the config shape open for Dart so the command can grow without changing its contract. The first implementation should produce `build/<name>-<os>-<arch>` artifacts and a `build/checksums.txt` file, with the target matrix and output paths driven from config rather than shell scripts."
+		markdown: "Build the project from the top-level `build` block. Start with Go only, but keep the config shape open for Dart so the command can grow without changing its contract. The first implementation should produce `<outputDir>/<name>-<target>` artifacts and a configured checksum file, with target names expressed as `os-arch` strings such as `linux-amd64` and driven from config rather than shell scripts."
 		labels:   ["commands", "build", "spec"]
 	},
 	{
 		name:     "command.release"
 		title:    "Release Command"
-		markdown: "Publish a GitHub release from the build outputs. Use the configured release settings to choose the tag, artifacts, and release note behavior, and implement the command in Go rather than the current Bun helper."
+		markdown: "Run `gh flarebyte build` first, then publish a GitHub release from the resulting build outputs. Use the top-level `release` block to choose the tag, artifacts, and release note behavior, including `releaseNotesFilePath` when `notesMode` is `notes-file`, and implement the command in Go rather than the current Bun helper."
 		labels:   ["commands", "release", "spec"]
 	},
 	{
 		name:     "command.init"
 		title:    "Init Command"
-		markdown: "Bootstrap a repository by seeding `.gh-flarebyte.cue` and applying the initial syncable repo settings."
+		markdown: "Bootstrap a repository by seeding `.gh-flarebyte.cue` with repository, build, and release defaults and then applying the initial syncable repo settings."
 		labels:   ["commands", "init", "spec"]
 	},
 	{
 		name:     "command.update"
 		title:    "Update Command"
-		markdown: "Reconcile the live GitHub repository from `.gh-flarebyte.cue`, including repo settings, topics, and label definitions."
+		markdown: "Reconcile the live GitHub repository from `.gh-flarebyte.cue`, including repo settings, topics, and label definitions. Topics and labels are exact-set sync targets, so remote items missing from config should be treated as deletions. The command must fail unless the user explicitly confirms deletions, for example with `--confirm-deletions`."
 		labels:   ["commands", "update", "spec"]
 	},
 	{
@@ -326,7 +326,7 @@ notes: [
 	{
 		name:     "project.open-questions"
 		title:    "Open Questions"
-		markdown: "Clarify which repo fields are fully managed by the extension, whether sync should be one-way or bidirectional by default, and how conflicts should be surfaced when remote state diverges from `.gh-flarebyte.cue`."
+		markdown: "Clarify the non-interactive CI story for deletion confirmation, the first Dart build contract once it lands, and whether release notes should eventually support templates beyond generated notes and a single notes file path."
 		labels:   ["questions", "sync", "policy"]
 	},
 ]

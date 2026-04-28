@@ -12,7 +12,7 @@ Why the checked-in config file exists.
 
 #### Project Summary
 
-Flarebyte's `gh` extension manages GitHub repository state from a checked-in `.gh-flarebyte.cue` file so repo metadata, topics, labels, and repo settings can be synchronized deterministically. `gh flarebyte repo update` applies the config-driven `gh repo edit` changes.
+Flarebyte's `gh` extension manages GitHub repository state from a checked-in `.gh-flarebyte.cue` file so repo metadata, topics, labels, and repo settings can be synchronized deterministically. The same file also carries top-level `build` and `release` blocks that drive local extension commands. `gh flarebyte repo update` applies the config-driven `gh repo edit` changes.
 
 ### 02 Scope
 
@@ -20,7 +20,7 @@ The operational boundary for the extension.
 
 #### Project Scope
 
-The extension is centered on repo bootstrap, reconciliation, audit, and repository discovery. Topics are flat strings, labels are structured objects, and repo-edit mutations are applied by `gh flarebyte repo update` rather than by manually repeating `gh repo edit` flags.
+The extension is centered on repo bootstrap, reconciliation, audit, repository discovery, build, and release. Topics are flat strings, labels are structured objects, repo-edit mutations are applied by `gh flarebyte repo update` rather than by manually repeating `gh repo edit` flags, and build and release automation remain extension-local configuration rather than GitHub repository state.
 
 ## 02 Configuration
 
@@ -41,7 +41,7 @@ project: {
 }
 
 sync: {
-	mode: "bidirectional"
+	mode: "push"
 	visibilityChangeConsequenceAccepted: true
 	managedFields: [
 		"description",
@@ -49,7 +49,6 @@ sync: {
 		"homepage",
 		"visibility",
 		"template",
-		"build.language",
 		"topics",
 		"labels",
 		"features.issues",
@@ -70,71 +69,72 @@ sync: {
 	]
 }
 
-	repository: {
-		description: "CLI for landing your git commands right"
-		defaultBranch: "main"
-		homepage: "https://github.com/flarebyte/gh-flarebyte"
-		visibility: "public"
-		template: false
-		build: {
-			language: "go"
-		}
-		buildPlan: {
-			outputDir: "build"
-			checksumFile: "build/checksums.txt"
-			targets: [
-				"linux/amd64",
-				"darwin/arm64",
-			]
-		}
-		release: {
-			versionSource: "main.project.yaml"
-			tagPrefix: "v"
-			notesMode: "generate-notes"
-			artifactDir: "build"
-			includeChecksums: true
-		}
-		topics: [
-			"gh-extension",
+repository: {
+	description:   "CLI for landing your git commands right"
+	defaultBranch: "main"
+	homepage:      "https://github.com/flarebyte/gh-flarebyte"
+	visibility:    "public"
+	template:      false
+	topics: [
+		"gh-extension",
 		"github-cli",
 		"git",
 		"flarebyte",
 	]
 	labels: [
 		{
-			name: "bug"
-			color: "B60205"
+			name:        "bug"
+			color:       "B60205"
 			description: "Something is broken"
 		},
 		{
-			name: "enhancement"
-			color: "0E8A16"
+			name:        "enhancement"
+			color:       "0E8A16"
 			description: "New feature"
 		},
 	]
 	features: {
-		issues:               true
-		wiki:                 false
-		projects:             false
-		discussions:          false
-		autoMerge:            true
-		mergeCommit:          false
-		rebaseMerge:          false
-		squashMerge:          true
-		squashMergeCommitMessage: "pr-title"
-		deleteBranchOnMerge:  true
-		allowForking:         false
-		allowUpdateBranch:    false
-		advancedSecurity:     true
-		secretScanning:       true
-		secretScanningPushProtection: true
+		issues:                        true
+		wiki:                          false
+		projects:                      false
+		discussions:                   false
+		autoMerge:                     true
+		mergeCommit:                   false
+		rebaseMerge:                   false
+		squashMerge:                   true
+		squashMergeCommitMessage:      "pr-title"
+		deleteBranchOnMerge:           true
+		allowForking:                  false
+		allowUpdateBranch:             false
+		advancedSecurity:              true
+		secretScanning:                true
+		secretScanningPushProtection:  true
 	}
+}
+
+build: {
+	language:     "go"
+	outputDir:    "build"
+	checksumFile: "build/checksums.txt"
+	targets: [
+		"linux-amd64",
+		"darwin-arm64",
+	]
+}
+
+release: {
+	versionSource:        "main.project.yaml"
+	tagPrefix:            "v"
+	notesMode:            "generate-notes"
+	releaseNotesFilePath: "doc/release-notes.md"
+	artifactDir:          "build"
+	includeChecksums:     true
 }
 ```
 
 ### 02 Field Map
 
-How config fields map onto GitHub repository settings.
+How config fields map onto GitHub sync targets and extension-local automation settings.
 
 #### Config Sync Field Map
 
@@ -142,23 +142,14 @@ How config fields map onto GitHub repository settings.
 | --- | --- | --- | --- | --- |
 | project.org | string | local config | The owner org anchors discovery and bootstrap. | read-only |
 | project.repo | string | local config | The repository name binds the config to one GitHub repo. | read-only |
-| sync.mode | enum | extension | Default policy for reconcile and audit commands. | bidirectional |
+| sync.mode | enum | extension | Push-only for now. Remote state is audited but not imported back into config. | read-only |
 | repository.description | string | .gh-flarebyte.cue | Primary repo metadata field. | local-to-remote |
 | repository.defaultBranch | string | .gh-flarebyte.cue | Usually `main` for flarebyte repositories. | local-to-remote |
 | repository.homepage | string | .gh-flarebyte.cue | Repository homepage URL. | local-to-remote |
 | repository.visibility | enum | .gh-flarebyte.cue | Repository visibility: public, private, or internal. | local-to-remote |
 | repository.template | boolean | .gh-flarebyte.cue | Make the repository available as a template. | local-to-remote |
-| repository.build.language | enum | .gh-flarebyte.cue | Build language used by gh flarebyte build: go initially, dart later. | local-to-remote |
-| repository.buildPlan.outputDir | string | .gh-flarebyte.cue | Directory for built artifacts. | local-to-remote |
-| repository.buildPlan.checksumFile | string | .gh-flarebyte.cue | Checksum manifest for built artifacts. | local-to-remote |
-| repository.buildPlan.targets | list | .gh-flarebyte.cue | Target matrix for the build command. | local-to-remote |
-| repository.release.versionSource | string | .gh-flarebyte.cue | File or source that provides the release version. | local-to-remote |
-| repository.release.tagPrefix | string | .gh-flarebyte.cue | Prefix used for release tags. | local-to-remote |
-| repository.release.notesMode | enum | .gh-flarebyte.cue | Release note strategy, such as generate-notes. | local-to-remote |
-| repository.release.artifactDir | string | .gh-flarebyte.cue | Directory scanned for release assets. | local-to-remote |
-| repository.release.includeChecksums | boolean | .gh-flarebyte.cue | Whether to include the checksum manifest as a release asset. | local-to-remote |
-| repository.topics | list | .gh-flarebyte.cue | Topics should stay stable and sorted. | local-to-remote |
-| repository.labels | list | .gh-flarebyte.cue | Structured label definitions managed separately from topics. | local-to-remote |
+| repository.topics | list | .gh-flarebyte.cue | Topics are managed as the complete desired set. Missing remote topics are deletions. | local-to-remote |
+| repository.labels | list | .gh-flarebyte.cue | Labels are managed as the complete desired set by label name. Missing remote labels are deletions. | local-to-remote |
 | repository.features.issues | boolean | .gh-flarebyte.cue | GitHub issues enabled or disabled. | local-to-remote |
 | repository.features.wiki | boolean | .gh-flarebyte.cue | GitHub wiki enabled or disabled. | local-to-remote |
 | repository.features.projects | boolean | .gh-flarebyte.cue | GitHub projects enabled or disabled. | local-to-remote |
@@ -174,6 +165,16 @@ How config fields map onto GitHub repository settings.
 | repository.features.advancedSecurity | boolean | .gh-flarebyte.cue | GitHub Advanced Security. | local-to-remote |
 | repository.features.secretScanning | boolean | .gh-flarebyte.cue | Secret scanning for the repository. | local-to-remote |
 | repository.features.secretScanningPushProtection | boolean | .gh-flarebyte.cue | Secret scanning push protection. | local-to-remote |
+| build.language | enum | .gh-flarebyte.cue | Build language used by gh flarebyte build: go initially, dart later. | local-only |
+| build.outputDir | string | .gh-flarebyte.cue | Directory for built artifacts. | local-only |
+| build.checksumFile | string | .gh-flarebyte.cue | Checksum manifest for built artifacts. | local-only |
+| build.targets | list | .gh-flarebyte.cue | Target matrix for the build command using `os-arch` strings such as `linux-amd64`. | local-only |
+| release.versionSource | string | .gh-flarebyte.cue | File or source that provides the release version. | local-only |
+| release.tagPrefix | string | .gh-flarebyte.cue | Prefix used for release tags. | local-only |
+| release.notesMode | enum | .gh-flarebyte.cue | Release note strategy, such as generate-notes or notes-file. | local-only |
+| release.releaseNotesFilePath | string | .gh-flarebyte.cue | Path used when notesMode is `notes-file`. | local-only |
+| release.artifactDir | string | .gh-flarebyte.cue | Directory scanned for release assets. | local-only |
+| release.includeChecksums | boolean | .gh-flarebyte.cue | Whether to include the checksum manifest as a release asset. | local-only |
 | sync.visibilityChangeConsequenceAccepted | boolean | extension | Guardrail for changing repository visibility. | read-only |
 
 ### 03 Topics
@@ -182,7 +183,7 @@ Repository topics are a flat sync target in the cue config.
 
 #### Topic Sync
 
-Topics are kept as a flat string list in the cue config and synchronized directly to the repository topics list.
+Topics are kept as a flat string list in the cue config and synchronized as the complete desired repository topics set. If applying the config would delete remote topics, `gh flarebyte repo update` should fail unless the user explicitly confirms deletions.
 
 ### 04 Labels
 
@@ -190,7 +191,7 @@ Repository labels have their own structured sync shape in the cue config.
 
 #### Label Sync
 
-Labels use a structured list of objects in the cue config so name, color, and description can be reconciled separately from repository topics.
+Labels use a structured list of objects in the cue config so name, color, and description can be reconciled separately from repository topics. The config represents the complete desired label set; labels missing from config should be treated as deletions and require explicit confirmation before update.
 
 ### 05 Build
 
@@ -198,7 +199,7 @@ Build language selection for gh flarebyte build.
 
 #### Build Config
 
-Build orchestration is driven by the Cue config. `gh flarebyte build` reads the configured language and uses a Go implementation initially, with Dart allowed later as a supported language. The command should write language-specific binaries under `build/`, emit a `build/checksums.txt` manifest, and keep the output layout stable across languages. The separate `buildPlan` block describes artifact paths and target matrix.
+Build orchestration is driven by a top-level `build` block in the Cue config. `gh flarebyte build` reads the configured language and uses a Go implementation initially, with Dart allowed later as a supported language. The command should write language-specific binaries under the configured output directory, emit the configured checksum manifest, and keep the output layout stable across languages. Targets are expressed as `os-arch` strings such as `linux-amd64`.
 
 ### 06 Release
 
@@ -206,7 +207,7 @@ Release publication settings for gh flarebyte release.
 
 #### Release Config
 
-Release publication is driven by the Cue config. `gh flarebyte release` should use the configured release tag prefix, source version, artifact layout, and release notes policy to publish a GitHub release from the build outputs.
+Release publication is driven by a top-level `release` block in the Cue config. `gh flarebyte release` should use the configured release tag prefix, source version, artifact layout, release notes policy, and optional `releaseNotesFilePath` to publish a GitHub release from the build outputs.
 
 ### 07 Sync Types
 
@@ -215,7 +216,7 @@ TypeScript shapes for the sync contract.
 #### Sync Types
 
 ```ts
-export type SyncMode = "push" | "pull" | "bidirectional";
+export type SyncMode = "push";
 
 export type RepositoryFeatures = {
   issues: boolean;
@@ -243,42 +244,44 @@ export type LabelConfig = {
 
 export type BuildConfig = {
   language: "go" | "dart";
-};
-
-export type BuildTarget = {
-  os: "linux" | "darwin";
-  arch: "amd64" | "arm64";
-  label: string;
-};
-
-export type BuildPlan = {
   outputDir: string;
   checksumFile: string;
   targets: BuildTarget[];
 };
 
+export type BuildTarget = `${"linux" | "darwin"}-${"amd64" | "arm64"}`;
+
 export type ReleaseConfig = {
   versionSource: string;
   tagPrefix: string;
   notesMode: "generate-notes" | "notes-file" | "notes-from-tag";
+  releaseNotesFilePath?: string;
   artifactDir: string;
   includeChecksums: boolean;
 };
 
-export type RepositoryConfig = {
+export type ProjectConfig = {
   org: string;
   repo: string;
+};
+
+export type RepositoryConfig = {
   description: string;
   defaultBranch: string;
   homepage: string;
   visibility: "public" | "private" | "internal";
   template: boolean;
-  build: BuildConfig;
-  buildPlan: BuildPlan;
-  release: ReleaseConfig;
   topics: string[];
   labels: LabelConfig[];
   features: RepositoryFeatures;
+};
+
+export type GhFlarebyteConfig = {
+  project: ProjectConfig;
+  sync: SyncPlan;
+  repository: RepositoryConfig;
+  build: BuildConfig;
+  release: ReleaseConfig;
 };
 
 export type SyncPlan = {
@@ -315,10 +318,10 @@ User-facing extension actions and their purpose.
 
 | command | config_touchpoints | output | purpose | read_write |
 | --- | --- | --- | --- | --- |
-| gh flarebyte build | repository.build.language -> build artifacts | language-specific build output | build the project according to the configured language | write |
-| gh flarebyte release | repository.release.* and build artifacts | versioned GitHub release | publish a GitHub release from the configured build outputs | write |
+| gh flarebyte build | build.* -> build artifacts | language-specific build output | build the project according to the configured language and target matrix | write |
+| gh flarebyte release | build.* and release.* -> GitHub release assets | versioned GitHub release | run build then publish a GitHub release from the configured release settings | write |
 | gh flarebyte repo init | .gh-flarebyte.cue created or seeded | initialized repo state | bootstrap a repo-local config and initial GitHub defaults | write |
-| gh flarebyte repo update | .gh-flarebyte.cue -> GitHub repo state | updated remote repo state | reconcile GitHub repo metadata from local config | write |
+| gh flarebyte repo update | .gh-flarebyte.cue -> GitHub repo state with explicit deletion confirmation | updated remote repo state | reconcile GitHub repo metadata from local config | write |
 | gh flarebyte repo audit | .gh-flarebyte.cue and GitHub state | drift report | compare local config with remote GitHub state | read |
 | gh flarebyte repos mine | none | relevant repo list | list repositories the user contributes to within an org | read |
 
@@ -339,18 +342,32 @@ export type CommandFlow = {
 
 export const commandFlows: CommandFlow[] = [
   {
+    name: "build",
+    command: "gh flarebyte build --repo my-org/my-repo",
+    repo: "my-org/my-repo",
+    purpose: "Build local artifacts from the top-level build block.",
+    syncEffect: "Write versioned binaries and checksums under the configured output directory.",
+  },
+  {
+    name: "release",
+    command: "gh flarebyte release --repo my-org/my-repo",
+    repo: "my-org/my-repo",
+    purpose: "Build first, then publish a GitHub release from the configured release block.",
+    syncEffect: "Run the build flow and upload release assets to GitHub.",
+  },
+  {
     name: "init",
     command: "gh flarebyte repo init --repo my-org/my-repo",
     repo: "my-org/my-repo",
-    purpose: "Bootstrap repo-local config and seed the GitHub repo settings.",
-    syncEffect: "Create or update `.gh-flarebyte.cue` and apply initial defaults.",
+    purpose: "Bootstrap repo-local config and seed the GitHub repo settings plus local build and release defaults.",
+    syncEffect: "Create or update `.gh-flarebyte.cue` and apply initial GitHub defaults.",
   },
   {
     name: "update",
-    command: "gh flarebyte repo update --repo my-org/my-repo",
+    command: "gh flarebyte repo update --repo my-org/my-repo --confirm-deletions",
     repo: "my-org/my-repo",
     purpose: "Reconcile GitHub repository state from the local config.",
-    syncEffect: "Push local desired state to GitHub.",
+    syncEffect: "Push local desired state to GitHub and fail if deletions are detected without `--confirm-deletions`.",
   },
   {
     name: "audit",
@@ -358,6 +375,13 @@ export const commandFlows: CommandFlow[] = [
     repo: "my-org/my-repo",
     purpose: "Report drift between the checked-in config and GitHub.",
     syncEffect: "Read-only comparison.",
+  },
+  {
+    name: "repos-mine",
+    command: "gh flarebyte repos mine --org my-org",
+    repo: "my-org",
+    purpose: "Discover repositories the current user contributes to within an organization.",
+    syncEffect: "Read-only discovery against GitHub data.",
   },
 ];
 ```
@@ -368,7 +392,7 @@ How build orchestration is driven from config.
 
 #### Build Command
 
-Build the project from the configured language. Start with Go only, but keep the config shape open for Dart so the command can grow without changing its contract. The first implementation should produce `build/<name>-<os>-<arch>` artifacts and a `build/checksums.txt` file, with the target matrix and output paths driven from config rather than shell scripts.
+Build the project from the top-level `build` block. Start with Go only, but keep the config shape open for Dart so the command can grow without changing its contract. The first implementation should produce `<outputDir>/<name>-<target>` artifacts and a configured checksum file, with target names expressed as `os-arch` strings such as `linux-amd64` and driven from config rather than shell scripts.
 
 ### 04 Release
 
@@ -376,7 +400,7 @@ How release publication is driven from config.
 
 #### Release Command
 
-Publish a GitHub release from the build outputs. Use the configured release settings to choose the tag, artifacts, and release note behavior, and implement the command in Go rather than the current Bun helper.
+Run `gh flarebyte build` first, then publish a GitHub release from the resulting build outputs. Use the top-level `release` block to choose the tag, artifacts, and release note behavior, including `releaseNotesFilePath` when `notesMode` is `notes-file`, and implement the command in Go rather than the current Bun helper.
 
 ### 05 Init
 
@@ -384,7 +408,7 @@ What repo bootstrap does.
 
 #### Init Command
 
-Bootstrap a repository by seeding `.gh-flarebyte.cue` and applying the initial syncable repo settings.
+Bootstrap a repository by seeding `.gh-flarebyte.cue` with repository, build, and release defaults and then applying the initial syncable repo settings.
 
 ### 06 Update
 
@@ -392,7 +416,7 @@ What reconciliation from cue config means.
 
 #### Update Command
 
-Reconcile the live GitHub repository from `.gh-flarebyte.cue`, including repo settings, topics, and label definitions.
+Reconcile the live GitHub repository from `.gh-flarebyte.cue`, including repo settings, topics, and label definitions. Topics and labels are exact-set sync targets, so remote items missing from config should be treated as deletions. The command must fail unless the user explicitly confirms deletions, for example with `--confirm-deletions`.
 
 ### 07 Audit
 
@@ -537,5 +561,5 @@ What still needs agreement before the sync contract hardens.
 
 #### Open Questions
 
-Clarify which repo fields are fully managed by the extension, whether sync should be one-way or bidirectional by default, and how conflicts should be surfaced when remote state diverges from `.gh-flarebyte.cue`.
+Clarify the non-interactive CI story for deletion confirmation, the first Dart build contract once it lands, and whether release notes should eventually support templates beyond generated notes and a single notes file path.
 

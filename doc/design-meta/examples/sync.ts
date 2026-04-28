@@ -1,4 +1,4 @@
-export type SyncMode = "push" | "pull" | "bidirectional";
+export type SyncMode = "push";
 
 export type RepositoryFeatures = {
   issues: boolean;
@@ -26,42 +26,44 @@ export type LabelConfig = {
 
 export type BuildConfig = {
   language: "go" | "dart";
-};
-
-export type BuildTarget = {
-  os: "linux" | "darwin";
-  arch: "amd64" | "arm64";
-  label: string;
-};
-
-export type BuildPlan = {
   outputDir: string;
   checksumFile: string;
   targets: BuildTarget[];
 };
 
+export type BuildTarget = `${"linux" | "darwin"}-${"amd64" | "arm64"}`;
+
 export type ReleaseConfig = {
   versionSource: string;
   tagPrefix: string;
   notesMode: "generate-notes" | "notes-file" | "notes-from-tag";
+  releaseNotesFilePath?: string;
   artifactDir: string;
   includeChecksums: boolean;
 };
 
-export type RepositoryConfig = {
+export type ProjectConfig = {
   org: string;
   repo: string;
+};
+
+export type RepositoryConfig = {
   description: string;
   defaultBranch: string;
   homepage: string;
   visibility: "public" | "private" | "internal";
   template: boolean;
-  build: BuildConfig;
-  buildPlan: BuildPlan;
-  release: ReleaseConfig;
   topics: string[];
   labels: LabelConfig[];
   features: RepositoryFeatures;
+};
+
+export type GhFlarebyteConfig = {
+  project: ProjectConfig;
+  sync: SyncPlan;
+  repository: RepositoryConfig;
+  build: BuildConfig;
+  release: ReleaseConfig;
 };
 
 export type SyncPlan = {
