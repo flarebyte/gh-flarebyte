@@ -24,6 +24,10 @@ export type LabelConfig = {
   description: string;
 };
 
+export type BuildConfig = {
+  language: "go" | "dart";
+};
+
 export type RepositoryConfig = {
   org: string;
   repo: string;
@@ -32,6 +36,7 @@ export type RepositoryConfig = {
   homepage: string;
   visibility: "public" | "private" | "internal";
   template: boolean;
+  build: BuildConfig;
   topics: string[];
   labels: LabelConfig[];
   features: RepositoryFeatures;

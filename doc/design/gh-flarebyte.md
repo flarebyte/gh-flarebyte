@@ -49,6 +49,7 @@ sync: {
 		"homepage",
 		"visibility",
 		"template",
+		"build.language",
 		"topics",
 		"labels",
 		"features.issues",
@@ -75,6 +76,9 @@ repository: {
 	homepage: "https://github.com/flarebyte/gh-flarebyte"
 	visibility: "public"
 	template: false
+	build: {
+		language: "go"
+	}
 	topics: [
 		"gh-extension",
 		"github-cli",
@@ -129,6 +133,7 @@ How config fields map onto GitHub repository settings.
 | repository.homepage | string | .gh-flarebyte.cue | Repository homepage URL. | local-to-remote |
 | repository.visibility | enum | .gh-flarebyte.cue | Repository visibility: public, private, or internal. | local-to-remote |
 | repository.template | boolean | .gh-flarebyte.cue | Make the repository available as a template. | local-to-remote |
+| repository.build.language | enum | .gh-flarebyte.cue | Build language used by gh flarebyte build: go initially, dart later. | local-to-remote |
 | repository.topics | list | .gh-flarebyte.cue | Topics should stay stable and sorted. | local-to-remote |
 | repository.labels | list | .gh-flarebyte.cue | Structured label definitions managed separately from topics. | local-to-remote |
 | repository.features.issues | boolean | .gh-flarebyte.cue | GitHub issues enabled or disabled. | local-to-remote |
@@ -164,7 +169,15 @@ Repository labels have their own structured sync shape in the cue config.
 
 Labels use a structured list of objects in the cue config so name, color, and description can be reconciled separately from repository topics.
 
-### 05 Sync Types
+### 05 Build
+
+Build language selection for gh flarebyte build.
+
+#### Build Config
+
+Build orchestration is driven by the Cue config. `gh flarebyte build` reads the configured language and uses a Go implementation initially, with Dart allowed later as a supported language.
+
+### 06 Sync Types
 
 TypeScript shapes for the sync contract.
 
@@ -197,6 +210,10 @@ export type LabelConfig = {
   description: string;
 };
 
+export type BuildConfig = {
+  language: "go" | "dart";
+};
+
 export type RepositoryConfig = {
   org: string;
   repo: string;
@@ -205,6 +222,7 @@ export type RepositoryConfig = {
   homepage: string;
   visibility: "public" | "private" | "internal";
   template: boolean;
+  build: BuildConfig;
   topics: string[];
   labels: LabelConfig[];
   features: RepositoryFeatures;
@@ -224,7 +242,7 @@ export type DriftItem = {
 };
 ```
 
-### 06 Config Coverage
+### 07 Config Coverage
 
 Additional gh repo edit settings that are now modeled in the cue sync config.
 
@@ -244,6 +262,7 @@ User-facing extension actions and their purpose.
 
 | command | config_touchpoints | output | purpose | read_write |
 | --- | --- | --- | --- | --- |
+| gh flarebyte build | repository.build.language -> build artifacts | language-specific build output | build the project according to the configured language | write |
 | gh flarebyte repo init | .gh-flarebyte.cue created or seeded | initialized repo state | bootstrap a repo-local config and initial GitHub defaults | write |
 | gh flarebyte repo update | .gh-flarebyte.cue -> GitHub repo state | updated remote repo state | reconcile GitHub repo metadata from local config | write |
 | gh flarebyte repo audit | .gh-flarebyte.cue and GitHub state | drift report | compare local config with remote GitHub state | read |
@@ -289,7 +308,15 @@ export const commandFlows: CommandFlow[] = [
 ];
 ```
 
-### 03 Init
+### 03 Build
+
+How build orchestration is driven from config.
+
+#### Build Command
+
+Build the project from the configured language. Start with Go only, but keep the config shape open for Dart so the command can grow without changing its contract.
+
+### 04 Init
 
 What repo bootstrap does.
 
@@ -297,7 +324,7 @@ What repo bootstrap does.
 
 Bootstrap a repository by seeding `.gh-flarebyte.cue` and applying the initial syncable repo settings.
 
-### 04 Update
+### 05 Update
 
 What reconciliation from cue config means.
 
@@ -305,7 +332,7 @@ What reconciliation from cue config means.
 
 Reconcile the live GitHub repository from `.gh-flarebyte.cue`, including repo settings, topics, and label definitions.
 
-### 05 Audit
+### 06 Audit
 
 What read-only drift checking means.
 
@@ -313,7 +340,7 @@ What read-only drift checking means.
 
 Compare the checked-in Cue config with GitHub and report drift without changing remote state.
 
-### 06 Repos Mine
+### 07 Repos Mine
 
 What repository discovery returns.
 
@@ -321,7 +348,7 @@ What repository discovery returns.
 
 List repositories the current user contributes to within an organization so the extension can discover target repos before sync.
 
-### 07 GitHub Flags
+### 08 GitHub Flags
 
 The existing `gh repo edit` knobs that `gh flarebyte repo update` applies from config.
 

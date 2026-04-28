@@ -7,6 +7,7 @@ repository.defaultBranch,string,.gh-flarebyte.cue,local-to-remote,Usually `main`
 repository.homepage,string,.gh-flarebyte.cue,local-to-remote,Repository homepage URL.
 repository.visibility,enum,.gh-flarebyte.cue,local-to-remote,"Repository visibility: public, private, or internal."
 repository.template,boolean,.gh-flarebyte.cue,local-to-remote,Make the repository available as a template.
+repository.build.language,enum,.gh-flarebyte.cue,local-to-remote,"Build language used by gh flarebyte build: go initially, dart later."
 repository.topics,list,.gh-flarebyte.cue,local-to-remote,Topics should stay stable and sorted.
 repository.labels,list,.gh-flarebyte.cue,local-to-remote,Structured label definitions managed separately from topics.
 repository.features.issues,boolean,.gh-flarebyte.cue,local-to-remote,GitHub issues enabled or disabled.

@@ -14,6 +14,7 @@ sync: {
 		"homepage",
 		"visibility",
 		"template",
+		"build.language",
 		"topics",
 		"labels",
 		"features.issues",
@@ -40,6 +41,9 @@ repository: {
 	homepage: "https://github.com/flarebyte/gh-flarebyte"
 	visibility: "public"
 	template: false
+	build: {
+		language: "go"
+	}
 	topics: [
 		"gh-extension",
 		"github-cli",

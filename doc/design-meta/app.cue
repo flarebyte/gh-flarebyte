@@ -52,13 +52,19 @@ reports: [{
 				"repo.labels.config",
 			]
 		}, {
-			title:       "05 Sync Types"
+			title:       "05 Build"
+			description: "Build language selection for gh flarebyte build."
+			notes: [
+				"repo.build.config",
+			]
+		}, {
+			title:       "06 Sync Types"
 			description: "TypeScript shapes for the sync contract."
 			notes: [
 				"sync.types",
 			]
 		}, {
-			title:       "06 Config Coverage"
+			title:       "07 Config Coverage"
 			description: "Additional gh repo edit settings that are now modeled in the cue sync config."
 			notes: [
 				"repo.config.coverage",
@@ -80,31 +86,37 @@ reports: [{
 				"command.flows",
 			]
 		}, {
-			title:       "03 Init"
+			title:       "03 Build"
+			description: "How build orchestration is driven from config."
+			notes: [
+				"command.build",
+			]
+		}, {
+			title:       "04 Init"
 			description: "What repo bootstrap does."
 			notes: [
 				"command.init",
 			]
 		}, {
-			title:       "04 Update"
+			title:       "05 Update"
 			description: "What reconciliation from cue config means."
 			notes: [
 				"command.update",
 			]
 		}, {
-			title:       "05 Audit"
+			title:       "06 Audit"
 			description: "What read-only drift checking means."
 			notes: [
 				"command.audit",
 			]
 		}, {
-			title:       "06 Repos Mine"
+			title:       "07 Repos Mine"
 			description: "What repository discovery returns."
 			notes: [
 				"command.repos.mine",
 			]
 		}, {
-			title:       "07 GitHub Flags"
+			title:       "08 GitHub Flags"
 			description: "The existing `gh repo edit` knobs that `gh flarebyte repo update` applies from config."
 			notes: [
 				"gh.repo.edit.flags",
@@ -182,6 +194,12 @@ notes: [
 		labels:   ["csv", "configuration", "sync"]
 	},
 	{
+		name:     "repo.build.config"
+		title:    "Build Config"
+		markdown: "Build orchestration is driven by the Cue config. `gh flarebyte build` reads the configured language and uses a Go implementation initially, with Dart allowed later as a supported language."
+		labels:   ["configuration", "build", "spec"]
+	},
+	{
 		name:     "repo.topics.config"
 		title:    "Topic Sync"
 		markdown: "Topics are kept as a flat string list in the cue config and synchronized directly to the repository topics list."
@@ -217,6 +235,12 @@ notes: [
 		title:    "Extension Command Flows"
 		filepath: "examples/command-flows.ts"
 		labels:   ["typescript", "commands", "spec"]
+	},
+	{
+		name:     "command.build"
+		title:    "Build Command"
+		markdown: "Build the project from the configured language. Start with Go only, but keep the config shape open for Dart so the command can grow without changing its contract."
+		labels:   ["commands", "build", "spec"]
 	},
 	{
 		name:     "command.init"
