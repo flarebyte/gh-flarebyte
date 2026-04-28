@@ -1,47 +1,204 @@
 package flyb
 
-source: "minimal"
-name:   "minimal"
+source: "gh-flarebyte"
+name:   "gh-flarebyte"
 modules: ["core"]
 
 reports: [{
-	title:       "Minimal Architecture Report"
-	filepath:    "out/minimal.md"
-	description: "Small starter report."
+	title:       "gh-flarebyte Design Notes"
+	filepath:    "../design/gh-flarebyte.md"
+	description: "Repository sync model for the flarebyte GitHub CLI extension."
 	sections: [{
-		title:       "Overview"
-		description: "Minimal section set."
+		title:       "01 Overview"
+		description: "What the extension manages and why the repo-local CUE file exists."
 		sections: [{
-			title:       "Core Nodes"
-			description: "Plain note rendering."
-			notes: ["app.api", "app.db"]
+			title:       "01 Intent"
+			description: "Why the checked-in config file exists."
+			notes: [
+				"project.summary",
+			]
+		}, {
+			title:       "02 Scope"
+			description: "The operational boundary for the extension."
+			notes: [
+				"project.scope",
+			]
+		}]
+	}, {
+		title:       "02 Configuration"
+		description: "Canonical repo configuration and the field map used for sync."
+		sections: [{
+			title:       "01 Config Example"
+			description: "The repo-local `.gh-flarebyte.cue` file."
+			notes: [
+				"repo.config.example",
+			]
+		}, {
+			title:       "02 Field Map"
+			description: "How config fields map onto GitHub repository settings."
+			notes: [
+				"repo.config.fields",
+			]
+		}, {
+			title:       "03 Sync Types"
+			description: "TypeScript shapes for the sync contract."
+			notes: [
+				"sync.types",
+			]
+		}]
+	}, {
+		title:       "03 Commands"
+		description: "User-facing extension commands and the underlying GitHub operations."
+		sections: [{
+			title:       "01 Command Matrix"
+			description: "User-facing extension actions and their purpose."
+			notes: [
+				"command.matrix",
+			]
+		}, {
+			title:       "02 Command Flows"
+			description: "TypeScript examples that show the intended command sequences."
+			notes: [
+				"command.flows",
+			]
+		}, {
+			title:       "03 GitHub Flags"
+			description: "The lower-level `gh repo edit` knobs the extension maps onto."
+			notes: [
+				"gh.repo.edit.flags",
+			]
+		}]
+	}, {
+		title:       "04 Discovery"
+		description: "Repo discovery for the 'repos mine' workflow."
+		sections: [{
+			title:       "01 Repos Mine"
+			description: "How the extension discovers repositories the user contributes to."
+			notes: [
+				"repo.discovery",
+			]
+		}]
+	}, {
+		title:       "05 Open Questions"
+		description: "Pending decisions that should stay visible in the spec."
+		sections: [{
+			title:       "01 Decisions Pending"
+			description: "What still needs agreement before the sync contract hardens."
+			notes: [
+				"project.open-questions",
+			]
 		}]
 	}]
 }]
 
 notes: [
 	{
-		name:     "app.api"
-		title:    "API Service"
-		markdown: "Handles client requests."
-		labels: ["service", "api"]
+		name:     "project.summary"
+		title:    "Project Summary"
+		markdown: "Flarebyte's `gh` extension manages GitHub repository state from a checked-in `.gh-flarebyte.cue` file so repo metadata can be synchronized deterministically."
+		labels:   ["overview", "summary"]
 	},
 	{
-		name:     "app.db"
-		title:    "Primary Database"
-		markdown: "Stores persistent state."
-		labels: ["storage", "database"]
+		name:     "project.scope"
+		title:    "Project Scope"
+		markdown: "The extension is centered on repo bootstrap, reconciliation, audit, and repository discovery. It should keep local config and GitHub state aligned without requiring manual repetition of the same `gh repo edit` flags."
+		labels:   ["scope", "sync"]
+	},
+	{
+		name:     "repo.config.example"
+		title:    "Repo Config Example"
+		filepath: "examples/.gh-flarebyte.cue"
+		labels:   ["cue", "configuration", "example"]
+	},
+	{
+		name:     "repo.config.fields"
+		title:    "Repo Config Field Map"
+		filepath: "examples/config-fields.csv"
+		arguments: ["format-csv=table"]
+		labels:   ["csv", "configuration", "mapping"]
+	},
+	{
+		name:     "sync.types"
+		title:    "Sync Types"
+		filepath: "examples/sync.ts"
+		labels:   ["typescript", "sync", "types"]
+	},
+	{
+		name:     "command.matrix"
+		title:    "Command Matrix"
+		filepath: "examples/command-matrix.csv"
+		arguments: ["format-csv=table"]
+		labels:   ["csv", "commands", "matrix"]
+	},
+	{
+		name:     "command.flows"
+		title:    "Command Flows"
+		filepath: "examples/command-flows.ts"
+		labels:   ["typescript", "commands", "workflow"]
+	},
+	{
+		name:     "gh.repo.edit.flags"
+		title:    "GitHub Repo Edit Flags"
+		filepath: "examples/gh-repo-edit.csv"
+		arguments: ["format-csv=table"]
+		labels:   ["csv", "github", "flags"]
+	},
+	{
+		name:     "repo.discovery"
+		title:    "Repo Discovery"
+		filepath: "examples/repo-discovery.ts"
+		labels:   ["typescript", "discovery", "org"]
+	},
+	{
+		name:     "project.open-questions"
+		title:    "Open Questions"
+		markdown: "Clarify which repo fields are fully managed by the extension, whether sync should be one-way or bidirectional by default, and how conflicts should be surfaced when remote state diverges from `.gh-flarebyte.cue`."
+		labels:   ["questions", "sync", "policy"]
 	},
 ]
 
-relationships: [{
-	from:   "app.api"
-	to:     "app.db"
-	label:  "depends_on"
-	labels: ["depends_on"]
-}]
+relationships: [
+	{
+		from:   "repo.config.example"
+		to:     "repo.config.fields"
+		label:  "described_by"
+		labels: ["configuration", "documentation"]
+	},
+	{
+		from:   "repo.config.example"
+		to:     "sync.types"
+		label:  "shaped_by"
+		labels: ["sync", "types"]
+	},
+	{
+		from:   "command.matrix"
+		to:     "command.flows"
+		label:  "illustrated_by"
+		labels: ["commands", "workflow"]
+	},
+	{
+		from:   "command.matrix"
+		to:     "gh.repo.edit.flags"
+		label:  "backs_onto"
+		labels: ["commands", "github"]
+	},
+	{
+		from:   "repo.discovery"
+		to:     "command.matrix"
+		label:  "supports"
+		labels: ["discovery", "commands"]
+	},
+]
 
 argumentRegistry: {
-	version:   "1"
-	arguments: []
+	version: "1"
+	arguments: [
+		{
+			name:          "format-csv"
+			valueType:     "enum"
+			scopes: ["note"]
+			allowedValues: ["table"]
+			defaultValue:  "table"
+		},
+	]
 }

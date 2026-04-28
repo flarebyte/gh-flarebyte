@@ -101,8 +101,6 @@ doc-design:
 	mkdir -p doc/design
 	flyb validate --config doc/design-meta/app.cue
 	flyb generate markdown --config doc/design-meta/app.cue
-	flyb validate --config doc/design-meta/flows.cue
-	flyb generate markdown --config doc/design-meta/flows.cue
 
 doc-decision: build-go
 	mkdir -p doc/decision-meta

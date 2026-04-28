@@ -1,0 +1,6 @@
+command,purpose,read_write,config_touchpoints,output
+gh flarebyte repo init,bootstrap a repo-local config and initial GitHub defaults,write,.gh-flarebyte.cue created or seeded,initialized repo state
+gh flarebyte repo update,reconcile GitHub repo metadata from local config,write,.gh-flarebyte.cue -> GitHub repo state,updated remote repo state
+gh flarebyte repo audit,compare local config with remote GitHub state,read,.gh-flarebyte.cue and GitHub state,drift report
+gh flarebyte repos mine,list repositories the user contributes to within an org,read,none,relevant repo list
+gh repo edit,apply low-level GitHub repo mutations,write,remote repo flags only,updated repository settings
