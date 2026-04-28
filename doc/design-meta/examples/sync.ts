@@ -40,6 +40,14 @@ export type BuildPlan = {
   targets: BuildTarget[];
 };
 
+export type ReleaseConfig = {
+  versionSource: string;
+  tagPrefix: string;
+  notesMode: "generate-notes" | "notes-file" | "notes-from-tag";
+  artifactDir: string;
+  includeChecksums: boolean;
+};
+
 export type RepositoryConfig = {
   org: string;
   repo: string;
@@ -50,6 +58,7 @@ export type RepositoryConfig = {
   template: boolean;
   build: BuildConfig;
   buildPlan: BuildPlan;
+  release: ReleaseConfig;
   topics: string[];
   labels: LabelConfig[];
   features: RepositoryFeatures;

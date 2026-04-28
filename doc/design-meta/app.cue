@@ -58,13 +58,19 @@ reports: [{
 				"repo.build.config",
 			]
 		}, {
-			title:       "06 Sync Types"
+			title:       "06 Release"
+			description: "Release publication settings for gh flarebyte release."
+			notes: [
+				"repo.release.config",
+			]
+		}, {
+			title:       "07 Sync Types"
 			description: "TypeScript shapes for the sync contract."
 			notes: [
 				"sync.types",
 			]
 		}, {
-			title:       "07 Config Coverage"
+			title:       "08 Config Coverage"
 			description: "Additional gh repo edit settings that are now modeled in the cue sync config."
 			notes: [
 				"repo.config.coverage",
@@ -92,31 +98,37 @@ reports: [{
 				"command.build",
 			]
 		}, {
-			title:       "04 Init"
+			title:       "04 Release"
+			description: "How release publication is driven from config."
+			notes: [
+				"command.release",
+			]
+		}, {
+			title:       "05 Init"
 			description: "What repo bootstrap does."
 			notes: [
 				"command.init",
 			]
 		}, {
-			title:       "05 Update"
+			title:       "06 Update"
 			description: "What reconciliation from cue config means."
 			notes: [
 				"command.update",
 			]
 		}, {
-			title:       "06 Audit"
+			title:       "07 Audit"
 			description: "What read-only drift checking means."
 			notes: [
 				"command.audit",
 			]
 		}, {
-			title:       "07 Repos Mine"
+			title:       "08 Repos Mine"
 			description: "What repository discovery returns."
 			notes: [
 				"command.repos.mine",
 			]
 		}, {
-			title:       "08 GitHub Flags"
+			title:       "09 GitHub Flags"
 			description: "The existing `gh repo edit` knobs that `gh flarebyte repo update` applies from config."
 			notes: [
 				"gh.repo.edit.flags",
@@ -200,6 +212,12 @@ notes: [
 		labels:   ["configuration", "build", "spec"]
 	},
 	{
+		name:     "repo.release.config"
+		title:    "Release Config"
+		markdown: "Release publication is driven by the Cue config. `gh flarebyte release` should use the configured release tag prefix, source version, artifact layout, and release notes policy to publish a GitHub release from the build outputs."
+		labels:   ["configuration", "release", "spec"]
+	},
+	{
 		name:     "repo.topics.config"
 		title:    "Topic Sync"
 		markdown: "Topics are kept as a flat string list in the cue config and synchronized directly to the repository topics list."
@@ -241,6 +259,12 @@ notes: [
 		title:    "Build Command"
 		markdown: "Build the project from the configured language. Start with Go only, but keep the config shape open for Dart so the command can grow without changing its contract. The first implementation should produce `build/<name>-<os>-<arch>` artifacts and a `build/checksums.txt` file, with the target matrix and output paths driven from config rather than shell scripts."
 		labels:   ["commands", "build", "spec"]
+	},
+	{
+		name:     "command.release"
+		title:    "Release Command"
+		markdown: "Publish a GitHub release from the build outputs. Use the configured release settings to choose the tag, artifacts, and release note behavior, and implement the command in Go rather than the current Bun helper."
+		labels:   ["commands", "release", "spec"]
 	},
 	{
 		name:     "command.init"

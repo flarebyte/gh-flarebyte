@@ -70,25 +70,32 @@ sync: {
 	]
 }
 
-repository: {
-	description: "CLI for landing your git commands right"
-	defaultBranch: "main"
-	homepage: "https://github.com/flarebyte/gh-flarebyte"
-	visibility: "public"
-	template: false
-	build: {
-		language: "go"
-	}
-	buildPlan: {
-		outputDir: "build"
-		checksumFile: "build/checksums.txt"
-		targets: [
-			"linux/amd64",
-			"darwin/arm64",
-		]
-	}
-	topics: [
-		"gh-extension",
+	repository: {
+		description: "CLI for landing your git commands right"
+		defaultBranch: "main"
+		homepage: "https://github.com/flarebyte/gh-flarebyte"
+		visibility: "public"
+		template: false
+		build: {
+			language: "go"
+		}
+		buildPlan: {
+			outputDir: "build"
+			checksumFile: "build/checksums.txt"
+			targets: [
+				"linux/amd64",
+				"darwin/arm64",
+			]
+		}
+		release: {
+			versionSource: "main.project.yaml"
+			tagPrefix: "v"
+			notesMode: "generate-notes"
+			artifactDir: "build"
+			includeChecksums: true
+		}
+		topics: [
+			"gh-extension",
 		"github-cli",
 		"git",
 		"flarebyte",
@@ -145,6 +152,11 @@ How config fields map onto GitHub repository settings.
 | repository.buildPlan.outputDir | string | .gh-flarebyte.cue | Directory for built artifacts. | local-to-remote |
 | repository.buildPlan.checksumFile | string | .gh-flarebyte.cue | Checksum manifest for built artifacts. | local-to-remote |
 | repository.buildPlan.targets | list | .gh-flarebyte.cue | Target matrix for the build command. | local-to-remote |
+| repository.release.versionSource | string | .gh-flarebyte.cue | File or source that provides the release version. | local-to-remote |
+| repository.release.tagPrefix | string | .gh-flarebyte.cue | Prefix used for release tags. | local-to-remote |
+| repository.release.notesMode | enum | .gh-flarebyte.cue | Release note strategy, such as generate-notes. | local-to-remote |
+| repository.release.artifactDir | string | .gh-flarebyte.cue | Directory scanned for release assets. | local-to-remote |
+| repository.release.includeChecksums | boolean | .gh-flarebyte.cue | Whether to include the checksum manifest as a release asset. | local-to-remote |
 | repository.topics | list | .gh-flarebyte.cue | Topics should stay stable and sorted. | local-to-remote |
 | repository.labels | list | .gh-flarebyte.cue | Structured label definitions managed separately from topics. | local-to-remote |
 | repository.features.issues | boolean | .gh-flarebyte.cue | GitHub issues enabled or disabled. | local-to-remote |
@@ -188,7 +200,15 @@ Build language selection for gh flarebyte build.
 
 Build orchestration is driven by the Cue config. `gh flarebyte build` reads the configured language and uses a Go implementation initially, with Dart allowed later as a supported language. The command should write language-specific binaries under `build/`, emit a `build/checksums.txt` manifest, and keep the output layout stable across languages. The separate `buildPlan` block describes artifact paths and target matrix.
 
-### 06 Sync Types
+### 06 Release
+
+Release publication settings for gh flarebyte release.
+
+#### Release Config
+
+Release publication is driven by the Cue config. `gh flarebyte release` should use the configured release tag prefix, source version, artifact layout, and release notes policy to publish a GitHub release from the build outputs.
+
+### 07 Sync Types
 
 TypeScript shapes for the sync contract.
 
@@ -237,6 +257,14 @@ export type BuildPlan = {
   targets: BuildTarget[];
 };
 
+export type ReleaseConfig = {
+  versionSource: string;
+  tagPrefix: string;
+  notesMode: "generate-notes" | "notes-file" | "notes-from-tag";
+  artifactDir: string;
+  includeChecksums: boolean;
+};
+
 export type RepositoryConfig = {
   org: string;
   repo: string;
@@ -247,6 +275,7 @@ export type RepositoryConfig = {
   template: boolean;
   build: BuildConfig;
   buildPlan: BuildPlan;
+  release: ReleaseConfig;
   topics: string[];
   labels: LabelConfig[];
   features: RepositoryFeatures;
@@ -266,7 +295,7 @@ export type DriftItem = {
 };
 ```
 
-### 07 Config Coverage
+### 08 Config Coverage
 
 Additional gh repo edit settings that are now modeled in the cue sync config.
 
@@ -287,6 +316,7 @@ User-facing extension actions and their purpose.
 | command | config_touchpoints | output | purpose | read_write |
 | --- | --- | --- | --- | --- |
 | gh flarebyte build | repository.build.language -> build artifacts | language-specific build output | build the project according to the configured language | write |
+| gh flarebyte release | repository.release.* and build artifacts | versioned GitHub release | publish a GitHub release from the configured build outputs | write |
 | gh flarebyte repo init | .gh-flarebyte.cue created or seeded | initialized repo state | bootstrap a repo-local config and initial GitHub defaults | write |
 | gh flarebyte repo update | .gh-flarebyte.cue -> GitHub repo state | updated remote repo state | reconcile GitHub repo metadata from local config | write |
 | gh flarebyte repo audit | .gh-flarebyte.cue and GitHub state | drift report | compare local config with remote GitHub state | read |
@@ -340,7 +370,15 @@ How build orchestration is driven from config.
 
 Build the project from the configured language. Start with Go only, but keep the config shape open for Dart so the command can grow without changing its contract. The first implementation should produce `build/<name>-<os>-<arch>` artifacts and a `build/checksums.txt` file, with the target matrix and output paths driven from config rather than shell scripts.
 
-### 04 Init
+### 04 Release
+
+How release publication is driven from config.
+
+#### Release Command
+
+Publish a GitHub release from the build outputs. Use the configured release settings to choose the tag, artifacts, and release note behavior, and implement the command in Go rather than the current Bun helper.
+
+### 05 Init
 
 What repo bootstrap does.
 
@@ -348,7 +386,7 @@ What repo bootstrap does.
 
 Bootstrap a repository by seeding `.gh-flarebyte.cue` and applying the initial syncable repo settings.
 
-### 05 Update
+### 06 Update
 
 What reconciliation from cue config means.
 
@@ -356,7 +394,7 @@ What reconciliation from cue config means.
 
 Reconcile the live GitHub repository from `.gh-flarebyte.cue`, including repo settings, topics, and label definitions.
 
-### 06 Audit
+### 07 Audit
 
 What read-only drift checking means.
 
@@ -364,7 +402,7 @@ What read-only drift checking means.
 
 Compare the checked-in Cue config with GitHub and report drift without changing remote state.
 
-### 07 Repos Mine
+### 08 Repos Mine
 
 What repository discovery returns.
 
@@ -372,7 +410,7 @@ What repository discovery returns.
 
 List repositories the current user contributes to within an organization so the extension can discover target repos before sync.
 
-### 08 GitHub Flags
+### 09 GitHub Flags
 
 The existing `gh repo edit` knobs that `gh flarebyte repo update` applies from config.
 

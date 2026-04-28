@@ -11,6 +11,11 @@ repository.build.language,enum,.gh-flarebyte.cue,local-to-remote,"Build language
 repository.buildPlan.outputDir,string,.gh-flarebyte.cue,local-to-remote,Directory for built artifacts.
 repository.buildPlan.checksumFile,string,.gh-flarebyte.cue,local-to-remote,Checksum manifest for built artifacts.
 repository.buildPlan.targets,list,.gh-flarebyte.cue,local-to-remote,Target matrix for the build command.
+repository.release.versionSource,string,.gh-flarebyte.cue,local-to-remote,File or source that provides the release version.
+repository.release.tagPrefix,string,.gh-flarebyte.cue,local-to-remote,Prefix used for release tags.
+repository.release.notesMode,enum,.gh-flarebyte.cue,local-to-remote,"Release note strategy, such as generate-notes."
+repository.release.artifactDir,string,.gh-flarebyte.cue,local-to-remote,Directory scanned for release assets.
+repository.release.includeChecksums,boolean,.gh-flarebyte.cue,local-to-remote,Whether to include the checksum manifest as a release asset.
 repository.topics,list,.gh-flarebyte.cue,local-to-remote,Topics should stay stable and sorted.
 repository.labels,list,.gh-flarebyte.cue,local-to-remote,Structured label definitions managed separately from topics.
 repository.features.issues,boolean,.gh-flarebyte.cue,local-to-remote,GitHub issues enabled or disabled.

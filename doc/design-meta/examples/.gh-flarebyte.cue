@@ -35,25 +35,32 @@ sync: {
 	]
 }
 
-repository: {
-	description: "CLI for landing your git commands right"
-	defaultBranch: "main"
-	homepage: "https://github.com/flarebyte/gh-flarebyte"
-	visibility: "public"
-	template: false
-	build: {
-		language: "go"
-	}
-	buildPlan: {
-		outputDir: "build"
-		checksumFile: "build/checksums.txt"
-		targets: [
-			"linux/amd64",
-			"darwin/arm64",
-		]
-	}
-	topics: [
-		"gh-extension",
+	repository: {
+		description: "CLI for landing your git commands right"
+		defaultBranch: "main"
+		homepage: "https://github.com/flarebyte/gh-flarebyte"
+		visibility: "public"
+		template: false
+		build: {
+			language: "go"
+		}
+		buildPlan: {
+			outputDir: "build"
+			checksumFile: "build/checksums.txt"
+			targets: [
+				"linux/amd64",
+				"darwin/arm64",
+			]
+		}
+		release: {
+			versionSource: "main.project.yaml"
+			tagPrefix: "v"
+			notesMode: "generate-notes"
+			artifactDir: "build"
+			includeChecksums: true
+		}
+		topics: [
+			"gh-extension",
 		"github-cli",
 		"git",
 		"flarebyte",
