@@ -1,0 +1,10 @@
+name: github/flarebyte/gh-flarebyte
+role: dev
+description: |-
+     CLI for landing your git commands right
+notes: |-
+    Project for dev role
+tags:
+    org: flarebyte
+    source: github
+    version: 0.5.0

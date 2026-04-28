@@ -1,0 +1,88 @@
+# Minimal, explicit ignore for Go CLI projects
+
+# Binaries and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binaries and artifacts
+*.test
+*.out
+coverage.*
+*.coverprofile
+profile.cov
+
+# Generated dependencies (ignore by default; delete if vendoring is committed)
+vendor/
+
+# Workspace
+go.work
+go.work.sum
+
+# Local env
+.env
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Linux / freedesktop
+.directory
+.Trash-*
+
+# Build and temp
+build/
+temp/
+scratch/
+
+# Node / general JS deps
+node_modules/
+
+# Dev-only binaries
+.e2e-bin/
+
+# Go cache
+.gocache/
+.gomodcache/
+.cache/
+
+# Local GOPATH when sandboxed
+_gopath/
+
+# Script dependencies
+script/node_modules/
+
+# Bun caches and outputs
+.bun/
+bun.lockb.tmp
+bun-cache/
+dist/
+build/
+
+# ZX / transient execution artifacts
+.zx/
+tmp/
+*.log
+
+# TypeScript incremental builds
+*.tsbuildinfo
+
+# Editors
+# VS Code (commit team config, ignore transient state if created)
+.vscode/*.log
+
+# Sublime (commit project, ignore session state)
+*.sublime-workspace
+
+# Lapce (commit settings if standardized; ignore caches if added later)
+.lapce/db/
+
+# Generic editor swaps/backups
+*.swp
+*.swo
+*~
+
+coverage/
