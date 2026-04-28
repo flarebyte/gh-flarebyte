@@ -9,8 +9,13 @@ export type RepositoryFeatures = {
   mergeCommit: boolean;
   rebaseMerge: boolean;
   squashMerge: boolean;
+  squashMergeCommitMessage: "default" | "pr-title" | "pr-title-commits" | "pr-title-description";
   deleteBranchOnMerge: boolean;
   allowForking: boolean;
+  allowUpdateBranch: boolean;
+  advancedSecurity: boolean;
+  secretScanning: boolean;
+  secretScanningPushProtection: boolean;
 };
 
 export type RepositoryConfig = {
@@ -18,6 +23,9 @@ export type RepositoryConfig = {
   repo: string;
   description: string;
   defaultBranch: string;
+  homepage: string;
+  visibility: "public" | "private" | "internal";
+  template: boolean;
   topics: string[];
   features: RepositoryFeatures;
 };
@@ -26,6 +34,7 @@ export type SyncPlan = {
   mode: SyncMode;
   managedFields: string[];
   dryRun: boolean;
+  visibilityChangeConsequenceAccepted: boolean;
 };
 
 export type DriftItem = {

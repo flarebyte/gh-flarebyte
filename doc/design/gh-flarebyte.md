@@ -42,9 +42,13 @@ project: {
 
 sync: {
 	mode: "bidirectional"
+	visibilityChangeConsequenceAccepted: true
 	managedFields: [
 		"description",
 		"defaultBranch",
+		"homepage",
+		"visibility",
+		"template",
 		"topics",
 		"features.issues",
 		"features.wiki",
@@ -54,13 +58,22 @@ sync: {
 		"features.mergeCommit",
 		"features.rebaseMerge",
 		"features.squashMerge",
+		"features.squashMergeCommitMessage",
 		"features.deleteBranchOnMerge",
+		"features.allowForking",
+		"features.allowUpdateBranch",
+		"features.advancedSecurity",
+		"features.secretScanning",
+		"features.secretScanningPushProtection",
 	]
 }
 
 repository: {
 	description: "CLI for landing your git commands right"
 	defaultBranch: "main"
+	homepage: "https://github.com/flarebyte/gh-flarebyte"
+	visibility: "public"
+	template: false
 	topics: [
 		"gh-extension",
 		"github-cli",
@@ -76,8 +89,13 @@ repository: {
 		mergeCommit:          false
 		rebaseMerge:          false
 		squashMerge:          true
+		squashMergeCommitMessage: "pr-title"
 		deleteBranchOnMerge:  true
 		allowForking:         false
+		allowUpdateBranch:    false
+		advancedSecurity:     true
+		secretScanning:       true
+		secretScanningPushProtection: true
 	}
 }
 ```
@@ -95,6 +113,9 @@ How config fields map onto GitHub repository settings.
 | sync.mode | enum | extension | Default policy for reconcile and audit commands. | bidirectional |
 | repository.description | string | .gh-flarebyte.cue | Primary repo metadata field. | local-to-remote |
 | repository.defaultBranch | string | .gh-flarebyte.cue | Usually `main` for flarebyte repositories. | local-to-remote |
+| repository.homepage | string | .gh-flarebyte.cue | Repository homepage URL. | local-to-remote |
+| repository.visibility | enum | .gh-flarebyte.cue | Repository visibility: public, private, or internal. | local-to-remote |
+| repository.template | boolean | .gh-flarebyte.cue | Make the repository available as a template. | local-to-remote |
 | repository.topics | list | .gh-flarebyte.cue | Topics should stay stable and sorted. | local-to-remote |
 | repository.features.issues | boolean | .gh-flarebyte.cue | GitHub issues enabled or disabled. | local-to-remote |
 | repository.features.wiki | boolean | .gh-flarebyte.cue | GitHub wiki enabled or disabled. | local-to-remote |
@@ -104,8 +125,14 @@ How config fields map onto GitHub repository settings.
 | repository.features.mergeCommit | boolean | .gh-flarebyte.cue | Merge commit policy. | local-to-remote |
 | repository.features.rebaseMerge | boolean | .gh-flarebyte.cue | Rebase merge policy. | local-to-remote |
 | repository.features.squashMerge | boolean | .gh-flarebyte.cue | Squash merge policy. | local-to-remote |
+| repository.features.squashMergeCommitMessage | enum | .gh-flarebyte.cue | Default squash merge commit message behavior. | local-to-remote |
 | repository.features.deleteBranchOnMerge | boolean | .gh-flarebyte.cue | Head branch cleanup policy. | local-to-remote |
 | repository.features.allowForking | boolean | .gh-flarebyte.cue | Forking policy for organization repos. | local-to-remote |
+| repository.features.allowUpdateBranch | boolean | .gh-flarebyte.cue | Allow PR head branch updates when behind the base branch. | local-to-remote |
+| repository.features.advancedSecurity | boolean | .gh-flarebyte.cue | GitHub Advanced Security. | local-to-remote |
+| repository.features.secretScanning | boolean | .gh-flarebyte.cue | Secret scanning for the repository. | local-to-remote |
+| repository.features.secretScanningPushProtection | boolean | .gh-flarebyte.cue | Secret scanning push protection. | local-to-remote |
+| sync.visibilityChangeConsequenceAccepted | boolean | extension | Guardrail for changing repository visibility. | read-only |
 
 ### 03 Sync Types
 
@@ -125,8 +152,13 @@ export type RepositoryFeatures = {
   mergeCommit: boolean;
   rebaseMerge: boolean;
   squashMerge: boolean;
+  squashMergeCommitMessage: "default" | "pr-title" | "pr-title-commits" | "pr-title-description";
   deleteBranchOnMerge: boolean;
   allowForking: boolean;
+  allowUpdateBranch: boolean;
+  advancedSecurity: boolean;
+  secretScanning: boolean;
+  secretScanningPushProtection: boolean;
 };
 
 export type RepositoryConfig = {
@@ -134,6 +166,9 @@ export type RepositoryConfig = {
   repo: string;
   description: string;
   defaultBranch: string;
+  homepage: string;
+  visibility: "public" | "private" | "internal";
+  template: boolean;
   topics: string[];
   features: RepositoryFeatures;
 };
@@ -142,6 +177,7 @@ export type SyncPlan = {
   mode: SyncMode;
   managedFields: string[];
   dryRun: boolean;
+  visibilityChangeConsequenceAccepted: boolean;
 };
 
 export type DriftItem = {
@@ -150,6 +186,14 @@ export type DriftItem = {
   remote: string | boolean | string[];
 };
 ```
+
+### 04 Config Coverage
+
+Additional gh repo edit settings that are now modeled in the cue sync config.
+
+#### Additional Config Coverage
+
+The Cue sync config now models homepage, visibility, template, advanced security, secret scanning, push protection, allow-update-branch, and squash-merge commit-message settings.
 
 ## 03 Commands
 

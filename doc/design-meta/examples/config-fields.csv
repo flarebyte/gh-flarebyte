@@ -4,6 +4,9 @@ project.repo,string,local config,read-only,The repository name binds the config 
 sync.mode,enum,extension,bidirectional,Default policy for reconcile and audit commands.
 repository.description,string,.gh-flarebyte.cue,local-to-remote,Primary repo metadata field.
 repository.defaultBranch,string,.gh-flarebyte.cue,local-to-remote,Usually `main` for flarebyte repositories.
+repository.homepage,string,.gh-flarebyte.cue,local-to-remote,Repository homepage URL.
+repository.visibility,enum,.gh-flarebyte.cue,local-to-remote,"Repository visibility: public, private, or internal."
+repository.template,boolean,.gh-flarebyte.cue,local-to-remote,Make the repository available as a template.
 repository.topics,list,.gh-flarebyte.cue,local-to-remote,Topics should stay stable and sorted.
 repository.features.issues,boolean,.gh-flarebyte.cue,local-to-remote,GitHub issues enabled or disabled.
 repository.features.wiki,boolean,.gh-flarebyte.cue,local-to-remote,GitHub wiki enabled or disabled.
@@ -13,5 +16,11 @@ repository.features.autoMerge,boolean,.gh-flarebyte.cue,local-to-remote,Auto-mer
 repository.features.mergeCommit,boolean,.gh-flarebyte.cue,local-to-remote,Merge commit policy.
 repository.features.rebaseMerge,boolean,.gh-flarebyte.cue,local-to-remote,Rebase merge policy.
 repository.features.squashMerge,boolean,.gh-flarebyte.cue,local-to-remote,Squash merge policy.
+repository.features.squashMergeCommitMessage,enum,.gh-flarebyte.cue,local-to-remote,Default squash merge commit message behavior.
 repository.features.deleteBranchOnMerge,boolean,.gh-flarebyte.cue,local-to-remote,Head branch cleanup policy.
 repository.features.allowForking,boolean,.gh-flarebyte.cue,local-to-remote,Forking policy for organization repos.
+repository.features.allowUpdateBranch,boolean,.gh-flarebyte.cue,local-to-remote,Allow PR head branch updates when behind the base branch.
+repository.features.advancedSecurity,boolean,.gh-flarebyte.cue,local-to-remote,GitHub Advanced Security.
+repository.features.secretScanning,boolean,.gh-flarebyte.cue,local-to-remote,Secret scanning for the repository.
+repository.features.secretScanningPushProtection,boolean,.gh-flarebyte.cue,local-to-remote,Secret scanning push protection.
+sync.visibilityChangeConsequenceAccepted,boolean,extension,read-only,Guardrail for changing repository visibility.

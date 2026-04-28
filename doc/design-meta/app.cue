@@ -45,6 +45,12 @@ reports: [{
 			notes: [
 				"sync.types",
 			]
+		}, {
+			title:       "04 Config Coverage"
+			description: "Additional gh repo edit settings that are now modeled in the cue sync config."
+			notes: [
+				"repo.config.coverage",
+			]
 		}]
 	}, {
 		title:       "03 Commands"
@@ -138,6 +144,12 @@ notes: [
 		filepath: "examples/config-fields.csv"
 		arguments: ["format-csv=table"]
 		labels:   ["csv", "configuration", "sync"]
+	},
+	{
+		name:     "repo.config.coverage"
+		title:    "Additional Config Coverage"
+		markdown: "The Cue sync config now models homepage, visibility, template, advanced security, secret scanning, push protection, allow-update-branch, and squash-merge commit-message settings."
+		labels:   ["configuration", "coverage", "existing-gh"]
 	},
 	{
 		name:     "sync.types"
