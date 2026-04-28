@@ -10,6 +10,15 @@ gh repo edit my-org/my-repo \
   --enable-auto-merge=true \
   --default-branch main
 
+gh repo edit my-org/my-repo \
+  --enable-advanced-security \
+  --enable-secret-scanning \
+  --enable-secret-scanning-push-protection
+
+gh api repos/{owner}/{repo} \
+  --jq '.security_and_analysis.secret_scanning,
+        .security_and_analysis.secret_scanning_push_protection'
+        
 # Basic label
 gh label create bug --color FF0000 --description "Something is broken"
 
