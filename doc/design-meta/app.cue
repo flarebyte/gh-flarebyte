@@ -40,13 +40,25 @@ reports: [{
 				"repo.config.fields",
 			]
 		}, {
-			title:       "03 Sync Types"
+			title:       "03 Topics"
+			description: "Repository topics are a flat sync target in the cue config."
+			notes: [
+				"repo.topics.config",
+			]
+		}, {
+			title:       "04 Labels"
+			description: "Repository labels have their own structured sync shape in the cue config."
+			notes: [
+				"repo.labels.config",
+			]
+		}, {
+			title:       "05 Sync Types"
 			description: "TypeScript shapes for the sync contract."
 			notes: [
 				"sync.types",
 			]
 		}, {
-			title:       "04 Config Coverage"
+			title:       "06 Config Coverage"
 			description: "Additional gh repo edit settings that are now modeled in the cue sync config."
 			notes: [
 				"repo.config.coverage",
@@ -123,13 +135,13 @@ notes: [
 	{
 		name:     "project.summary"
 		title:    "Project Summary"
-		markdown: "Flarebyte's `gh` extension manages GitHub repository state from a checked-in `.gh-flarebyte.cue` file so repo metadata, labels, and repo settings can be synchronized deterministically. `gh flarebyte repo update` applies the config-driven `gh repo edit` changes."
+		markdown: "Flarebyte's `gh` extension manages GitHub repository state from a checked-in `.gh-flarebyte.cue` file so repo metadata, topics, labels, and repo settings can be synchronized deterministically. `gh flarebyte repo update` applies the config-driven `gh repo edit` changes."
 		labels:   ["overview", "summary", "sync"]
 	},
 	{
 		name:     "project.scope"
 		title:    "Project Scope"
-		markdown: "The extension is centered on repo bootstrap, reconciliation, audit, and repository discovery. Labels are synced from the Cue config, and repo-edit mutations are applied by `gh flarebyte repo update` rather than by manually repeating `gh repo edit` flags."
+		markdown: "The extension is centered on repo bootstrap, reconciliation, audit, and repository discovery. Topics are flat strings, labels are structured objects, and repo-edit mutations are applied by `gh flarebyte repo update` rather than by manually repeating `gh repo edit` flags."
 		labels:   ["scope", "sync", "config"]
 	},
 	{
@@ -144,6 +156,18 @@ notes: [
 		filepath: "examples/config-fields.csv"
 		arguments: ["format-csv=table"]
 		labels:   ["csv", "configuration", "sync"]
+	},
+	{
+		name:     "repo.topics.config"
+		title:    "Topic Sync"
+		markdown: "Topics are kept as a flat string list in the cue config and synchronized directly to the repository topics list."
+		labels:   ["configuration", "topics", "spec"]
+	},
+	{
+		name:     "repo.labels.config"
+		title:    "Label Sync"
+		markdown: "Labels use a structured list of objects in the cue config so name, color, and description can be reconciled separately from repository topics."
+		labels:   ["configuration", "labels", "spec"]
 	},
 	{
 		name:     "repo.config.coverage"

@@ -12,7 +12,7 @@ Why the checked-in config file exists.
 
 #### Project Summary
 
-Flarebyte's `gh` extension manages GitHub repository state from a checked-in `.gh-flarebyte.cue` file so repo metadata, labels, and repo settings can be synchronized deterministically. `gh flarebyte repo update` applies the config-driven `gh repo edit` changes.
+Flarebyte's `gh` extension manages GitHub repository state from a checked-in `.gh-flarebyte.cue` file so repo metadata, topics, labels, and repo settings can be synchronized deterministically. `gh flarebyte repo update` applies the config-driven `gh repo edit` changes.
 
 ### 02 Scope
 
@@ -20,7 +20,7 @@ The operational boundary for the extension.
 
 #### Project Scope
 
-The extension is centered on repo bootstrap, reconciliation, audit, and repository discovery. Labels are synced from the Cue config, and repo-edit mutations are applied by `gh flarebyte repo update` rather than by manually repeating `gh repo edit` flags.
+The extension is centered on repo bootstrap, reconciliation, audit, and repository discovery. Topics are flat strings, labels are structured objects, and repo-edit mutations are applied by `gh flarebyte repo update` rather than by manually repeating `gh repo edit` flags.
 
 ## 02 Configuration
 
@@ -50,6 +50,7 @@ sync: {
 		"visibility",
 		"template",
 		"topics",
+		"labels",
 		"features.issues",
 		"features.wiki",
 		"features.projects",
@@ -79,6 +80,18 @@ repository: {
 		"github-cli",
 		"git",
 		"flarebyte",
+	]
+	labels: [
+		{
+			name: "bug"
+			color: "B60205"
+			description: "Something is broken"
+		},
+		{
+			name: "enhancement"
+			color: "0E8A16"
+			description: "New feature"
+		},
 	]
 	features: {
 		issues:               true
@@ -117,6 +130,7 @@ How config fields map onto GitHub repository settings.
 | repository.visibility | enum | .gh-flarebyte.cue | Repository visibility: public, private, or internal. | local-to-remote |
 | repository.template | boolean | .gh-flarebyte.cue | Make the repository available as a template. | local-to-remote |
 | repository.topics | list | .gh-flarebyte.cue | Topics should stay stable and sorted. | local-to-remote |
+| repository.labels | list | .gh-flarebyte.cue | Structured label definitions managed separately from topics. | local-to-remote |
 | repository.features.issues | boolean | .gh-flarebyte.cue | GitHub issues enabled or disabled. | local-to-remote |
 | repository.features.wiki | boolean | .gh-flarebyte.cue | GitHub wiki enabled or disabled. | local-to-remote |
 | repository.features.projects | boolean | .gh-flarebyte.cue | GitHub projects enabled or disabled. | local-to-remote |
@@ -134,7 +148,23 @@ How config fields map onto GitHub repository settings.
 | repository.features.secretScanningPushProtection | boolean | .gh-flarebyte.cue | Secret scanning push protection. | local-to-remote |
 | sync.visibilityChangeConsequenceAccepted | boolean | extension | Guardrail for changing repository visibility. | read-only |
 
-### 03 Sync Types
+### 03 Topics
+
+Repository topics are a flat sync target in the cue config.
+
+#### Topic Sync
+
+Topics are kept as a flat string list in the cue config and synchronized directly to the repository topics list.
+
+### 04 Labels
+
+Repository labels have their own structured sync shape in the cue config.
+
+#### Label Sync
+
+Labels use a structured list of objects in the cue config so name, color, and description can be reconciled separately from repository topics.
+
+### 05 Sync Types
 
 TypeScript shapes for the sync contract.
 
@@ -161,6 +191,12 @@ export type RepositoryFeatures = {
   secretScanningPushProtection: boolean;
 };
 
+export type LabelConfig = {
+  name: string;
+  color: string;
+  description: string;
+};
+
 export type RepositoryConfig = {
   org: string;
   repo: string;
@@ -170,6 +206,7 @@ export type RepositoryConfig = {
   visibility: "public" | "private" | "internal";
   template: boolean;
   topics: string[];
+  labels: LabelConfig[];
   features: RepositoryFeatures;
 };
 
@@ -187,7 +224,7 @@ export type DriftItem = {
 };
 ```
 
-### 04 Config Coverage
+### 06 Config Coverage
 
 Additional gh repo edit settings that are now modeled in the cue sync config.
 

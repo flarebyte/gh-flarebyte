@@ -15,6 +15,7 @@ sync: {
 		"visibility",
 		"template",
 		"topics",
+		"labels",
 		"features.issues",
 		"features.wiki",
 		"features.projects",
@@ -44,6 +45,18 @@ repository: {
 		"github-cli",
 		"git",
 		"flarebyte",
+	]
+	labels: [
+		{
+			name: "bug"
+			color: "B60205"
+			description: "Something is broken"
+		},
+		{
+			name: "enhancement"
+			color: "0E8A16"
+			description: "New feature"
+		},
 	]
 	features: {
 		issues:               true

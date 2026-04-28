@@ -18,6 +18,12 @@ export type RepositoryFeatures = {
   secretScanningPushProtection: boolean;
 };
 
+export type LabelConfig = {
+  name: string;
+  color: string;
+  description: string;
+};
+
 export type RepositoryConfig = {
   org: string;
   repo: string;
@@ -27,6 +33,7 @@ export type RepositoryConfig = {
   visibility: "public" | "private" | "internal";
   template: boolean;
   topics: string[];
+  labels: LabelConfig[];
   features: RepositoryFeatures;
 };
 

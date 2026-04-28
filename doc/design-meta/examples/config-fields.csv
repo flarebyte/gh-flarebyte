@@ -8,6 +8,7 @@ repository.homepage,string,.gh-flarebyte.cue,local-to-remote,Repository homepage
 repository.visibility,enum,.gh-flarebyte.cue,local-to-remote,"Repository visibility: public, private, or internal."
 repository.template,boolean,.gh-flarebyte.cue,local-to-remote,Make the repository available as a template.
 repository.topics,list,.gh-flarebyte.cue,local-to-remote,Topics should stay stable and sorted.
+repository.labels,list,.gh-flarebyte.cue,local-to-remote,Structured label definitions managed separately from topics.
 repository.features.issues,boolean,.gh-flarebyte.cue,local-to-remote,GitHub issues enabled or disabled.
 repository.features.wiki,boolean,.gh-flarebyte.cue,local-to-remote,GitHub wiki enabled or disabled.
 repository.features.projects,boolean,.gh-flarebyte.cue,local-to-remote,GitHub projects enabled or disabled.
