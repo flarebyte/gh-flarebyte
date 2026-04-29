@@ -7,7 +7,6 @@ project: {
 
 sync: {
 	mode: "push"
-	visibilityChangeConsequenceAccepted: true
 	managedFields: [
 		"description",
 		"defaultBranch",
@@ -84,14 +83,14 @@ build: {
 	targets: [
 		"linux-amd64",
 		"darwin-arm64",
+		"windows-amd64",
 	]
 }
 
 release: {
-	versionSource:        "main.project.yaml"
-	tagPrefix:            "v"
-	notesMode:            "generate-notes"
-	releaseNotesFilePath: "doc/release-notes.md"
-	artifactDir:          "build"
-	includeChecksums:     true
+	versionSource:    "main.project.yaml"
+	tagPrefix:        "v"
+	notesMode:        "generate-notes"
+	artifactDir:      "build"
+	includeChecksums: true
 }

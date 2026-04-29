@@ -31,16 +31,23 @@ export type BuildConfig = {
   targets: BuildTarget[];
 };
 
-export type BuildTarget = `${"linux" | "darwin"}-${"amd64" | "arm64"}`;
+export type BuildTarget = `${"linux" | "darwin" | "windows"}-${"amd64" | "arm64"}`;
 
-export type ReleaseConfig = {
+export type ReleaseConfigBase = {
   versionSource: string;
   tagPrefix: string;
-  notesMode: "generate-notes" | "notes-file" | "notes-from-tag";
-  releaseNotesFilePath?: string;
   artifactDir: string;
   includeChecksums: boolean;
 };
+
+export type ReleaseConfig =
+  | (ReleaseConfigBase & {
+      notesMode: "generate-notes" | "notes-from-tag";
+    })
+  | (ReleaseConfigBase & {
+      notesMode: "notes-file";
+      releaseNotesFilePath: string;
+    });
 
 export type ProjectConfig = {
   org: string;
@@ -70,7 +77,6 @@ export type SyncPlan = {
   mode: SyncMode;
   managedFields: string[];
   dryRun: boolean;
-  visibilityChangeConsequenceAccepted: boolean;
 };
 
 export type DriftItem = {

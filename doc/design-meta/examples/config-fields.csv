@@ -27,11 +27,10 @@ repository.features.secretScanningPushProtection,boolean,.gh-flarebyte.cue,local
 build.language,enum,.gh-flarebyte.cue,local-only,"Build language used by gh flarebyte build: go initially, dart later."
 build.outputDir,string,.gh-flarebyte.cue,local-only,Directory for built artifacts.
 build.checksumFile,string,.gh-flarebyte.cue,local-only,Checksum manifest for built artifacts.
-build.targets,list,.gh-flarebyte.cue,local-only,Target matrix for the build command using `os-arch` strings such as `linux-amd64`.
+build.targets,list,.gh-flarebyte.cue,local-only,Target matrix for the build command using `os-arch` strings such as `linux-amd64` or `windows-amd64`. Each project declares only the targets it supports.
 release.versionSource,string,.gh-flarebyte.cue,local-only,File or source that provides the release version.
 release.tagPrefix,string,.gh-flarebyte.cue,local-only,Prefix used for release tags.
 release.notesMode,enum,.gh-flarebyte.cue,local-only,"Release note strategy, such as generate-notes or notes-file."
-release.releaseNotesFilePath,string,.gh-flarebyte.cue,local-only,Path used when notesMode is `notes-file`.
+release.releaseNotesFilePath,string,.gh-flarebyte.cue,local-only,Path required when notesMode is `notes-file`.
 release.artifactDir,string,.gh-flarebyte.cue,local-only,Directory scanned for release assets.
 release.includeChecksums,boolean,.gh-flarebyte.cue,local-only,Whether to include the checksum manifest as a release asset.
-sync.visibilityChangeConsequenceAccepted,boolean,extension,read-only,Guardrail for changing repository visibility.

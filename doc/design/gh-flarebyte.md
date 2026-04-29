@@ -42,7 +42,6 @@ project: {
 
 sync: {
 	mode: "push"
-	visibilityChangeConsequenceAccepted: true
 	managedFields: [
 		"description",
 		"defaultBranch",
@@ -119,16 +118,16 @@ build: {
 	targets: [
 		"linux-amd64",
 		"darwin-arm64",
+		"windows-amd64",
 	]
 }
 
 release: {
-	versionSource:        "main.project.yaml"
-	tagPrefix:            "v"
-	notesMode:            "generate-notes"
-	releaseNotesFilePath: "doc/release-notes.md"
-	artifactDir:          "build"
-	includeChecksums:     true
+	versionSource:    "main.project.yaml"
+	tagPrefix:        "v"
+	notesMode:        "generate-notes"
+	artifactDir:      "build"
+	includeChecksums: true
 }
 ```
 
@@ -168,14 +167,13 @@ How config fields map onto GitHub sync targets and extension-local automation se
 | build.language | enum | .gh-flarebyte.cue | Build language used by gh flarebyte build: go initially, dart later. | local-only |
 | build.outputDir | string | .gh-flarebyte.cue | Directory for built artifacts. | local-only |
 | build.checksumFile | string | .gh-flarebyte.cue | Checksum manifest for built artifacts. | local-only |
-| build.targets | list | .gh-flarebyte.cue | Target matrix for the build command using `os-arch` strings such as `linux-amd64`. | local-only |
+| build.targets | list | .gh-flarebyte.cue | Target matrix for the build command using `os-arch` strings such as `linux-amd64` or `windows-amd64`. Each project declares only the targets it supports. | local-only |
 | release.versionSource | string | .gh-flarebyte.cue | File or source that provides the release version. | local-only |
 | release.tagPrefix | string | .gh-flarebyte.cue | Prefix used for release tags. | local-only |
 | release.notesMode | enum | .gh-flarebyte.cue | Release note strategy, such as generate-notes or notes-file. | local-only |
-| release.releaseNotesFilePath | string | .gh-flarebyte.cue | Path used when notesMode is `notes-file`. | local-only |
+| release.releaseNotesFilePath | string | .gh-flarebyte.cue | Path required when notesMode is `notes-file`. | local-only |
 | release.artifactDir | string | .gh-flarebyte.cue | Directory scanned for release assets. | local-only |
 | release.includeChecksums | boolean | .gh-flarebyte.cue | Whether to include the checksum manifest as a release asset. | local-only |
-| sync.visibilityChangeConsequenceAccepted | boolean | extension | Guardrail for changing repository visibility. | read-only |
 
 ### 03 Topics
 
@@ -199,7 +197,7 @@ Build language selection for gh flarebyte build.
 
 #### Build Config
 
-Build orchestration is driven by a top-level `build` block in the Cue config. `gh flarebyte build` reads the configured language and uses a Go implementation initially, with Dart allowed later as a supported language. The command should write language-specific binaries under the configured output directory, emit the configured checksum manifest, and keep the output layout stable across languages. Targets are expressed as `os-arch` strings such as `linux-amd64`.
+Build orchestration is driven by a top-level `build` block in the Cue config. `gh flarebyte build` reads the configured language and uses a Go implementation initially, with Dart allowed later as a supported language. The command should write language-specific binaries under the configured output directory, emit the configured checksum manifest, and keep the output layout stable across languages. Targets are expressed as `os-arch` strings such as `linux-amd64` or `windows-amd64`, and each project lists only the targets it supports.
 
 ### 06 Release
 
@@ -207,7 +205,7 @@ Release publication settings for gh flarebyte release.
 
 #### Release Config
 
-Release publication is driven by a top-level `release` block in the Cue config. `gh flarebyte release` should use the configured release tag prefix, source version, artifact layout, release notes policy, and optional `releaseNotesFilePath` to publish a GitHub release from the build outputs.
+Release publication is driven by a top-level `release` block in the Cue config. `gh flarebyte release` should use the configured release tag prefix, source version, artifact layout, and release notes policy to publish a GitHub release from the build outputs. `releaseNotesFilePath` is required only when `notesMode` is `notes-file`.
 
 ### 07 Sync Types
 
@@ -249,16 +247,23 @@ export type BuildConfig = {
   targets: BuildTarget[];
 };
 
-export type BuildTarget = `${"linux" | "darwin"}-${"amd64" | "arm64"}`;
+export type BuildTarget = `${"linux" | "darwin" | "windows"}-${"amd64" | "arm64"}`;
 
-export type ReleaseConfig = {
+export type ReleaseConfigBase = {
   versionSource: string;
   tagPrefix: string;
-  notesMode: "generate-notes" | "notes-file" | "notes-from-tag";
-  releaseNotesFilePath?: string;
   artifactDir: string;
   includeChecksums: boolean;
 };
+
+export type ReleaseConfig =
+  | (ReleaseConfigBase & {
+      notesMode: "generate-notes" | "notes-from-tag";
+    })
+  | (ReleaseConfigBase & {
+      notesMode: "notes-file";
+      releaseNotesFilePath: string;
+    });
 
 export type ProjectConfig = {
   org: string;
@@ -288,7 +293,6 @@ export type SyncPlan = {
   mode: SyncMode;
   managedFields: string[];
   dryRun: boolean;
-  visibilityChangeConsequenceAccepted: boolean;
 };
 
 export type DriftItem = {
@@ -392,7 +396,7 @@ How build orchestration is driven from config.
 
 #### Build Command
 
-Build the project from the top-level `build` block. Start with Go only, but keep the config shape open for Dart so the command can grow without changing its contract. The first implementation should produce `<outputDir>/<name>-<target>` artifacts and a configured checksum file, with target names expressed as `os-arch` strings such as `linux-amd64` and driven from config rather than shell scripts.
+Build the project from the top-level `build` block. Start with Go only, but keep the config shape open for Dart so the command can grow without changing its contract. The first implementation should produce `<outputDir>/<name>-<target>` artifacts and a configured checksum file, with target names expressed as `os-arch` strings such as `linux-amd64` or `windows-amd64` and driven from config rather than shell scripts. The target list is explicit per project rather than globally mandatory.
 
 ### 04 Release
 
@@ -400,7 +404,7 @@ How release publication is driven from config.
 
 #### Release Command
 
-Run `gh flarebyte build` first, then publish a GitHub release from the resulting build outputs. Use the top-level `release` block to choose the tag, artifacts, and release note behavior, including `releaseNotesFilePath` when `notesMode` is `notes-file`, and implement the command in Go rather than the current Bun helper.
+Run `gh flarebyte build` first, then publish a GitHub release from the resulting build outputs. Use the top-level `release` block to choose the tag, artifacts, and release note behavior, requiring `releaseNotesFilePath` when `notesMode` is `notes-file`, and implement the command in Go rather than the current Bun helper.
 
 ### 05 Init
 
@@ -416,7 +420,7 @@ What reconciliation from cue config means.
 
 #### Update Command
 
-Reconcile the live GitHub repository from `.gh-flarebyte.cue`, including repo settings, topics, and label definitions. Topics and labels are exact-set sync targets, so remote items missing from config should be treated as deletions. The command must fail unless the user explicitly confirms deletions, for example with `--confirm-deletions`.
+Reconcile the live GitHub repository from `.gh-flarebyte.cue`, including repo settings, topics, and label definitions. Topics and labels are exact-set sync targets, so remote items missing from config should be treated as deletions. The command must fail unless the user explicitly confirms deletions, for example with `--confirm-deletions`. Visibility changes should also require explicit CLI confirmation rather than a committed config flag.
 
 ### 07 Audit
 
