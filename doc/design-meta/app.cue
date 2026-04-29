@@ -275,7 +275,7 @@ notes: [
 	{
 		name:     "command.update"
 		title:    "Update Command"
-		markdown: "Reconcile the live GitHub repository from `.gh-flarebyte.cue`, including repo settings, topics, and label definitions. Topics and labels are exact-set sync targets, so remote items missing from config should be treated as deletions. The command must fail unless the user explicitly confirms deletions, for example with `--confirm-deletions`. Visibility changes should also require explicit CLI confirmation rather than a committed config flag."
+		markdown: "Reconcile the live GitHub repository from `.gh-flarebyte.cue`, including repo settings, topics, and label definitions. Topics and labels are exact-set sync targets, so remote items missing from config should be treated as deletions. The command must fail unless the user explicitly confirms deletions with `--confirm-deletions`. Visibility changes should also require explicit CLI confirmation with `--accept-visibility-change-consequences` rather than a committed config flag."
 		labels:   ["commands", "update", "spec"]
 	},
 	{

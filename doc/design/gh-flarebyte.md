@@ -325,7 +325,7 @@ User-facing extension actions and their purpose.
 | gh flarebyte build | build.* -> build artifacts | language-specific build output | build the project according to the configured language and target matrix | write |
 | gh flarebyte release | build.* and release.* -> GitHub release assets | versioned GitHub release | run build then publish a GitHub release from the configured release settings | write |
 | gh flarebyte repo init | .gh-flarebyte.cue created or seeded | initialized repo state | bootstrap a repo-local config and initial GitHub defaults | write |
-| gh flarebyte repo update | .gh-flarebyte.cue -> GitHub repo state with explicit deletion confirmation | updated remote repo state | reconcile GitHub repo metadata from local config | write |
+| gh flarebyte repo update | .gh-flarebyte.cue -> GitHub repo state with `--confirm-deletions` and `--accept-visibility-change-consequences` when needed | updated remote repo state | reconcile GitHub repo metadata from local config with explicit safety flags | write |
 | gh flarebyte repo audit | .gh-flarebyte.cue and GitHub state | drift report | compare local config with remote GitHub state | read |
 | gh flarebyte repos mine | none | relevant repo list | list repositories the user contributes to within an org | read |
 
@@ -368,10 +368,12 @@ export const commandFlows: CommandFlow[] = [
   },
   {
     name: "update",
-    command: "gh flarebyte repo update --repo my-org/my-repo --confirm-deletions",
+    command:
+      "gh flarebyte repo update --repo my-org/my-repo --confirm-deletions --accept-visibility-change-consequences",
     repo: "my-org/my-repo",
     purpose: "Reconcile GitHub repository state from the local config.",
-    syncEffect: "Push local desired state to GitHub and fail if deletions are detected without `--confirm-deletions`.",
+    syncEffect:
+      "Push local desired state to GitHub and fail if deletions or visibility changes are detected without the required safety flags.",
   },
   {
     name: "audit",
@@ -420,7 +422,7 @@ What reconciliation from cue config means.
 
 #### Update Command
 
-Reconcile the live GitHub repository from `.gh-flarebyte.cue`, including repo settings, topics, and label definitions. Topics and labels are exact-set sync targets, so remote items missing from config should be treated as deletions. The command must fail unless the user explicitly confirms deletions, for example with `--confirm-deletions`. Visibility changes should also require explicit CLI confirmation rather than a committed config flag.
+Reconcile the live GitHub repository from `.gh-flarebyte.cue`, including repo settings, topics, and label definitions. Topics and labels are exact-set sync targets, so remote items missing from config should be treated as deletions. The command must fail unless the user explicitly confirms deletions with `--confirm-deletions`. Visibility changes should also require explicit CLI confirmation with `--accept-visibility-change-consequences` rather than a committed config flag.
 
 ### 07 Audit
 

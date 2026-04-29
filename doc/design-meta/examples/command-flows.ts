@@ -30,10 +30,12 @@ export const commandFlows: CommandFlow[] = [
   },
   {
     name: "update",
-    command: "gh flarebyte repo update --repo my-org/my-repo --confirm-deletions",
+    command:
+      "gh flarebyte repo update --repo my-org/my-repo --confirm-deletions --accept-visibility-change-consequences",
     repo: "my-org/my-repo",
     purpose: "Reconcile GitHub repository state from the local config.",
-    syncEffect: "Push local desired state to GitHub and fail if deletions are detected without `--confirm-deletions`.",
+    syncEffect:
+      "Push local desired state to GitHub and fail if deletions or visibility changes are detected without the required safety flags.",
   },
   {
     name: "audit",

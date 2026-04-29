@@ -2,6 +2,6 @@ command,purpose,read_write,config_touchpoints,output
 gh flarebyte build,build the project according to the configured language and target matrix,write,build.* -> build artifacts,language-specific build output
 gh flarebyte release,run build then publish a GitHub release from the configured release settings,write,build.* and release.* -> GitHub release assets,versioned GitHub release
 gh flarebyte repo init,bootstrap a repo-local config and initial GitHub defaults,write,.gh-flarebyte.cue created or seeded,initialized repo state
-gh flarebyte repo update,reconcile GitHub repo metadata from local config,write,.gh-flarebyte.cue -> GitHub repo state with explicit deletion confirmation,updated remote repo state
+gh flarebyte repo update,reconcile GitHub repo metadata from local config with explicit safety flags,write,.gh-flarebyte.cue -> GitHub repo state with `--confirm-deletions` and `--accept-visibility-change-consequences` when needed,updated remote repo state
 gh flarebyte repo audit,compare local config with remote GitHub state,read,.gh-flarebyte.cue and GitHub state,drift report
 gh flarebyte repos mine,list repositories the user contributes to within an org,read,none,relevant repo list
