@@ -92,43 +92,49 @@ reports: [{
 				"command.flows",
 			]
 		}, {
-			title:       "03 Build"
+			title:       "03 Flags"
+			description: "CLI flags that define the initial command surface for the extension."
+			notes: [
+				"command.flags",
+			]
+		}, {
+			title:       "04 Build"
 			description: "How build orchestration is driven from config."
 			notes: [
 				"command.build",
 			]
 		}, {
-			title:       "04 Release"
+			title:       "05 Release"
 			description: "How release publication is driven from config."
 			notes: [
 				"command.release",
 			]
 		}, {
-			title:       "05 Init"
+			title:       "06 Init"
 			description: "What repo bootstrap does."
 			notes: [
 				"command.init",
 			]
 		}, {
-			title:       "06 Update"
+			title:       "07 Update"
 			description: "What reconciliation from cue config means."
 			notes: [
 				"command.update",
 			]
 		}, {
-			title:       "07 Audit"
+			title:       "08 Audit"
 			description: "What read-only drift checking means."
 			notes: [
 				"command.audit",
 			]
 		}, {
-			title:       "08 Repos Mine"
+			title:       "09 Repos Mine"
 			description: "What repository discovery returns."
 			notes: [
 				"command.repos.mine",
 			]
 		}, {
-			title:       "09 GitHub Flags"
+			title:       "10 GitHub Flags"
 			description: "The existing `gh repo edit` knobs that `gh flarebyte repo update` applies from config."
 			notes: [
 				"gh.repo.edit.flags",
@@ -253,6 +259,13 @@ notes: [
 		title:    "Extension Command Flows"
 		filepath: "examples/command-flows.ts"
 		labels:   ["typescript", "commands", "spec"]
+	},
+	{
+		name:     "command.flags"
+		title:    "Extension Command Flags"
+		filepath: "examples/command-flags.csv"
+		arguments: ["format-csv=table"]
+		labels:   ["csv", "commands", "flags", "spec"]
 	},
 	{
 		name:     "command.build"

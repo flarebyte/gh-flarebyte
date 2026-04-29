@@ -22,6 +22,7 @@ GO_ENV := GOTOOLCHAIN=local GOCACHE=$(GO_CACHE_DIR) GOMODCACHE=$(GO_MOD_CACHE_DI
 BUN_ENV := TMPDIR=$(TMP_DIR)
 BIOME := $(BUN_ENV) $(BUN) run biome
 THOTH := thoth
+FLYB := flyb
 GOLINT_ENV := $(GO_ENV) GOLANGCI_LINT_CACHE=$(GO_LINT_CACHE_DIR)
 COVER_PROFILE := $(TMP_DIR)/test-unit.coverage.out
 COVER_HTML := $(TMP_DIR)/test-unit.coverage.html
@@ -99,8 +100,8 @@ format-e2e:
 
 doc-design:
 	mkdir -p doc/design
-	flyb validate --config doc/design-meta/app.cue
-	flyb generate markdown --config doc/design-meta/app.cue
+	$(FLYB) validate --config doc/design-meta/app.cue
+	$(FLYB) generate markdown --config doc/design-meta/app.cue
 
 doc-decision: build-go
 	mkdir -p doc/decision-meta
@@ -136,7 +137,7 @@ check-tools:
 	@printf "go=%s\n" "$$(command -v $(GO) >/dev/null 2>&1 && printf true || printf false)"
 	@printf "bun=%s\n" "$$(command -v $(BUN) >/dev/null 2>&1 && printf true || printf false)"
 	@printf "golangci-lint=%s\n" "$$(command -v $(GOLINT) >/dev/null 2>&1 && printf true || printf false)"
-	@printf "flyb=%s\n" "$$(command -v flyb >/dev/null 2>&1 && printf true || printf false)"
+	@printf "flyb=%s\n" "$$(command -v $(FLYB) >/dev/null 2>&1 && printf true || printf false)"
 	@printf "thoth=%s\n" "$$(command -v $(THOTH) >/dev/null 2>&1 && printf true || printf false)"
 	@printf "semgrep=%s\n" "$$(command -v semgrep >/dev/null 2>&1 && printf true || printf false)"
 	@printf "scc=%s\n" "$$(command -v scc >/dev/null 2>&1 && printf true || printf false)"
