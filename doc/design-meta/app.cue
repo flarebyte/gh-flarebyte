@@ -104,43 +104,49 @@ reports: [{
 				"command.automation",
 			]
 		}, {
-			title:       "05 Build"
+			title:       "05 Guidance And Errors"
+			description: "How the CLI should help users succeed and recover from mistakes."
+			notes: [
+				"command.feedback",
+			]
+		}, {
+			title:       "06 Build"
 			description: "How build orchestration is driven from config."
 			notes: [
 				"command.build",
 			]
 		}, {
-			title:       "06 Release"
+			title:       "07 Release"
 			description: "How release publication is driven from config."
 			notes: [
 				"command.release",
 			]
 		}, {
-			title:       "07 Init"
+			title:       "08 Init"
 			description: "What repo bootstrap does."
 			notes: [
 				"command.init",
 			]
 		}, {
-			title:       "08 Update"
+			title:       "09 Update"
 			description: "What reconciliation from cue config means."
 			notes: [
 				"command.update",
 			]
 		}, {
-			title:       "09 Audit"
+			title:       "10 Audit"
 			description: "What read-only drift checking means."
 			notes: [
 				"command.audit",
 			]
 		}, {
-			title:       "10 Repos Mine"
+			title:       "11 Repos Mine"
 			description: "What repository discovery returns."
 			notes: [
 				"command.repos.mine",
 			]
 		}, {
-			title:       "11 GitHub Flags"
+			title:       "12 GitHub Flags"
 			description: "The existing `gh repo edit` knobs that `gh flarebyte repo update` applies from config."
 			notes: [
 				"gh.repo.edit.flags",
@@ -280,33 +286,40 @@ notes: [
 		labels:   ["commands", "flags", "automation", "spec"]
 	},
 	{
+		name:     "command.feedback"
+		title:    "Guidance And Error Feedback"
+		filepath: "examples/command-feedback.csv"
+		arguments: ["format-csv=table"]
+		labels:   ["commands", "ux", "errors", "spec"]
+	},
+	{
 		name:     "command.build"
 		title:    "Build Command"
-		markdown: "Build the project from the top-level `build` block. Start with Go only, but keep the config shape open for Dart so the command can grow without changing its contract. The first implementation should produce `<outputDir>/<name>-<target>` artifacts and a configured checksum file, with target names expressed as `os-arch` strings such as `linux-amd64` or `windows-amd64` and driven from config rather than shell scripts. The target list is explicit per project rather than globally mandatory."
+		markdown: "Build the project from the top-level `build` block. Start with Go only, but keep the config shape open for Dart so the command can grow without changing its contract. The first implementation should produce `<outputDir>/<name>-<target>` artifacts and a configured checksum file, with target names expressed as `os-arch` strings such as `linux-amd64` or `windows-amd64` and driven from config rather than shell scripts. The target list is explicit per project rather than globally mandatory. When the command fails it should report the target, failing step, and next useful action."
 		labels:   ["commands", "build", "spec"]
 	},
 	{
 		name:     "command.release"
 		title:    "Release Command"
-		markdown: "Run `gh flarebyte build` first, then publish a GitHub release from the resulting build outputs. Use the top-level `release` block to choose the tag, artifacts, and release note behavior, requiring `releaseNotesFilePath` when `notesMode` is `notes-file`, and implement the command in Go rather than the current Bun helper."
+		markdown: "Run `gh flarebyte build` first, then publish a GitHub release from the resulting build outputs. Use the top-level `release` block to choose the tag, artifacts, and release note behavior, requiring `releaseNotesFilePath` when `notesMode` is `notes-file`, and implement the command in Go rather than the current Bun helper. On failure, the CLI should distinguish between build failure, tag/version resolution failure, and release upload failure."
 		labels:   ["commands", "release", "spec"]
 	},
 	{
 		name:     "command.init"
 		title:    "Init Command"
-		markdown: "Bootstrap a repository by seeding `.gh-flarebyte.cue` with repository, build, and release defaults and then applying the initial syncable repo settings."
+		markdown: "Bootstrap a repository by seeding `.gh-flarebyte.cue` with repository, build, and release defaults and then applying the initial syncable repo settings. The command should explain what file it created or updated and point users to `gh flarebyte repo update --help` for the next step."
 		labels:   ["commands", "init", "spec"]
 	},
 	{
 		name:     "command.update"
 		title:    "Update Command"
-		markdown: "Reconcile the live GitHub repository from `.gh-flarebyte.cue`, including repo settings, topics, and label definitions. Topics and labels are exact-set sync targets, so remote items missing from config should be treated as deletions. The command must fail unless the user explicitly confirms deletions with `--confirm-deletions`. Visibility changes should also require explicit CLI confirmation with `--accept-visibility-change-consequences` rather than a committed config flag."
+		markdown: "Reconcile the live GitHub repository from `.gh-flarebyte.cue`, including repo settings, topics, and label definitions. Topics and labels are exact-set sync targets, so remote items missing from config should be treated as deletions. The command must fail unless the user explicitly confirms deletions with `--confirm-deletions`. Visibility changes should also require explicit CLI confirmation with `--accept-visibility-change-consequences` rather than a committed config flag. Failure output should explain what would change, why it was blocked, and the exact next command or flag to use."
 		labels:   ["commands", "update", "spec"]
 	},
 	{
 		name:     "command.audit"
 		title:    "Audit Command"
-		markdown: "Compare the checked-in Cue config with GitHub and report drift without changing remote state."
+		markdown: "Compare the checked-in Cue config with GitHub and report drift without changing remote state. Output should summarize the number of differences and point users to `gh flarebyte repo update` when remediation is appropriate."
 		labels:   ["commands", "audit", "spec"]
 	},
 	{

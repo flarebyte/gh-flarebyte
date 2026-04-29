@@ -26,6 +26,8 @@ Use `gh flarebyte` to keep a GitHub repository aligned with the config checked i
 - `gh flarebyte build` builds the project using the language defined in `.gh-flarebyte.cue`.
 - `gh flarebyte release` publishes a GitHub release from the build outputs.
 
+Each command should provide actionable help with `--help`, and error output should explain the problem, the affected config or target, and the next useful command or flag.
+
 ## Config
 The repo config lives in `.gh-flarebyte.cue` and is the source of truth for:
 
@@ -47,9 +49,6 @@ project: {
 repository: {
   description: "CLI for landing your git commands right"
   defaultBranch: "main"
-  build: {
-    language: "go"
-  }
   topics: ["gh-extension", "github-cli", "git", "flarebyte"]
   labels: [
     {
@@ -58,6 +57,21 @@ repository: {
       description: "Something is broken"
     },
   ]
+}
+
+build: {
+  language: "go"
+  outputDir: "build"
+  checksumFile: "build/checksums.txt"
+  targets: ["linux-amd64", "darwin-arm64"]
+}
+
+release: {
+  versionSource: "main.project.yaml"
+  tagPrefix: "v"
+  notesMode: "generate-notes"
+  artifactDir: "build"
+  includeChecksums: true
 }
 ```
 
