@@ -1,10 +1,10 @@
-command,flag,kind,required_when,purpose
-gh flarebyte build,--repo,string,always,Identify the repository whose checked-in config drives the build.
-gh flarebyte build,--target,string,optional,Limit the build to one configured target such as `linux-amd64`.
-gh flarebyte build,--output-dir,string,optional,Override the configured output directory for one invocation.
-gh flarebyte release,--repo,string,always,Identify the repository whose checked-in config drives the release.
-gh flarebyte release,--notes-file,string,required when `release.notesMode` is `notes-file` and the config path is absent,Provide release notes explicitly for one invocation.
-gh flarebyte release,--draft,boolean,optional,Publish the release as a draft instead of a final release.
-gh flarebyte repo update,--repo,string,always,Identify the repository whose local config should be pushed to GitHub.
-gh flarebyte repo update,--confirm-deletions,boolean,required when topic or label deletions are detected,Allow exact-set reconciliation to remove remote topics or labels missing from config.
-gh flarebyte repo update,--accept-visibility-change-consequences,boolean,required when repository visibility changes,Allow visibility transitions that need explicit acknowledgement.
+command,flag,kind,required_when,automation_mode,purpose
+gh flarebyte build,--repo,string,always,script-friendly,Identify the repository whose checked-in config drives the build.
+gh flarebyte build,--target,string,optional,script-friendly,Limit the build to one configured target such as `linux-amd64`.
+gh flarebyte build,--output-dir,string,optional,script-friendly,Override the configured output directory for one invocation.
+gh flarebyte release,--repo,string,always,script-friendly,Identify the repository whose checked-in config drives the release.
+gh flarebyte release,--notes-file,string,required when `release.notesMode` is `notes-file` and the config path is absent,script-friendly,Provide release notes explicitly for one invocation.
+gh flarebyte release,--draft,boolean,optional,script-friendly,Publish the release as a draft instead of a final release.
+gh flarebyte repo update,--repo,string,always,script-friendly,Identify the repository whose local config should be pushed to GitHub.
+gh flarebyte repo update,--confirm-deletions,boolean,required when topic or label deletions are detected,safety-gate,Allow exact-set reconciliation to remove remote topics or labels missing from config.
+gh flarebyte repo update,--accept-visibility-change-consequences,boolean,required when repository visibility changes,safety-gate,Allow visibility transitions that need explicit acknowledgement.

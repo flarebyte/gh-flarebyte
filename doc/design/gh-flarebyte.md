@@ -398,19 +398,27 @@ CLI flags that define the initial command surface for the extension.
 
 #### Extension Command Flags
 
-| command | flag | kind | purpose | required_when |
-| --- | --- | --- | --- | --- |
-| gh flarebyte build | --repo | string | Identify the repository whose checked-in config drives the build. | always |
-| gh flarebyte build | --target | string | Limit the build to one configured target such as `linux-amd64`. | optional |
-| gh flarebyte build | --output-dir | string | Override the configured output directory for one invocation. | optional |
-| gh flarebyte release | --repo | string | Identify the repository whose checked-in config drives the release. | always |
-| gh flarebyte release | --notes-file | string | Provide release notes explicitly for one invocation. | required when `release.notesMode` is `notes-file` and the config path is absent |
-| gh flarebyte release | --draft | boolean | Publish the release as a draft instead of a final release. | optional |
-| gh flarebyte repo update | --repo | string | Identify the repository whose local config should be pushed to GitHub. | always |
-| gh flarebyte repo update | --confirm-deletions | boolean | Allow exact-set reconciliation to remove remote topics or labels missing from config. | required when topic or label deletions are detected |
-| gh flarebyte repo update | --accept-visibility-change-consequences | boolean | Allow visibility transitions that need explicit acknowledgement. | required when repository visibility changes |
+| automation_mode | command | flag | kind | purpose | required_when |
+| --- | --- | --- | --- | --- | --- |
+| script-friendly | gh flarebyte build | --repo | string | Identify the repository whose checked-in config drives the build. | always |
+| script-friendly | gh flarebyte build | --target | string | Limit the build to one configured target such as `linux-amd64`. | optional |
+| script-friendly | gh flarebyte build | --output-dir | string | Override the configured output directory for one invocation. | optional |
+| script-friendly | gh flarebyte release | --repo | string | Identify the repository whose checked-in config drives the release. | always |
+| script-friendly | gh flarebyte release | --notes-file | string | Provide release notes explicitly for one invocation. | required when `release.notesMode` is `notes-file` and the config path is absent |
+| script-friendly | gh flarebyte release | --draft | boolean | Publish the release as a draft instead of a final release. | optional |
+| script-friendly | gh flarebyte repo update | --repo | string | Identify the repository whose local config should be pushed to GitHub. | always |
+| safety-gate | gh flarebyte repo update | --confirm-deletions | boolean | Allow exact-set reconciliation to remove remote topics or labels missing from config. | required when topic or label deletions are detected |
+| safety-gate | gh flarebyte repo update | --accept-visibility-change-consequences | boolean | Allow visibility transitions that need explicit acknowledgement. | required when repository visibility changes |
 
-### 04 Build
+### 04 Automation
+
+Which flags are safe for scripts and which are explicit safety gates.
+
+#### Automation Policy
+
+Flags marked `script-friendly` are intended for repeatable local scripts and CI jobs. Flags marked `safety-gate` exist to make destructive or high-consequence changes explicit. In practice, `gh flarebyte repo update` should fail in unattended runs when deletions or visibility changes are detected unless the corresponding safety flag is passed deliberately.
+
+### 05 Build
 
 How build orchestration is driven from config.
 
@@ -418,7 +426,7 @@ How build orchestration is driven from config.
 
 Build the project from the top-level `build` block. Start with Go only, but keep the config shape open for Dart so the command can grow without changing its contract. The first implementation should produce `<outputDir>/<name>-<target>` artifacts and a configured checksum file, with target names expressed as `os-arch` strings such as `linux-amd64` or `windows-amd64` and driven from config rather than shell scripts. The target list is explicit per project rather than globally mandatory.
 
-### 05 Release
+### 06 Release
 
 How release publication is driven from config.
 
@@ -426,7 +434,7 @@ How release publication is driven from config.
 
 Run `gh flarebyte build` first, then publish a GitHub release from the resulting build outputs. Use the top-level `release` block to choose the tag, artifacts, and release note behavior, requiring `releaseNotesFilePath` when `notesMode` is `notes-file`, and implement the command in Go rather than the current Bun helper.
 
-### 06 Init
+### 07 Init
 
 What repo bootstrap does.
 
@@ -434,7 +442,7 @@ What repo bootstrap does.
 
 Bootstrap a repository by seeding `.gh-flarebyte.cue` with repository, build, and release defaults and then applying the initial syncable repo settings.
 
-### 07 Update
+### 08 Update
 
 What reconciliation from cue config means.
 
@@ -442,7 +450,7 @@ What reconciliation from cue config means.
 
 Reconcile the live GitHub repository from `.gh-flarebyte.cue`, including repo settings, topics, and label definitions. Topics and labels are exact-set sync targets, so remote items missing from config should be treated as deletions. The command must fail unless the user explicitly confirms deletions with `--confirm-deletions`. Visibility changes should also require explicit CLI confirmation with `--accept-visibility-change-consequences` rather than a committed config flag.
 
-### 08 Audit
+### 09 Audit
 
 What read-only drift checking means.
 
@@ -450,7 +458,7 @@ What read-only drift checking means.
 
 Compare the checked-in Cue config with GitHub and report drift without changing remote state.
 
-### 09 Repos Mine
+### 10 Repos Mine
 
 What repository discovery returns.
 
@@ -458,7 +466,7 @@ What repository discovery returns.
 
 List repositories the current user contributes to within an organization so the extension can discover target repos before sync.
 
-### 10 GitHub Flags
+### 11 GitHub Flags
 
 The existing `gh repo edit` knobs that `gh flarebyte repo update` applies from config.
 

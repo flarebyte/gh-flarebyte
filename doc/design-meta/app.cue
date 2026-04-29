@@ -98,43 +98,49 @@ reports: [{
 				"command.flags",
 			]
 		}, {
-			title:       "04 Build"
+			title:       "04 Automation"
+			description: "Which flags are safe for scripts and which are explicit safety gates."
+			notes: [
+				"command.automation",
+			]
+		}, {
+			title:       "05 Build"
 			description: "How build orchestration is driven from config."
 			notes: [
 				"command.build",
 			]
 		}, {
-			title:       "05 Release"
+			title:       "06 Release"
 			description: "How release publication is driven from config."
 			notes: [
 				"command.release",
 			]
 		}, {
-			title:       "06 Init"
+			title:       "07 Init"
 			description: "What repo bootstrap does."
 			notes: [
 				"command.init",
 			]
 		}, {
-			title:       "07 Update"
+			title:       "08 Update"
 			description: "What reconciliation from cue config means."
 			notes: [
 				"command.update",
 			]
 		}, {
-			title:       "08 Audit"
+			title:       "09 Audit"
 			description: "What read-only drift checking means."
 			notes: [
 				"command.audit",
 			]
 		}, {
-			title:       "09 Repos Mine"
+			title:       "10 Repos Mine"
 			description: "What repository discovery returns."
 			notes: [
 				"command.repos.mine",
 			]
 		}, {
-			title:       "10 GitHub Flags"
+			title:       "11 GitHub Flags"
 			description: "The existing `gh repo edit` knobs that `gh flarebyte repo update` applies from config."
 			notes: [
 				"gh.repo.edit.flags",
@@ -266,6 +272,12 @@ notes: [
 		filepath: "examples/command-flags.csv"
 		arguments: ["format-csv=table"]
 		labels:   ["csv", "commands", "flags", "spec"]
+	},
+	{
+		name:     "command.automation"
+		title:    "Automation Policy"
+		markdown: "Flags marked `script-friendly` are intended for repeatable local scripts and CI jobs. Flags marked `safety-gate` exist to make destructive or high-consequence changes explicit. In practice, `gh flarebyte repo update` should fail in unattended runs when deletions or visibility changes are detected unless the corresponding safety flag is passed deliberately."
+		labels:   ["commands", "flags", "automation", "spec"]
 	},
 	{
 		name:     "command.build"
