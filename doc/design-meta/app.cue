@@ -116,50 +116,64 @@ reports: [{
 				"command.success",
 			]
 		}, {
-			title:       "07 Version"
+			title:       "07 Exit Codes"
+			description: "Stable process exit behavior for humans, scripts, and CI."
+			notes: [
+				"command.exitcodes",
+			]
+		}, {
+			title:       "08 Structured Output"
+			description: "Machine-readable JSON output shapes for script-friendly commands."
+			notes: [
+				"command.audit.json",
+				"command.repos.mine.json",
+			]
+		}, {
+			title:       "09 Version"
 			description: "How the root CLI version flag exposes embedded build metadata."
 			notes: [
 				"command.version.policy",
 				"command.version",
 			]
 		}, {
-			title:       "08 Build"
+			title:       "10 Build"
 			description: "How build orchestration is driven from config."
 			notes: [
+				"command.build.artifacts",
 				"command.build",
 			]
 		}, {
-			title:       "09 Release"
+			title:       "11 Release"
 			description: "How release publication is driven from config."
 			notes: [
 				"command.release",
 			]
 		}, {
-			title:       "10 Init"
+			title:       "12 Init"
 			description: "What repo bootstrap does."
 			notes: [
 				"command.init",
 			]
 		}, {
-			title:       "11 Update"
+			title:       "13 Update"
 			description: "What reconciliation from cue config means."
 			notes: [
 				"command.update",
 			]
 		}, {
-			title:       "12 Audit"
+			title:       "14 Audit"
 			description: "What read-only drift checking means."
 			notes: [
 				"command.audit",
 			]
 		}, {
-			title:       "13 Repos Mine"
+			title:       "15 Repos Mine"
 			description: "What repository discovery returns."
 			notes: [
 				"command.repos.mine",
 			]
 		}, {
-			title:       "14 GitHub Flags"
+			title:       "16 GitHub Flags"
 			description: "The existing `gh repo edit` knobs that `gh flarebyte repo update` applies from config."
 			notes: [
 				"gh.repo.edit.flags",
@@ -313,6 +327,25 @@ notes: [
 		labels:   ["commands", "ux", "success", "spec"]
 	},
 	{
+		name:     "command.exitcodes"
+		title:    "Command Exit Codes"
+		filepath: "examples/command-exit-codes.csv"
+		arguments: ["format-csv=table"]
+		labels:   ["commands", "exit-codes", "spec"]
+	},
+	{
+		name:     "command.audit.json"
+		title:    "Audit JSON Output"
+		filepath: "examples/audit-output.ts"
+		labels:   ["commands", "audit", "json", "typescript", "spec"]
+	},
+	{
+		name:     "command.repos.mine.json"
+		title:    "Repos Mine JSON Output"
+		filepath: "examples/repos-mine-output.ts"
+		labels:   ["commands", "discovery", "json", "typescript", "spec"]
+	},
+	{
 		name:     "command.version.policy"
 		title:    "Version Output Policy"
 		markdown: "The root `gh flarebyte --version` command should print concise human-readable plain text by default. When `--json` is passed alongside `--version`, it should emit machine-readable JSON using the documented version metadata shape. This keeps the default friendly for humans while making automation explicit and stable."
@@ -325,15 +358,22 @@ notes: [
 		labels:   ["commands", "version", "typescript", "spec"]
 	},
 	{
+		name:     "command.build.artifacts"
+		title:    "Build Artifact Rules"
+		filepath: "examples/build-artifacts.csv"
+		arguments: ["format-csv=table"]
+		labels:   ["commands", "build", "artifacts", "spec"]
+	},
+	{
 		name:     "command.build"
 		title:    "Build Command"
-		markdown: "Build the project from the top-level `build` block. Start with Go only, but keep the config shape open for Dart so the command can grow without changing its contract. The first implementation should produce `<outputDir>/<name>-<target>` artifacts and a configured checksum file, with target names expressed as `os-arch` strings such as `linux-amd64` or `windows-amd64` and driven from config rather than shell scripts. The target list is explicit per project rather than globally mandatory. Build output should also embed version metadata so the compiled CLI can report `version`, `commitId`, `date`, and related runtime details via `--version`, and the same metadata should be available as JSON with `--version --json`. When the command fails it should report the target, failing step, and next useful action. On success it should summarize which targets were built and where artifacts and checksums were written."
+		markdown: "Build the project from the top-level `build` block. Start with Go only, but keep the config shape open for Dart so the command can grow without changing its contract. The first implementation should produce deterministic target artifacts and a configured checksum file, with target names expressed as `os-arch` strings such as `linux-amd64` or `windows-amd64` and driven from config rather than shell scripts. Unix targets should be packaged as `tar.gz`, Windows targets as `zip`, Windows binaries should end in `.exe`, and checksums should use SHA-256. The target list is explicit per project rather than globally mandatory. Build output should also embed version metadata so the compiled CLI can report `version`, `commitId`, `date`, and related runtime details via `--version`, and the same metadata should be available as JSON with `--version --json`. When the command fails it should report the target, failing step, and next useful action. On success it should summarize which targets were built and where artifacts and checksums were written."
 		labels:   ["commands", "build", "spec"]
 	},
 	{
 		name:     "command.release"
 		title:    "Release Command"
-		markdown: "Run `gh flarebyte build` first, then publish a GitHub release from the resulting build outputs. Use the top-level `release` block to choose the tag, artifacts, and release note behavior, requiring `releaseNotesFilePath` when `notesMode` is `notes-file`, and implement the command in Go rather than the current Bun helper. On failure, the CLI should distinguish between build failure, tag/version resolution failure, and release upload failure. On success it should confirm the published tag and the artifact source used."
+		markdown: "Run `gh flarebyte build` first, then publish a GitHub release from the resulting build outputs. Use the top-level `release` block to choose the tag, artifacts, and release note behavior, requiring `releaseNotesFilePath` when `notesMode` is `notes-file`, and implement the command in Go rather than the current Bun helper. Release uploads should consume the deterministic packaged artifacts produced by the build command rather than rebuilding different outputs ad hoc. On failure, the CLI should distinguish between build failure, tag/version resolution failure, and release upload failure. On success it should confirm the published tag and the artifact source used."
 		labels:   ["commands", "release", "spec"]
 	},
 	{
@@ -351,13 +391,13 @@ notes: [
 	{
 		name:     "command.audit"
 		title:    "Audit Command"
-		markdown: "Compare the checked-in Cue config with GitHub and report drift without changing remote state. Output should summarize the number of differences and point users to `gh flarebyte repo update` when remediation is appropriate. A clean run should say clearly that no drift was found."
+		markdown: "Compare the checked-in Cue config with GitHub and report drift without changing remote state. Output should summarize the number of differences and point users to `gh flarebyte repo update` when remediation is appropriate. A clean run should say clearly that no drift was found. With `--json`, the command should emit a stable machine-readable report of the repo, drift count, and individual diffs. The command should exit `0` for no drift and `3` when drift is found."
 		labels:   ["commands", "audit", "spec"]
 	},
 	{
 		name:     "command.repos.mine"
 		title:    "Repos Mine Command"
-		markdown: "List repositories the current user contributes to within an organization so the extension can discover target repos before sync. Success output should include the organization queried and how many repositories were found."
+		markdown: "List repositories the current user contributes to within an organization so the extension can discover target repos before sync. Success output should include the organization queried and how many repositories were found. With `--json`, the command should emit a stable machine-readable report containing the requested organization, contributor, count, and discovered repositories."
 		labels:   ["commands", "discovery", "spec"]
 	},
 	{

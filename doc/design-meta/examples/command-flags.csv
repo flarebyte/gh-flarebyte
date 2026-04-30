@@ -10,3 +10,5 @@ gh flarebyte release,--draft,boolean,optional,script-friendly,Publish the releas
 gh flarebyte repo update,--repo,string,always,script-friendly,Identify the repository whose local config should be pushed to GitHub.
 gh flarebyte repo update,--confirm-deletions,boolean,required when topic or label deletions are detected,safety-gate,Allow exact-set reconciliation to remove remote topics or labels missing from config.
 gh flarebyte repo update,--accept-visibility-change-consequences,boolean,required when repository visibility changes,safety-gate,Allow visibility transitions that need explicit acknowledgement.
+gh flarebyte repo audit,--json,boolean,optional,script-friendly,Emit the audit report as stable machine-readable JSON.
+gh flarebyte repos mine,--json,boolean,optional,script-friendly,Emit discovered repositories as stable machine-readable JSON.
