@@ -8,6 +8,7 @@ import (
 	"runtime"
 
 	"github.com/flarebyte/gh-flarebyte/internal/buildinfo"
+	"github.com/flarebyte/gh-flarebyte/internal/config"
 )
 
 // Exit codes aligned with the current design contract.
@@ -34,6 +35,25 @@ type Result struct {
 func Run(args []string, stdout, stderr io.Writer) Result {
 	if len(args) == 0 || contains(args, "--help") {
 		printHelp(stdout)
+		return Result{ExitCode: ExitOK}
+	}
+
+	if len(args) >= 2 && args[0] == "config" && args[1] == "validate" {
+		configPath, err := parseConfigPath(args[2:])
+		if err != nil {
+			fmt.Fprintln(stderr, err.Error())
+			return Result{ExitCode: ExitUsage, Err: err}
+		}
+		absPath, err := config.ResolvePath(configPath)
+		if err != nil {
+			fmt.Fprintln(stderr, err.Error())
+			return Result{ExitCode: ExitUsage, Err: err}
+		}
+		if _, err := config.Load(configPath); err != nil {
+			fmt.Fprintln(stderr, err.Error())
+			return Result{ExitCode: ExitUsage, Err: err}
+		}
+		fmt.Fprintf(stdout, "config is valid: %s\n", absPath)
 		return Result{ExitCode: ExitOK}
 	}
 
@@ -94,6 +114,7 @@ func printHelp(w io.Writer) {
 	fmt.Fprintln(w, "Usage:")
 	fmt.Fprintln(w, "  gh flarebyte --help")
 	fmt.Fprintln(w, "  gh flarebyte --version [--json]")
+	fmt.Fprintln(w, "  gh flarebyte config validate [--config path]")
 }
 
 func contains(args []string, flag string) bool {
@@ -103,4 +124,21 @@ func contains(args []string, flag string) bool {
 		}
 	}
 	return false
+}
+
+func parseConfigPath(args []string) (string, error) {
+	configPath := ""
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		if arg == "--config" {
+			if i+1 >= len(args) {
+				return "", errors.New("invalid invocation: --config requires a path")
+			}
+			configPath = args[i+1]
+			i++
+			continue
+		}
+		return "", fmt.Errorf("invalid invocation: unknown argument %q", arg)
+	}
+	return configPath, nil
 }

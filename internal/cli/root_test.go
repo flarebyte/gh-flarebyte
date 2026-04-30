@@ -78,3 +78,35 @@ func TestRunJSONWithoutVersionIsUsageError(t *testing.T) {
 		t.Fatalf("expected usage guidance error, got: %s", errOut.String())
 	}
 }
+
+func TestRunConfigValidateValid(t *testing.T) {
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+
+	result := Run([]string{"config", "validate", "--config", "../config/testdata/valid.cue"}, &out, &errOut)
+	if result.ExitCode != ExitOK {
+		t.Fatalf("expected exit code %d, got %d, err=%v", ExitOK, result.ExitCode, result.Err)
+	}
+	if !strings.Contains(out.String(), "config is valid:") {
+		t.Fatalf("expected success output, got: %s", out.String())
+	}
+	if errOut.Len() != 0 {
+		t.Fatalf("expected empty stderr, got: %s", errOut.String())
+	}
+}
+
+func TestRunConfigValidateInvalid(t *testing.T) {
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+
+	result := Run([]string{"config", "validate", "--config", "../config/testdata/invalid-target.cue"}, &out, &errOut)
+	if result.ExitCode != ExitUsage {
+		t.Fatalf("expected exit code %d, got %d", ExitUsage, result.ExitCode)
+	}
+	if !strings.Contains(errOut.String(), "invalid build.targets entry") {
+		t.Fatalf("expected target validation error, got: %s", errOut.String())
+	}
+	if out.Len() != 0 {
+		t.Fatalf("expected empty stdout, got: %s", out.String())
+	}
+}
