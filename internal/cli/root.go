@@ -21,6 +21,7 @@ const (
 	ExitOK      = 0
 	ExitFailure = 1
 	ExitUsage   = 2
+	ExitDrift   = 3
 )
 
 type VersionInfo struct {
@@ -43,10 +44,39 @@ type RepoMetadata struct {
 	Homepage      string
 	Visibility    string
 	Template      bool
+	Topics        []string
+}
+
+type AuditDiff struct {
+	Field  string `json:"field"`
+	Local  any    `json:"local"`
+	Remote any    `json:"remote"`
+}
+
+type AuditReport struct {
+	Repo      string      `json:"repo"`
+	DriftCount int        `json:"driftCount"`
+	HasDrift  bool        `json:"hasDrift"`
+	Diffs     []AuditDiff `json:"diffs"`
+}
+
+type ContributedRepo struct {
+	Owner         string `json:"owner"`
+	Name          string `json:"name"`
+	Visibility    string `json:"visibility"`
+	DefaultBranch string `json:"defaultBranch"`
+}
+
+type ReposMineReport struct {
+	Org         string            `json:"org"`
+	Contributor string            `json:"contributor"`
+	Count       int               `json:"count"`
+	Repos       []ContributedRepo `json:"repos"`
 }
 
 var (
 	readRepoMetadata = ghReadRepoMetadata
+	readReposMine    = ghReadReposMine
 	fileExists       = func(path string) bool {
 		_, err := os.Stat(path)
 		return err == nil
@@ -103,6 +133,83 @@ func Run(args []string, stdout, stderr io.Writer) Result {
 			fmt.Fprintf(stdout, "created %s from current GitHub state. Next: review the config, then run gh flarebyte repo update.\n", absPath)
 		} else {
 			fmt.Fprintf(stdout, "created %s from defaults. Next: review the config, then run gh flarebyte repo update.\n", absPath)
+		}
+		return Result{ExitCode: ExitOK}
+	}
+
+	if len(args) >= 2 && args[0] == "repo" && args[1] == "audit" {
+		repo, asJSON, err := parseRepoAuditArgs(args[2:])
+		if err != nil {
+			fmt.Fprintln(stderr, err.Error())
+			return Result{ExitCode: ExitUsage, Err: err}
+		}
+		cfg, err := config.Load("")
+		if err != nil {
+			fmt.Fprintln(stderr, err.Error())
+			return Result{ExitCode: ExitUsage, Err: err}
+		}
+		if repo == "" {
+			repo = fmt.Sprintf("%s/%s", cfg.Project.Org, cfg.Project.Repo)
+		}
+		remote, err := readRepoMetadata(repo)
+		if err != nil {
+			fmt.Fprintln(stderr, err.Error())
+			return Result{ExitCode: ExitFailure, Err: err}
+		}
+		report := buildAuditReport(repo, cfg, remote)
+		if asJSON {
+			enc := json.NewEncoder(stdout)
+			enc.SetEscapeHTML(false)
+			if err := enc.Encode(report); err != nil {
+				return Result{ExitCode: ExitFailure, Err: err}
+			}
+		} else if report.HasDrift {
+			fmt.Fprintf(stdout, "%d differences found. Review the drift report below, then run gh flarebyte repo update when ready to apply changes.\n", report.DriftCount)
+			for _, diff := range report.Diffs {
+				fmt.Fprintf(stdout, "- %s local=%v remote=%v\n", diff.Field, diff.Local, diff.Remote)
+			}
+		} else {
+			fmt.Fprintln(stdout, "No drift found. GitHub matches .gh-flarebyte.cue.")
+		}
+		if report.HasDrift {
+			return Result{ExitCode: ExitDrift}
+		}
+		return Result{ExitCode: ExitOK}
+	}
+
+	if len(args) >= 2 && args[0] == "repos" && args[1] == "mine" {
+		org, asJSON, err := parseReposMineArgs(args[2:])
+		if err != nil {
+			fmt.Fprintln(stderr, err.Error())
+			return Result{ExitCode: ExitUsage, Err: err}
+		}
+		if org == "" {
+			err := errors.New("invalid invocation: --org is required")
+			fmt.Fprintln(stderr, err.Error())
+			return Result{ExitCode: ExitUsage, Err: err}
+		}
+		contributor, repos, err := readReposMine(org)
+		if err != nil {
+			fmt.Fprintln(stderr, err.Error())
+			return Result{ExitCode: ExitFailure, Err: err}
+		}
+		report := ReposMineReport{
+			Org:         org,
+			Contributor: contributor,
+			Count:       len(repos),
+			Repos:       repos,
+		}
+		if asJSON {
+			enc := json.NewEncoder(stdout)
+			enc.SetEscapeHTML(false)
+			if err := enc.Encode(report); err != nil {
+				return Result{ExitCode: ExitFailure, Err: err}
+			}
+			return Result{ExitCode: ExitOK}
+		}
+		fmt.Fprintf(stdout, "Found %d repositories in org %s for contributor %s.\n", report.Count, report.Org, report.Contributor)
+		for _, repo := range report.Repos {
+			fmt.Fprintf(stdout, "- %s/%s (%s, default branch: %s)\n", repo.Owner, repo.Name, repo.Visibility, repo.DefaultBranch)
 		}
 		return Result{ExitCode: ExitOK}
 	}
@@ -184,6 +291,8 @@ func printHelp(w io.Writer) {
 	fmt.Fprintln(w, "  gh flarebyte --help")
 	fmt.Fprintln(w, "  gh flarebyte --version [--json]")
 	fmt.Fprintln(w, "  gh flarebyte repo init --repo owner/name [--overwrite]")
+	fmt.Fprintln(w, "  gh flarebyte repo audit [--repo owner/name] [--json]")
+	fmt.Fprintln(w, "  gh flarebyte repos mine --org my-org [--json]")
 	fmt.Fprintln(w, "  gh flarebyte config validate [--config path]")
 }
 
@@ -232,6 +341,44 @@ func parseRepoInitArgs(args []string) (repo string, overwrite bool, err error) {
 	return repo, overwrite, nil
 }
 
+func parseRepoAuditArgs(args []string) (repo string, asJSON bool, err error) {
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		switch arg {
+		case "--repo":
+			if i+1 >= len(args) {
+				return "", false, errors.New("invalid invocation: --repo requires owner/name")
+			}
+			repo = args[i+1]
+			i++
+		case "--json":
+			asJSON = true
+		default:
+			return "", false, fmt.Errorf("invalid invocation: unknown argument %q", arg)
+		}
+	}
+	return repo, asJSON, nil
+}
+
+func parseReposMineArgs(args []string) (org string, asJSON bool, err error) {
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		switch arg {
+		case "--org":
+			if i+1 >= len(args) {
+				return "", false, errors.New("invalid invocation: --org requires a value")
+			}
+			org = args[i+1]
+			i++
+		case "--json":
+			asJSON = true
+		default:
+			return "", false, fmt.Errorf("invalid invocation: unknown argument %q", arg)
+		}
+	}
+	return org, asJSON, nil
+}
+
 func splitRepo(repo string) (owner string, name string, err error) {
 	parts := strings.Split(repo, "/")
 	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
@@ -241,9 +388,12 @@ func splitRepo(repo string) (owner string, name string, err error) {
 }
 
 func ghReadRepoMetadata(repo string) (RepoMetadata, error) {
+	if os.Getenv("GH_FLAREBYTE_FAKE_READONLY") == "1" {
+		return defaultRepoMetadata(repo), nil
+	}
 	cmd := exec.Command(
 		"gh", "repo", "view", repo,
-		"--json", "description,defaultBranchRef,homepageUrl,isPrivate,isTemplate",
+		"--json", "description,defaultBranchRef,homepageUrl,isPrivate,isTemplate,repositoryTopics",
 	)
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
@@ -264,6 +414,13 @@ func ghReadRepoMetadata(repo string) (RepoMetadata, error) {
 		DefaultBranchRef struct {
 			Name string `json:"name"`
 		} `json:"defaultBranchRef"`
+		RepositoryTopics struct {
+			Nodes []struct {
+				Topic struct {
+					Name string `json:"name"`
+				} `json:"topic"`
+			} `json:"nodes"`
+		} `json:"repositoryTopics"`
 	}
 	if err := json.Unmarshal(stdout.Bytes(), &payload); err != nil {
 		return RepoMetadata{}, err
@@ -278,8 +435,23 @@ func ghReadRepoMetadata(repo string) (RepoMetadata, error) {
 		Homepage:      payload.HomepageURL,
 		Visibility:    visibility,
 		Template:      payload.IsTemplate,
+		Topics:        extractTopics(payload.RepositoryTopics.Nodes),
 	}
 	return meta, nil
+}
+
+func extractTopics(nodes []struct {
+	Topic struct {
+		Name string `json:"name"`
+	} `json:"topic"`
+}) []string {
+	topics := make([]string, 0, len(nodes))
+	for _, node := range nodes {
+		if node.Topic.Name != "" {
+			topics = append(topics, node.Topic.Name)
+		}
+	}
+	return topics
 }
 
 func defaultRepoMetadata(repo string) RepoMetadata {
@@ -289,7 +461,117 @@ func defaultRepoMetadata(repo string) RepoMetadata {
 		Homepage:      fmt.Sprintf("https://github.com/%s", repo),
 		Visibility:    "public",
 		Template:      false,
+		Topics:        []string{"gh-extension", "github-cli", "git", "flarebyte"},
 	}
+}
+
+func buildAuditReport(repo string, cfg config.Config, remote RepoMetadata) AuditReport {
+	diffs := make([]AuditDiff, 0)
+	if cfg.Repository.Homepage != remote.Homepage {
+		diffs = append(diffs, AuditDiff{Field: "repository.homepage", Local: cfg.Repository.Homepage, Remote: remote.Homepage})
+	}
+	if cfg.Repository.Description != remote.Description {
+		diffs = append(diffs, AuditDiff{Field: "repository.description", Local: cfg.Repository.Description, Remote: remote.Description})
+	}
+	if cfg.Repository.DefaultBranch != remote.DefaultBranch {
+		diffs = append(diffs, AuditDiff{Field: "repository.defaultBranch", Local: cfg.Repository.DefaultBranch, Remote: remote.DefaultBranch})
+	}
+	if cfg.Repository.Visibility != remote.Visibility {
+		diffs = append(diffs, AuditDiff{Field: "repository.visibility", Local: cfg.Repository.Visibility, Remote: remote.Visibility})
+	}
+	if cfg.Repository.Template != remote.Template {
+		diffs = append(diffs, AuditDiff{Field: "repository.template", Local: cfg.Repository.Template, Remote: remote.Template})
+	}
+	if !stringSlicesEqual(cfg.Repository.Topics, remote.Topics) {
+		diffs = append(diffs, AuditDiff{Field: "repository.topics", Local: cfg.Repository.Topics, Remote: remote.Topics})
+	}
+	return AuditReport{
+		Repo:       repo,
+		DriftCount: len(diffs),
+		HasDrift:   len(diffs) > 0,
+		Diffs:      diffs,
+	}
+}
+
+func stringSlicesEqual(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
+func ghReadReposMine(org string) (string, []ContributedRepo, error) {
+	if os.Getenv("GH_FLAREBYTE_FAKE_READONLY") == "1" {
+		return "fake-user", []ContributedRepo{
+			{Owner: org, Name: "gh-flarebyte", Visibility: "public", DefaultBranch: "main"},
+			{Owner: org, Name: "baldrick-seer", Visibility: "public", DefaultBranch: "main"},
+		}, nil
+	}
+	query := `query {
+  viewer {
+    login
+    repositoriesContributedTo(first: 100, includeUserRepositories: true, contributionTypes: [COMMIT, ISSUE, PULL_REQUEST, REPOSITORY]) {
+      nodes {
+        name
+        visibility
+        defaultBranchRef { name }
+        owner { login }
+      }
+    }
+  }
+}`
+	cmd := exec.Command("gh", "api", "graphql", "-f", "query="+query)
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		msg := strings.TrimSpace(stderr.String())
+		if msg == "" {
+			msg = err.Error()
+		}
+		return "", nil, errors.New(msg)
+	}
+	var payload struct {
+		Data struct {
+			Viewer struct {
+				Login                      string `json:"login"`
+				RepositoriesContributedTo struct {
+					Nodes []struct {
+						Name             string `json:"name"`
+						Visibility       string `json:"visibility"`
+						DefaultBranchRef struct {
+							Name string `json:"name"`
+						} `json:"defaultBranchRef"`
+						Owner struct {
+							Login string `json:"login"`
+						} `json:"owner"`
+					} `json:"nodes"`
+				} `json:"repositoriesContributedTo"`
+			} `json:"viewer"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(stdout.Bytes(), &payload); err != nil {
+		return "", nil, err
+	}
+	repos := make([]ContributedRepo, 0)
+	for _, node := range payload.Data.Viewer.RepositoriesContributedTo.Nodes {
+		if !strings.EqualFold(node.Owner.Login, org) {
+			continue
+		}
+		repos = append(repos, ContributedRepo{
+			Owner:         node.Owner.Login,
+			Name:          node.Name,
+			Visibility:    strings.ToLower(node.Visibility),
+			DefaultBranch: node.DefaultBranchRef.Name,
+		})
+	}
+	return payload.Data.Viewer.Login, repos, nil
 }
 
 func renderCueConfig(owner, name string, meta RepoMetadata) string {

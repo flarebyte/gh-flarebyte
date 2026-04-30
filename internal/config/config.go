@@ -12,10 +12,11 @@ import (
 const DefaultPath = ".gh-flarebyte.cue"
 
 type Config struct {
-	Project ProjectConfig    `json:"project"`
-	Sync    SyncConfig       `json:"sync"`
-	Build   BuildConfig      `json:"build"`
-	Release ReleaseConfigRaw `json:"release"`
+	Project    ProjectConfig    `json:"project"`
+	Sync       SyncConfig       `json:"sync"`
+	Repository RepositoryConfig `json:"repository"`
+	Build      BuildConfig      `json:"build"`
+	Release    ReleaseConfigRaw `json:"release"`
 }
 
 type ProjectConfig struct {
@@ -26,6 +27,15 @@ type ProjectConfig struct {
 type SyncConfig struct {
 	Mode         string   `json:"mode"`
 	ManagedFields []string `json:"managedFields"`
+}
+
+type RepositoryConfig struct {
+	Description   string   `json:"description"`
+	DefaultBranch string   `json:"defaultBranch"`
+	Homepage      string   `json:"homepage"`
+	Visibility    string   `json:"visibility"`
+	Template      bool     `json:"template"`
+	Topics        []string `json:"topics"`
 }
 
 type BuildConfig struct {
@@ -111,6 +121,31 @@ func parseCueConfig(raw string) (Config, error) {
 	if err != nil {
 		return cfg, err
 	}
+	cfg.Repository.Description, err = extractStringField(raw, "description")
+	if err != nil {
+		return cfg, err
+	}
+	cfg.Repository.DefaultBranch, err = extractStringField(raw, "defaultBranch")
+	if err != nil {
+		return cfg, err
+	}
+	cfg.Repository.Homepage, err = extractStringField(raw, "homepage")
+	if err != nil {
+		return cfg, err
+	}
+	cfg.Repository.Visibility, err = extractStringField(raw, "visibility")
+	if err != nil {
+		return cfg, err
+	}
+	template, err := extractBoolField(raw, "template")
+	if err != nil {
+		return cfg, err
+	}
+	cfg.Repository.Template = template
+	cfg.Repository.Topics, err = extractStringListBlock(raw, "topics")
+	if err != nil {
+		return cfg, err
+	}
 	cfg.Release.VersionSource, err = extractStringField(raw, "versionSource")
 	if err != nil {
 		return cfg, err
@@ -191,6 +226,17 @@ func Validate(cfg Config) error {
 	}
 	if cfg.Project.Repo == "" {
 		return errors.New("invalid project.repo: value is required")
+	}
+	if cfg.Repository.DefaultBranch == "" {
+		return errors.New("invalid repository.defaultBranch: value is required")
+	}
+	switch cfg.Repository.Visibility {
+	case "public", "private", "internal":
+	default:
+		return fmt.Errorf("invalid repository.visibility %q: expected public, private, or internal", cfg.Repository.Visibility)
+	}
+	if len(cfg.Repository.Topics) == 0 {
+		return errors.New("invalid repository.topics: at least one topic is required")
 	}
 	if cfg.Sync.Mode != "push" {
 		return fmt.Errorf("invalid sync.mode %q: expected push", cfg.Sync.Mode)

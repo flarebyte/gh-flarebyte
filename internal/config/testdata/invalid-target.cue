@@ -10,6 +10,18 @@ sync: {
 	managedFields: ["topics"]
 }
 
+repository: {
+	description:   "CLI for landing your git commands right"
+	defaultBranch: "main"
+	homepage:      "https://github.com/flarebyte/gh-flarebyte"
+	visibility:    "public"
+	template:      false
+	topics: [
+		"gh-extension",
+		"github-cli",
+	]
+}
+
 build: {
 	language:     "go"
 	outputDir:    "build"

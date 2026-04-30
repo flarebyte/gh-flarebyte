@@ -280,3 +280,183 @@ func TestRunRepoInitOverwriteWritesImportedMetadata(t *testing.T) {
 		t.Fatalf("expected imported template flag, got: %s", text)
 	}
 }
+
+func TestRunRepoAuditJSONNoDrift(t *testing.T) {
+	oldWD, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("getwd failed: %v", err)
+	}
+	tmpDir := t.TempDir()
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatalf("chdir failed: %v", err)
+	}
+	t.Cleanup(func() {
+		_ = os.Chdir(oldWD)
+	})
+	if err := os.WriteFile(".gh-flarebyte.cue", []byte(testConfigCue()), 0o644); err != nil {
+		t.Fatalf("write config failed: %v", err)
+	}
+
+	oldReadRepoMetadata := readRepoMetadata
+	t.Cleanup(func() {
+		readRepoMetadata = oldReadRepoMetadata
+	})
+	readRepoMetadata = func(repo string) (RepoMetadata, error) {
+		return RepoMetadata{
+			Description:   "CLI for landing your git commands right",
+			DefaultBranch: "main",
+			Homepage:      "https://github.com/flarebyte/gh-flarebyte",
+			Visibility:    "public",
+			Template:      false,
+			Topics:        []string{"gh-extension", "github-cli", "git", "flarebyte"},
+		}, nil
+	}
+
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	result := Run([]string{"repo", "audit", "--json"}, &out, &errOut)
+	if result.ExitCode != ExitOK {
+		t.Fatalf("expected exit code %d, got %d", ExitOK, result.ExitCode)
+	}
+	if errOut.Len() != 0 {
+		t.Fatalf("expected empty stderr, got %s", errOut.String())
+	}
+	var report AuditReport
+	if err := json.Unmarshal(out.Bytes(), &report); err != nil {
+		t.Fatalf("invalid json: %v", err)
+	}
+	if report.DriftCount != 0 || report.HasDrift {
+		t.Fatalf("expected no drift, got %+v", report)
+	}
+}
+
+func TestRunRepoAuditTextWithDrift(t *testing.T) {
+	oldWD, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("getwd failed: %v", err)
+	}
+	tmpDir := t.TempDir()
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatalf("chdir failed: %v", err)
+	}
+	t.Cleanup(func() {
+		_ = os.Chdir(oldWD)
+	})
+	if err := os.WriteFile(".gh-flarebyte.cue", []byte(testConfigCue()), 0o644); err != nil {
+		t.Fatalf("write config failed: %v", err)
+	}
+
+	oldReadRepoMetadata := readRepoMetadata
+	t.Cleanup(func() {
+		readRepoMetadata = oldReadRepoMetadata
+	})
+	readRepoMetadata = func(repo string) (RepoMetadata, error) {
+		return RepoMetadata{
+			Description:   "Different description",
+			DefaultBranch: "main",
+			Homepage:      "https://github.com/flarebyte/gh-flarebyte",
+			Visibility:    "public",
+			Template:      false,
+			Topics:        []string{"gh-extension", "github-cli"},
+		}, nil
+	}
+
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	result := Run([]string{"repo", "audit"}, &out, &errOut)
+	if result.ExitCode != ExitDrift {
+		t.Fatalf("expected exit code %d, got %d", ExitDrift, result.ExitCode)
+	}
+	if !strings.Contains(out.String(), "differences found") {
+		t.Fatalf("expected drift summary output, got %s", out.String())
+	}
+	if !strings.Contains(out.String(), "repository.description") {
+		t.Fatalf("expected field-level drift output, got %s", out.String())
+	}
+}
+
+func TestRunReposMineJSON(t *testing.T) {
+	oldReadReposMine := readReposMine
+	t.Cleanup(func() {
+		readReposMine = oldReadReposMine
+	})
+	readReposMine = func(org string) (string, []ContributedRepo, error) {
+		return "olivier", []ContributedRepo{
+			{Owner: "flarebyte", Name: "gh-flarebyte", Visibility: "public", DefaultBranch: "main"},
+		}, nil
+	}
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	result := Run([]string{"repos", "mine", "--org", "flarebyte", "--json"}, &out, &errOut)
+	if result.ExitCode != ExitOK {
+		t.Fatalf("expected exit code %d, got %d", ExitOK, result.ExitCode)
+	}
+	if errOut.Len() != 0 {
+		t.Fatalf("expected empty stderr, got %s", errOut.String())
+	}
+	var report ReposMineReport
+	if err := json.Unmarshal(out.Bytes(), &report); err != nil {
+		t.Fatalf("invalid json: %v", err)
+	}
+	if report.Org != "flarebyte" || report.Contributor != "olivier" || report.Count != 1 {
+		t.Fatalf("unexpected report: %+v", report)
+	}
+}
+
+func TestRunReposMineRequiresOrg(t *testing.T) {
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	result := Run([]string{"repos", "mine"}, &out, &errOut)
+	if result.ExitCode != ExitUsage {
+		t.Fatalf("expected exit code %d, got %d", ExitUsage, result.ExitCode)
+	}
+	if !strings.Contains(errOut.String(), "--org is required") {
+		t.Fatalf("expected missing org guidance, got: %s", errOut.String())
+	}
+}
+
+func testConfigCue() string {
+	return `package ghflarebyte
+
+project: {
+	org:  "flarebyte"
+	repo: "gh-flarebyte"
+}
+
+sync: {
+	mode: "push"
+	managedFields: ["topics"]
+}
+
+repository: {
+	description:   "CLI for landing your git commands right"
+	defaultBranch: "main"
+	homepage:      "https://github.com/flarebyte/gh-flarebyte"
+	visibility:    "public"
+	template:      false
+	topics: [
+		"gh-extension",
+		"github-cli",
+		"git",
+		"flarebyte",
+	]
+}
+
+build: {
+	language:     "go"
+	outputDir:    "build"
+	checksumFile: "build/checksums.txt"
+	targets: [
+		"linux-amd64",
+	]
+}
+
+release: {
+	versionSource:    "main.project.yaml"
+	tagPrefix:        "v"
+	notesMode:        "generate-notes"
+	artifactDir:      "build"
+	includeChecksums: true
+}
+`
+}

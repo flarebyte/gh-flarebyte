@@ -8,6 +8,8 @@ export type RunResult = {
   stderr: string;
 };
 
+let buildOnce: Promise<void> | null = null;
+
 const BLOCKED_PATTERNS = [
   "repo update",
   "release create",
@@ -42,23 +44,13 @@ export async function runCLI(
   const cmdString = `gh flarebyte ${args.join(" ")}`.trim();
   assertReadOnlyCLICommand(cmdString);
 
-  const builtBinary = join(repoRoot, ".e2e-bin", "gh-flarebyte");
-  let cmd: string[];
-  try {
-    await access(builtBinary);
-    cmd = [builtBinary, ...args];
-  } catch {
-    if (cwd !== repoRoot) {
-      throw new Error(
-        "E2E needs .e2e-bin/gh-flarebyte for non-repo cwd. Run `make build-go` first.",
-      );
-    }
-    cmd = ["go", "run", "./cmd/gh-flarebyte", ...args];
-  }
+  await ensureBuiltBinary(repoRoot);
+  const cmd = [join(repoRoot, ".e2e-bin", "gh-flarebyte"), ...args];
 
   const env = {
     ...process.env,
     GOCACHE: join(cwd, ".gocache"),
+    GH_FLAREBYTE_FAKE_READONLY: "1",
   };
   const proc = Bun.spawn(cmd, {
     cwd,
@@ -70,4 +62,40 @@ export async function runCLI(
   const stdout = await new Response(proc.stdout).text();
   const stderr = await new Response(proc.stderr).text();
   return { code, stdout, stderr };
+}
+
+async function ensureBuiltBinary(repoRoot: string): Promise<void> {
+  if (buildOnce) {
+    return buildOnce;
+  }
+  buildOnce = (async () => {
+    const outDir = join(repoRoot, ".e2e-bin");
+    const binaryPath = join(outDir, "gh-flarebyte");
+    try {
+      await access(binaryPath);
+      return;
+    } catch {
+      // Build once when no prebuilt binary exists.
+    }
+    await mkdir(outDir, { recursive: true });
+    const proc = Bun.spawn(
+      ["go", "build", "-o", binaryPath, "./cmd/gh-flarebyte"],
+      {
+        cwd: repoRoot,
+        env: {
+          ...process.env,
+          GOCACHE: join(repoRoot, ".gocache"),
+          GOMODCACHE: join(repoRoot, ".gomodcache"),
+        },
+        stdout: "pipe",
+        stderr: "pipe",
+      },
+    );
+    const code = await proc.exited;
+    if (code !== 0) {
+      const stderr = await new Response(proc.stderr).text();
+      throw new Error(`failed to build e2e binary: ${stderr}`);
+    }
+  })();
+  return buildOnce;
 }

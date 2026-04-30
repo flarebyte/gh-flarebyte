@@ -67,4 +67,61 @@ describe("gh-flarebyte smoke", () => {
     expect(result.stderr).toContain("already exists");
     expect(result.stderr).toContain("--overwrite");
   });
+
+  test("repo audit --json returns stable report shape", async () => {
+    const repoRoot = cwd();
+    const tempDir = await makeTempDir(repoRoot);
+    await writeFile(
+      join(tempDir, ".gh-flarebyte.cue"),
+      `package ghflarebyte
+
+project: { org: "flarebyte", repo: "gh-flarebyte" }
+sync: { mode: "push", managedFields: ["topics"] }
+repository: {
+  description: "CLI for landing your git commands right"
+  defaultBranch: "main"
+  homepage: "https://github.com/flarebyte/gh-flarebyte"
+  visibility: "public"
+  template: false
+  topics: ["gh-extension", "github-cli", "git", "flarebyte"]
+}
+build: {
+  language: "go"
+  outputDir: "build"
+  checksumFile: "build/checksums.txt"
+  targets: ["linux-amd64"]
+}
+release: {
+  versionSource: "main.project.yaml"
+  tagPrefix: "v"
+  notesMode: "generate-notes"
+  artifactDir: "build"
+  includeChecksums: true
+}
+`,
+    );
+    const result = await runCLI(["repo", "audit", "--json"], tempDir, repoRoot);
+    expect(result.code).toBe(0);
+    const payload = JSON.parse(result.stdout) as Record<string, unknown>;
+    expect(payload.repo).toBe("flarebyte/gh-flarebyte");
+    expect(payload.driftCount).toBeDefined();
+    expect(payload.hasDrift).toBeDefined();
+    expect(Array.isArray(payload.diffs)).toBeTrue();
+  });
+
+  test("repos mine --json returns report shape", async () => {
+    const repoRoot = cwd();
+    const tempDir = await makeTempDir(repoRoot);
+    const result = await runCLI(
+      ["repos", "mine", "--org", "flarebyte", "--json"],
+      tempDir,
+      repoRoot,
+    );
+    expect(result.code).toBe(0);
+    const payload = JSON.parse(result.stdout) as Record<string, unknown>;
+    expect(payload.org).toBe("flarebyte");
+    expect(payload.contributor).toBeDefined();
+    expect(payload.count).toBeDefined();
+    expect(Array.isArray(payload.repos)).toBeTrue();
+  });
 });
