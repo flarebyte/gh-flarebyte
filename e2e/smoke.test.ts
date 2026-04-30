@@ -1,4 +1,6 @@
 import { describe, expect, test } from "bun:test";
+import { readFile, writeFile } from "node:fs/promises";
+import { join } from "node:path";
 import { cwd } from "node:process";
 import { makeTempDir, runCLI } from "./helpers";
 
@@ -29,5 +31,40 @@ describe("gh-flarebyte smoke", () => {
     ]) {
       expect(payload[key]).toBeDefined();
     }
+  });
+
+  test("repo init writes config with defaults on metadata import failure", async () => {
+    const repoRoot = cwd();
+    const tempDir = await makeTempDir(repoRoot);
+    const result = await runCLI(
+      ["repo", "init", "--repo", "flarebyte/gh-flarebyte"],
+      tempDir,
+      repoRoot,
+    );
+
+    expect(result.code).toBe(0);
+    expect(result.stdout).toContain("created ");
+    expect(
+      result.stdout.includes("from defaults") ||
+        result.stdout.includes("from current GitHub state"),
+    ).toBeTrue();
+    const content = await readFile(join(tempDir, ".gh-flarebyte.cue"), "utf-8");
+    expect(content).toContain("org:  \"flarebyte\"");
+    expect(content).toContain("repo: \"gh-flarebyte\"");
+  });
+
+  test("repo init blocks overwrite unless --overwrite is passed", async () => {
+    const repoRoot = cwd();
+    const tempDir = await makeTempDir(repoRoot);
+    await writeFile(join(tempDir, ".gh-flarebyte.cue"), "package ghflarebyte\n");
+    const result = await runCLI(
+      ["repo", "init", "--repo", "flarebyte/gh-flarebyte"],
+      tempDir,
+      repoRoot,
+    );
+
+    expect(result.code).toBe(2);
+    expect(result.stderr).toContain("already exists");
+    expect(result.stderr).toContain("--overwrite");
   });
 });

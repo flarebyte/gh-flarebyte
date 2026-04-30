@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { mkdir } from "node:fs/promises";
+import { access, mkdir } from "node:fs/promises";
 import { join } from "node:path";
 
 export type RunResult = {
@@ -37,15 +37,30 @@ export async function makeTempDir(baseDir: string): Promise<string> {
 export async function runCLI(
   args: string[],
   cwd: string,
+  repoRoot = cwd,
 ): Promise<RunResult> {
   const cmdString = `gh flarebyte ${args.join(" ")}`.trim();
   assertReadOnlyCLICommand(cmdString);
+
+  const builtBinary = join(repoRoot, ".e2e-bin", "gh-flarebyte");
+  let cmd: string[];
+  try {
+    await access(builtBinary);
+    cmd = [builtBinary, ...args];
+  } catch {
+    if (cwd !== repoRoot) {
+      throw new Error(
+        "E2E needs .e2e-bin/gh-flarebyte for non-repo cwd. Run `make build-go` first.",
+      );
+    }
+    cmd = ["go", "run", "./cmd/gh-flarebyte", ...args];
+  }
 
   const env = {
     ...process.env,
     GOCACHE: join(cwd, ".gocache"),
   };
-  const proc = Bun.spawn(["go", "run", "./cmd/gh-flarebyte", ...args], {
+  const proc = Bun.spawn(cmd, {
     cwd,
     env,
     stdout: "pipe",
