@@ -1,0 +1,36 @@
+field,kind,managed_by,sync_direction,notes
+project.org,string,local config,read-only,The owner org anchors discovery and bootstrap.
+project.repo,string,local config,read-only,The repository name binds the config to one GitHub repo.
+sync.mode,enum,extension,read-only,Push-only for now. Remote state is audited but not imported back into config.
+repository.description,string,.gh-flarebyte.cue,local-to-remote,Primary repo metadata field.
+repository.defaultBranch,string,.gh-flarebyte.cue,local-to-remote,Usually `main` for flarebyte repositories.
+repository.homepage,string,.gh-flarebyte.cue,local-to-remote,Repository homepage URL.
+repository.visibility,enum,.gh-flarebyte.cue,local-to-remote,"Repository visibility: public, private, or internal."
+repository.template,boolean,.gh-flarebyte.cue,local-to-remote,Make the repository available as a template.
+repository.topics,list,.gh-flarebyte.cue,local-to-remote,Topics are managed as the complete desired set. Missing remote topics are deletions.
+repository.labels,list,.gh-flarebyte.cue,local-to-remote,"Labels are managed as the complete desired set by label name. Missing remote labels are deletions, and renaming a label is modeled as delete-plus-create."
+repository.features.issues,boolean,.gh-flarebyte.cue,local-to-remote,GitHub issues enabled or disabled.
+repository.features.wiki,boolean,.gh-flarebyte.cue,local-to-remote,GitHub wiki enabled or disabled.
+repository.features.projects,boolean,.gh-flarebyte.cue,local-to-remote,GitHub projects enabled or disabled.
+repository.features.discussions,boolean,.gh-flarebyte.cue,local-to-remote,GitHub discussions enabled or disabled.
+repository.features.autoMerge,boolean,.gh-flarebyte.cue,local-to-remote,Auto-merge policy.
+repository.features.mergeCommit,boolean,.gh-flarebyte.cue,local-to-remote,Merge commit policy.
+repository.features.rebaseMerge,boolean,.gh-flarebyte.cue,local-to-remote,Rebase merge policy.
+repository.features.squashMerge,boolean,.gh-flarebyte.cue,local-to-remote,Squash merge policy.
+repository.features.squashMergeCommitMessage,enum,.gh-flarebyte.cue,local-to-remote,Default squash merge commit message behavior.
+repository.features.deleteBranchOnMerge,boolean,.gh-flarebyte.cue,local-to-remote,Head branch cleanup policy.
+repository.features.allowForking,boolean,.gh-flarebyte.cue,local-to-remote,Forking policy for organization repos.
+repository.features.allowUpdateBranch,boolean,.gh-flarebyte.cue,local-to-remote,Allow PR head branch updates when behind the base branch.
+repository.features.advancedSecurity,boolean,.gh-flarebyte.cue,local-to-remote,GitHub Advanced Security.
+repository.features.secretScanning,boolean,.gh-flarebyte.cue,local-to-remote,Secret scanning for the repository.
+repository.features.secretScanningPushProtection,boolean,.gh-flarebyte.cue,local-to-remote,Secret scanning push protection.
+build.language,enum,.gh-flarebyte.cue,local-only,"Build language used by gh flarebyte build: go initially, dart later."
+build.outputDir,string,.gh-flarebyte.cue,local-only,Directory for built artifacts.
+build.checksumFile,string,.gh-flarebyte.cue,local-only,Checksum manifest for built artifacts.
+build.targets,list,.gh-flarebyte.cue,local-only,Target matrix for the build command using `os-arch` strings such as `linux-amd64` or `windows-amd64`. Each project declares only the targets it supports.
+release.versionSource,string,.gh-flarebyte.cue,local-only,File or source that provides the release version.
+release.tagPrefix,string,.gh-flarebyte.cue,local-only,Prefix used for release tags.
+release.notesMode,enum,.gh-flarebyte.cue,local-only,"Release note strategy, such as generate-notes or notes-file."
+release.releaseNotesFilePath,string,.gh-flarebyte.cue,local-only,Path required when notesMode is `notes-file`.
+release.artifactDir,string,.gh-flarebyte.cue,local-only,Directory scanned for release assets.
+release.includeChecksums,boolean,.gh-flarebyte.cue,local-only,Whether to include the checksum manifest as a release asset.

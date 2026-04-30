@@ -1,0 +1,7 @@
+source_rule,behavior,on_failure
+`release.versionSource` is a file path,The initial implementation should read a repository-local file path rather than an arbitrary command or expression.,Fail with exit code `2` if the path is missing or unreadable.
+Supported format is YAML or JSON,The initial implementation should parse YAML or JSON only.,Fail with exit code `2` if the file format is unsupported.
+Top-level `version` field is required,The initial implementation should extract a single top-level string field named `version`.,Fail with exit code `2` if `version` is missing or not a string.
+Semantic version required,The extracted version should already be normalized as a semantic version string such as `1.2.3` or `1.2.3-rc.1`.,Fail with exit code `2` if the version string is invalid.
+Tag derivation,The release tag should be computed as `release.tagPrefix + version`.,Fail with exit code `7` if tag creation or release publication cannot proceed.
+Existing tag conflict,If the computed tag already exists the command should fail rather than mutate the existing release implicitly.,Fail with exit code `7` and explain that the tag already exists.

@@ -1,0 +1,4 @@
+target,binary_name,package_format,checksum_algorithm,notes
+linux-amd64,gh-flarebyte-linux-amd64,tar.gz,sha256,Unix targets should be published as compressed archives containing the binary.
+darwin-arm64,gh-flarebyte-darwin-arm64,tar.gz,sha256,macOS targets should be published as compressed archives containing the binary.
+windows-amd64,gh-flarebyte-windows-amd64.exe,zip,sha256,Windows targets should use `.exe` binaries and zip packaging.

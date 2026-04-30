@@ -1,0 +1,10 @@
+command,exit_code,when,meaning
+gh flarebyte,0,successful command completed,Success.
+gh flarebyte,1,unexpected runtime or dependency failure,Command failed after starting work.
+gh flarebyte,2,invalid invocation or config validation error,Usage or input problem that the user can fix locally.
+gh flarebyte repo audit,0,no drift found,Repository matches `.gh-flarebyte.cue`.
+gh flarebyte repo audit,3,drift found,Command completed successfully and found differences.
+gh flarebyte repo update,4,deletions blocked without `--confirm-deletions`,Safety gate prevented destructive sync.
+gh flarebyte repo update,5,visibility change blocked without `--accept-visibility-change-consequences`,Safety gate prevented high-consequence visibility change.
+gh flarebyte build,6,build failed for one or more requested targets,Compilation or packaging failed.
+gh flarebyte release,7,release publish failed after version resolution and build,GitHub release creation or asset upload failed.
