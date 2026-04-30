@@ -147,6 +147,7 @@ reports: [{
 			description: "How release publication is driven from config."
 			notes: [
 				"command.release",
+				"command.release.version",
 			]
 		}, {
 			title:       "12 Init"
@@ -259,7 +260,7 @@ notes: [
 	{
 		name:     "repo.release.config"
 		title:    "Release Config"
-		markdown: "Release publication is driven by a top-level `release` block in the Cue config. `gh flarebyte release` should use the configured release tag prefix, source version, artifact layout, and release notes policy to publish a GitHub release from the build outputs. `releaseNotesFilePath` is required only when `notesMode` is `notes-file`."
+		markdown: "Release publication is driven by a top-level `release` block in the Cue config. `gh flarebyte release` should use the configured release tag prefix, source version, artifact layout, and release notes policy to publish a GitHub release from the build outputs. `releaseNotesFilePath` is required only when `notesMode` is `notes-file`. The initial implementation should treat `release.versionSource` as a repository-local YAML or JSON file path containing a top-level `version` string."
 		labels:   ["configuration", "release", "spec"]
 	},
 	{
@@ -271,7 +272,7 @@ notes: [
 	{
 		name:     "repo.labels.config"
 		title:    "Label Sync"
-		markdown: "Labels use a structured list of objects in the cue config so name, color, and description can be reconciled separately from repository topics. The config represents the complete desired label set; labels missing from config should be treated as deletions and require explicit confirmation before update."
+		markdown: "Labels use a structured list of objects in the cue config so name, color, and description can be reconciled separately from repository topics. The config represents the complete desired label set; labels missing from config should be treated as deletions and require explicit confirmation before update. Because labels are keyed by name, renaming a label is modeled explicitly as delete-plus-create."
 		labels:   ["configuration", "labels", "spec"]
 	},
 	{
@@ -327,6 +328,13 @@ notes: [
 		labels:   ["commands", "ux", "success", "spec"]
 	},
 	{
+		name:     "command.release.version"
+		title:    "Release Version Resolution"
+		filepath: "examples/release-version-resolution.csv"
+		arguments: ["format-csv=table"]
+		labels:   ["commands", "release", "version", "spec"]
+	},
+	{
 		name:     "command.exitcodes"
 		title:    "Command Exit Codes"
 		filepath: "examples/command-exit-codes.csv"
@@ -373,19 +381,19 @@ notes: [
 	{
 		name:     "command.release"
 		title:    "Release Command"
-		markdown: "Run `gh flarebyte build` first, then publish a GitHub release from the resulting build outputs. Use the top-level `release` block to choose the tag, artifacts, and release note behavior, requiring `releaseNotesFilePath` when `notesMode` is `notes-file`, and implement the command in Go rather than the current Bun helper. Release uploads should consume the deterministic packaged artifacts produced by the build command rather than rebuilding different outputs ad hoc. On failure, the CLI should distinguish between build failure, tag/version resolution failure, and release upload failure. On success it should confirm the published tag and the artifact source used."
+		markdown: "Run `gh flarebyte build` first, then publish a GitHub release from the resulting build outputs. Use the top-level `release` block to choose the tag, artifacts, and release note behavior, requiring `releaseNotesFilePath` when `notesMode` is `notes-file`, and implement the command in Go rather than the current Bun helper. Release uploads should consume the deterministic packaged artifacts produced by the build command rather than rebuilding different outputs ad hoc. The initial implementation should resolve the version from a repository-local YAML or JSON file containing a top-level `version` string, derive the tag as `tagPrefix + version`, and fail if the target tag already exists. On failure, the CLI should distinguish between build failure, tag/version resolution failure, and release upload failure. On success it should confirm the published tag and the artifact source used."
 		labels:   ["commands", "release", "spec"]
 	},
 	{
 		name:     "command.init"
 		title:    "Init Command"
-		markdown: "Bootstrap a repository by seeding `.gh-flarebyte.cue` with repository, build, and release defaults and then applying the initial syncable repo settings. The command should explain what file it created or updated and point users to `gh flarebyte repo update --help` for the next step. Success output should make the next action obvious."
+		markdown: "Bootstrap a repository by seeding `.gh-flarebyte.cue` with repository, build, and release defaults and then applying the initial syncable repo settings. The initial implementation should import current GitHub repository state into the generated config where available, then fill remaining fields from flarebyte defaults. If `.gh-flarebyte.cue` already exists, the command should fail by default rather than merge implicitly; replacement should require `--overwrite`. The command should explain what file it created or updated and point users to `gh flarebyte repo update --help` for the next step. Success output should make the next action obvious."
 		labels:   ["commands", "init", "spec"]
 	},
 	{
 		name:     "command.update"
 		title:    "Update Command"
-		markdown: "Reconcile the live GitHub repository from `.gh-flarebyte.cue`, including repo settings, topics, and label definitions. Topics and labels are exact-set sync targets, so remote items missing from config should be treated as deletions. The command must fail unless the user explicitly confirms deletions with `--confirm-deletions`. Visibility changes should also require explicit CLI confirmation with `--accept-visibility-change-consequences` rather than a committed config flag. Failure output should explain what would change, why it was blocked, and the exact next command or flag to use. Success output should summarize what changed rather than only saying the command succeeded."
+		markdown: "Reconcile the live GitHub repository from `.gh-flarebyte.cue`, including repo settings, topics, and label definitions. Topics and labels are exact-set sync targets, so remote items missing from config should be treated as deletions. The command must fail unless the user explicitly confirms deletions with `--confirm-deletions`. Visibility changes should also require explicit CLI confirmation with `--accept-visibility-change-consequences` rather than a committed config flag. The command should compute and validate the full plan before mutating GitHub, then apply changes sequentially and stop at the first remote mutation failure. It should not attempt rollback for changes already applied; instead it should report partial progress clearly so the user can fix the issue and rerun. Failure output should explain what would change, why it was blocked, and the exact next command or flag to use. Success output should summarize what changed rather than only saying the command succeeded."
 		labels:   ["commands", "update", "spec"]
 	},
 	{

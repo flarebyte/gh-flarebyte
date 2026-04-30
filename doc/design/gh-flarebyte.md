@@ -148,7 +148,7 @@ How config fields map onto GitHub sync targets and extension-local automation se
 | repository.visibility | enum | .gh-flarebyte.cue | Repository visibility: public, private, or internal. | local-to-remote |
 | repository.template | boolean | .gh-flarebyte.cue | Make the repository available as a template. | local-to-remote |
 | repository.topics | list | .gh-flarebyte.cue | Topics are managed as the complete desired set. Missing remote topics are deletions. | local-to-remote |
-| repository.labels | list | .gh-flarebyte.cue | Labels are managed as the complete desired set by label name. Missing remote labels are deletions. | local-to-remote |
+| repository.labels | list | .gh-flarebyte.cue | Labels are managed as the complete desired set by label name. Missing remote labels are deletions, and renaming a label is modeled as delete-plus-create. | local-to-remote |
 | repository.features.issues | boolean | .gh-flarebyte.cue | GitHub issues enabled or disabled. | local-to-remote |
 | repository.features.wiki | boolean | .gh-flarebyte.cue | GitHub wiki enabled or disabled. | local-to-remote |
 | repository.features.projects | boolean | .gh-flarebyte.cue | GitHub projects enabled or disabled. | local-to-remote |
@@ -189,7 +189,7 @@ Repository labels have their own structured sync shape in the cue config.
 
 #### Label Sync
 
-Labels use a structured list of objects in the cue config so name, color, and description can be reconciled separately from repository topics. The config represents the complete desired label set; labels missing from config should be treated as deletions and require explicit confirmation before update.
+Labels use a structured list of objects in the cue config so name, color, and description can be reconciled separately from repository topics. The config represents the complete desired label set; labels missing from config should be treated as deletions and require explicit confirmation before update. Because labels are keyed by name, renaming a label is modeled explicitly as delete-plus-create.
 
 ### 05 Build
 
@@ -205,7 +205,7 @@ Release publication settings for gh flarebyte release.
 
 #### Release Config
 
-Release publication is driven by a top-level `release` block in the Cue config. `gh flarebyte release` should use the configured release tag prefix, source version, artifact layout, and release notes policy to publish a GitHub release from the build outputs. `releaseNotesFilePath` is required only when `notesMode` is `notes-file`.
+Release publication is driven by a top-level `release` block in the Cue config. `gh flarebyte release` should use the configured release tag prefix, source version, artifact layout, and release notes policy to publish a GitHub release from the build outputs. `releaseNotesFilePath` is required only when `notesMode` is `notes-file`. The initial implementation should treat `release.versionSource` as a repository-local YAML or JSON file path containing a top-level `version` string.
 
 ### 07 Sync Types
 
@@ -402,6 +402,7 @@ CLI flags that define the initial command surface for the extension.
 | --- | --- | --- | --- | --- | --- |
 | script-friendly | gh flarebyte | --version | boolean | Print CLI version metadata including version, commitId, and build date. | optional |
 | script-friendly | gh flarebyte | --json | boolean | When combined with `--version`, print version metadata as JSON instead of plain text. | optional |
+| safety-gate | gh flarebyte repo init | --overwrite | boolean | Replace an existing `.gh-flarebyte.cue` file instead of failing. | optional |
 | script-friendly | gh flarebyte build | --repo | string | Identify the repository whose checked-in config drives the build. | always |
 | script-friendly | gh flarebyte build | --target | string | Limit the build to one configured target such as `linux-amd64`. | optional |
 | script-friendly | gh flarebyte build | --output-dir | string | Override the configured output directory for one invocation. | optional |
@@ -431,12 +432,14 @@ How the CLI should help users succeed and recover from mistakes.
 | example_feedback | expectation | scenario |
 | --- | --- | --- |
 | Run `gh flarebyte repo update --help` to see required safety flags and examples. | Every command should provide discoverable usage guidance via `--help` with a short purpose line and the key flags. | general help |
+| `.gh-flarebyte.cue already exists in /path/to/repo. Re-run with --overwrite if replacing it is intentional.` | If `repo init` finds an existing `.gh-flarebyte.cue` file it should fail safely and explain the overwrite option. | init overwrite blocked |
 | `No .gh-flarebyte.cue found in /path/to/repo. Run gh flarebyte repo init or pass --repo to target a managed repository.` | If `.gh-flarebyte.cue` is missing or unreadable the CLI should explain what file was expected and which command should create or fix it. | missing config |
 | `Invalid build.targets entry "linux/x64". Expected os-arch format such as linux-amd64 or windows-amd64.` | If config parsing or validation fails the CLI should identify the field and why it is invalid. | config validation error |
 | `Update would delete 2 labels and 1 topic. Re-run with --confirm-deletions if that is intentional.` | If update detects topic or label deletions without confirmation the CLI should explain what would be deleted and which flag is required. | deletion blocked |
 | `Visibility would change from public to private. Re-run with --accept-visibility-change-consequences if that is intentional.` | If update detects a visibility change without acknowledgement the CLI should explain the current and target visibility and the required flag. | visibility blocked |
 | `Build failed for windows-amd64 during go build. Re-run with --target windows-amd64 to isolate the failure.` | If build fails the CLI should identify the target and failing step and point to the next debugging action. | build failure |
 | `Build completed, but release upload failed for tag v1.2.3. Check GitHub authentication and retry gh flarebyte release.` | If release fails after build the CLI should say whether artifacts were built successfully and which release step failed. | release failure |
+| `Update stopped after repository settings and topics were applied. Label sync failed, and no rollback was attempted. Fix the error and rerun gh flarebyte repo update.` | If `repo update` fails after applying some changes it should say what was already applied and that no rollback occurred. | partial update failure |
 | `3 differences found. Review the drift report below, then run gh flarebyte repo update when ready to apply changes.` | Audit output should summarize drift clearly and point to the next command to resolve it. | drift report |
 
 ### 06 Success Output
@@ -450,7 +453,7 @@ How successful commands should report outcomes and next steps.
 | `Repository settings updated successfully.` | Successful commands should confirm what was done in plain language, not just exit silently. | general success |
 | `gh-flarebyte v1.2.3 commitId=a1b2c3d4 date=2026-04-30T09:15:00Z os=darwin arch=arm64 goVersion=go1.25.0` | The root `--version` flag should print structured build metadata rather than only a semantic version string. | version success |
 | `{"version":"v1.2.3","commitId":"a1b2c3d4","date":"2026-04-30T09:15:00Z","os":"darwin","arch":"arm64","goVersion":"go1.25.0"}` | When `--version --json` is requested the CLI should emit machine-readable version metadata using the documented shape. | version json success |
-| `Created .gh-flarebyte.cue in /path/to/repo. Next: review the config, then run gh flarebyte repo update.` | Init should say where the config file was created or updated and what the next command is. | init success |
+| `Created .gh-flarebyte.cue in /path/to/repo from current GitHub state. Next: review the config, then run gh flarebyte repo update.` | Init should say where the config file was created or updated, whether current GitHub state was imported, and what the next command is. | init success |
 | `Update complete: 3 repo settings updated, 4 topics synced, 8 labels reconciled.` | Update should summarize what changed, including counts for topics, labels, and repo settings when relevant. | update success |
 | `No drift found. GitHub matches .gh-flarebyte.cue.` | Audit should summarize whether drift exists and what the user should do next. | audit success |
 | `Build complete: 3 targets written to build/ with checksums in build/checksums.txt.` | Build should summarize the targets produced and where artifacts were written. | build success |
@@ -604,7 +607,18 @@ How release publication is driven from config.
 
 #### Release Command
 
-Run `gh flarebyte build` first, then publish a GitHub release from the resulting build outputs. Use the top-level `release` block to choose the tag, artifacts, and release note behavior, requiring `releaseNotesFilePath` when `notesMode` is `notes-file`, and implement the command in Go rather than the current Bun helper. Release uploads should consume the deterministic packaged artifacts produced by the build command rather than rebuilding different outputs ad hoc. On failure, the CLI should distinguish between build failure, tag/version resolution failure, and release upload failure. On success it should confirm the published tag and the artifact source used.
+Run `gh flarebyte build` first, then publish a GitHub release from the resulting build outputs. Use the top-level `release` block to choose the tag, artifacts, and release note behavior, requiring `releaseNotesFilePath` when `notesMode` is `notes-file`, and implement the command in Go rather than the current Bun helper. Release uploads should consume the deterministic packaged artifacts produced by the build command rather than rebuilding different outputs ad hoc. The initial implementation should resolve the version from a repository-local YAML or JSON file containing a top-level `version` string, derive the tag as `tagPrefix + version`, and fail if the target tag already exists. On failure, the CLI should distinguish between build failure, tag/version resolution failure, and release upload failure. On success it should confirm the published tag and the artifact source used.
+
+#### Release Version Resolution
+
+| behavior | on_failure | source_rule |
+| --- | --- | --- |
+| The initial implementation should read a repository-local file path rather than an arbitrary command or expression. | Fail with exit code `2` if the path is missing or unreadable. | `release.versionSource` is a file path |
+| The initial implementation should parse YAML or JSON only. | Fail with exit code `2` if the file format is unsupported. | Supported format is YAML or JSON |
+| The initial implementation should extract a single top-level string field named `version`. | Fail with exit code `2` if `version` is missing or not a string. | Top-level `version` field is required |
+| The extracted version should already be normalized as a semantic version string such as `1.2.3` or `1.2.3-rc.1`. | Fail with exit code `2` if the version string is invalid. | Semantic version required |
+| The release tag should be computed as `release.tagPrefix + version`. | Fail with exit code `7` if tag creation or release publication cannot proceed. | Tag derivation |
+| If the computed tag already exists the command should fail rather than mutate the existing release implicitly. | Fail with exit code `7` and explain that the tag already exists. | Existing tag conflict |
 
 ### 12 Init
 
@@ -612,7 +626,7 @@ What repo bootstrap does.
 
 #### Init Command
 
-Bootstrap a repository by seeding `.gh-flarebyte.cue` with repository, build, and release defaults and then applying the initial syncable repo settings. The command should explain what file it created or updated and point users to `gh flarebyte repo update --help` for the next step. Success output should make the next action obvious.
+Bootstrap a repository by seeding `.gh-flarebyte.cue` with repository, build, and release defaults and then applying the initial syncable repo settings. The initial implementation should import current GitHub repository state into the generated config where available, then fill remaining fields from flarebyte defaults. If `.gh-flarebyte.cue` already exists, the command should fail by default rather than merge implicitly; replacement should require `--overwrite`. The command should explain what file it created or updated and point users to `gh flarebyte repo update --help` for the next step. Success output should make the next action obvious.
 
 ### 13 Update
 
@@ -620,7 +634,7 @@ What reconciliation from cue config means.
 
 #### Update Command
 
-Reconcile the live GitHub repository from `.gh-flarebyte.cue`, including repo settings, topics, and label definitions. Topics and labels are exact-set sync targets, so remote items missing from config should be treated as deletions. The command must fail unless the user explicitly confirms deletions with `--confirm-deletions`. Visibility changes should also require explicit CLI confirmation with `--accept-visibility-change-consequences` rather than a committed config flag. Failure output should explain what would change, why it was blocked, and the exact next command or flag to use. Success output should summarize what changed rather than only saying the command succeeded.
+Reconcile the live GitHub repository from `.gh-flarebyte.cue`, including repo settings, topics, and label definitions. Topics and labels are exact-set sync targets, so remote items missing from config should be treated as deletions. The command must fail unless the user explicitly confirms deletions with `--confirm-deletions`. Visibility changes should also require explicit CLI confirmation with `--accept-visibility-change-consequences` rather than a committed config flag. The command should compute and validate the full plan before mutating GitHub, then apply changes sequentially and stop at the first remote mutation failure. It should not attempt rollback for changes already applied; instead it should report partial progress clearly so the user can fix the issue and rerun. Failure output should explain what would change, why it was blocked, and the exact next command or flag to use. Success output should summarize what changed rather than only saying the command succeeded.
 
 ### 14 Audit
 
