@@ -435,55 +435,71 @@ How the CLI should help users succeed and recover from mistakes.
 | `Build completed, but release upload failed for tag v1.2.3. Check GitHub authentication and retry gh flarebyte release.` | If release fails after build the CLI should say whether artifacts were built successfully and which release step failed. | release failure |
 | `3 differences found. Review the drift report below, then run gh flarebyte repo update when ready to apply changes.` | Audit output should summarize drift clearly and point to the next command to resolve it. | drift report |
 
-### 06 Build
+### 06 Success Output
+
+How successful commands should report outcomes and next steps.
+
+#### Success Output
+
+| example_output | expectation | scenario |
+| --- | --- | --- |
+| `Repository settings updated successfully.` | Successful commands should confirm what was done in plain language, not just exit silently. | general success |
+| `Created .gh-flarebyte.cue in /path/to/repo. Next: review the config, then run gh flarebyte repo update.` | Init should say where the config file was created or updated and what the next command is. | init success |
+| `Update complete: 3 repo settings updated, 4 topics synced, 8 labels reconciled.` | Update should summarize what changed, including counts for topics, labels, and repo settings when relevant. | update success |
+| `No drift found. GitHub matches .gh-flarebyte.cue.` | Audit should summarize whether drift exists and what the user should do next. | audit success |
+| `Build complete: 3 targets written to build/ with checksums in build/checksums.txt.` | Build should summarize the targets produced and where artifacts were written. | build success |
+| `Release v1.2.3 published from build/ with checksums attached.` | Release should summarize the tag published and the asset source directory. | release success |
+| `Found 12 repositories for contributor olivier in flarebyte.` | Repos mine should report how many repositories were found for the requested organization. | discovery success |
+
+### 07 Build
 
 How build orchestration is driven from config.
 
 #### Build Command
 
-Build the project from the top-level `build` block. Start with Go only, but keep the config shape open for Dart so the command can grow without changing its contract. The first implementation should produce `<outputDir>/<name>-<target>` artifacts and a configured checksum file, with target names expressed as `os-arch` strings such as `linux-amd64` or `windows-amd64` and driven from config rather than shell scripts. The target list is explicit per project rather than globally mandatory. When the command fails it should report the target, failing step, and next useful action.
+Build the project from the top-level `build` block. Start with Go only, but keep the config shape open for Dart so the command can grow without changing its contract. The first implementation should produce `<outputDir>/<name>-<target>` artifacts and a configured checksum file, with target names expressed as `os-arch` strings such as `linux-amd64` or `windows-amd64` and driven from config rather than shell scripts. The target list is explicit per project rather than globally mandatory. When the command fails it should report the target, failing step, and next useful action. On success it should summarize which targets were built and where artifacts and checksums were written.
 
-### 07 Release
+### 08 Release
 
 How release publication is driven from config.
 
 #### Release Command
 
-Run `gh flarebyte build` first, then publish a GitHub release from the resulting build outputs. Use the top-level `release` block to choose the tag, artifacts, and release note behavior, requiring `releaseNotesFilePath` when `notesMode` is `notes-file`, and implement the command in Go rather than the current Bun helper. On failure, the CLI should distinguish between build failure, tag/version resolution failure, and release upload failure.
+Run `gh flarebyte build` first, then publish a GitHub release from the resulting build outputs. Use the top-level `release` block to choose the tag, artifacts, and release note behavior, requiring `releaseNotesFilePath` when `notesMode` is `notes-file`, and implement the command in Go rather than the current Bun helper. On failure, the CLI should distinguish between build failure, tag/version resolution failure, and release upload failure. On success it should confirm the published tag and the artifact source used.
 
-### 08 Init
+### 09 Init
 
 What repo bootstrap does.
 
 #### Init Command
 
-Bootstrap a repository by seeding `.gh-flarebyte.cue` with repository, build, and release defaults and then applying the initial syncable repo settings. The command should explain what file it created or updated and point users to `gh flarebyte repo update --help` for the next step.
+Bootstrap a repository by seeding `.gh-flarebyte.cue` with repository, build, and release defaults and then applying the initial syncable repo settings. The command should explain what file it created or updated and point users to `gh flarebyte repo update --help` for the next step. Success output should make the next action obvious.
 
-### 09 Update
+### 10 Update
 
 What reconciliation from cue config means.
 
 #### Update Command
 
-Reconcile the live GitHub repository from `.gh-flarebyte.cue`, including repo settings, topics, and label definitions. Topics and labels are exact-set sync targets, so remote items missing from config should be treated as deletions. The command must fail unless the user explicitly confirms deletions with `--confirm-deletions`. Visibility changes should also require explicit CLI confirmation with `--accept-visibility-change-consequences` rather than a committed config flag. Failure output should explain what would change, why it was blocked, and the exact next command or flag to use.
+Reconcile the live GitHub repository from `.gh-flarebyte.cue`, including repo settings, topics, and label definitions. Topics and labels are exact-set sync targets, so remote items missing from config should be treated as deletions. The command must fail unless the user explicitly confirms deletions with `--confirm-deletions`. Visibility changes should also require explicit CLI confirmation with `--accept-visibility-change-consequences` rather than a committed config flag. Failure output should explain what would change, why it was blocked, and the exact next command or flag to use. Success output should summarize what changed rather than only saying the command succeeded.
 
-### 10 Audit
+### 11 Audit
 
 What read-only drift checking means.
 
 #### Audit Command
 
-Compare the checked-in Cue config with GitHub and report drift without changing remote state. Output should summarize the number of differences and point users to `gh flarebyte repo update` when remediation is appropriate.
+Compare the checked-in Cue config with GitHub and report drift without changing remote state. Output should summarize the number of differences and point users to `gh flarebyte repo update` when remediation is appropriate. A clean run should say clearly that no drift was found.
 
-### 11 Repos Mine
+### 12 Repos Mine
 
 What repository discovery returns.
 
 #### Repos Mine Command
 
-List repositories the current user contributes to within an organization so the extension can discover target repos before sync.
+List repositories the current user contributes to within an organization so the extension can discover target repos before sync. Success output should include the organization queried and how many repositories were found.
 
-### 12 GitHub Flags
+### 13 GitHub Flags
 
 The existing `gh repo edit` knobs that `gh flarebyte repo update` applies from config.
 
