@@ -20,6 +20,13 @@ repository: {
 		"gh-extension",
 		"github-cli",
 	]
+	labels: [
+		{
+			name:        "bug"
+			color:       "B60205"
+			description: "Something is broken"
+		},
+	]
 }
 
 build: {

@@ -22,6 +22,8 @@ const (
 	ExitFailure = 1
 	ExitUsage   = 2
 	ExitDrift   = 3
+	ExitBlockedDeletions = 4
+	ExitBlockedVisibility = 5
 )
 
 type VersionInfo struct {
@@ -45,6 +47,13 @@ type RepoMetadata struct {
 	Visibility    string
 	Template      bool
 	Topics        []string
+	Labels        []LabelState
+}
+
+type LabelState struct {
+	Name        string
+	Color       string
+	Description string
 }
 
 type AuditDiff struct {
@@ -77,6 +86,12 @@ type ReposMineReport struct {
 var (
 	readRepoMetadata = ghReadRepoMetadata
 	readReposMine    = ghReadReposMine
+	applyRepoSettings = ghApplyRepoSettings
+	addRepoTopic      = ghAddRepoTopic
+	removeRepoTopic   = ghRemoveRepoTopic
+	createRepoLabel   = ghCreateRepoLabel
+	updateRepoLabel   = ghUpdateRepoLabel
+	deleteRepoLabel   = ghDeleteRepoLabel
 	fileExists       = func(path string) bool {
 		_, err := os.Stat(path)
 		return err == nil
@@ -174,6 +189,87 @@ func Run(args []string, stdout, stderr io.Writer) Result {
 		if report.HasDrift {
 			return Result{ExitCode: ExitDrift}
 		}
+		return Result{ExitCode: ExitOK}
+	}
+
+	if len(args) >= 2 && args[0] == "repo" && args[1] == "update" {
+		repo, confirmDeletions, acceptVisibility, err := parseRepoUpdateArgs(args[2:])
+		if err != nil {
+			fmt.Fprintln(stderr, err.Error())
+			return Result{ExitCode: ExitUsage, Err: err}
+		}
+		cfg, err := config.Load("")
+		if err != nil {
+			fmt.Fprintln(stderr, err.Error())
+			return Result{ExitCode: ExitUsage, Err: err}
+		}
+		if repo == "" {
+			repo = fmt.Sprintf("%s/%s", cfg.Project.Org, cfg.Project.Repo)
+		}
+		remote, err := readRepoMetadata(repo)
+		if err != nil {
+			fmt.Fprintln(stderr, err.Error())
+			return Result{ExitCode: ExitFailure, Err: err}
+		}
+		plan := buildUpdatePlan(cfg, remote)
+		if plan.VisibilityChange && !acceptVisibility {
+			err := fmt.Errorf("Visibility would change from %s to %s. Re-run with --accept-visibility-change-consequences if that is intentional.", remote.Visibility, cfg.Repository.Visibility)
+			fmt.Fprintln(stderr, err.Error())
+			return Result{ExitCode: ExitBlockedVisibility, Err: err}
+		}
+		if (len(plan.TopicsToRemove) > 0 || len(plan.LabelsToDelete) > 0) && !confirmDeletions {
+			err := fmt.Errorf("Update would delete %d labels and %d topics. Re-run with --confirm-deletions if that is intentional.", len(plan.LabelsToDelete), len(plan.TopicsToRemove))
+			fmt.Fprintln(stderr, err.Error())
+			return Result{ExitCode: ExitBlockedDeletions, Err: err}
+		}
+
+		settingsUpdated := 0
+		topicsSynced := 0
+		labelsReconciled := 0
+		appliedSettings := false
+		appliedTopics := false
+
+		if plan.SettingsChanged {
+			if err := applyRepoSettings(repo, cfg.Repository); err != nil {
+				fmt.Fprintln(stderr, err.Error())
+				return Result{ExitCode: ExitFailure, Err: err}
+			}
+			settingsUpdated = plan.SettingsChangeCount
+			appliedSettings = true
+		}
+		for _, topic := range plan.TopicsToAdd {
+			if err := addRepoTopic(repo, topic); err != nil {
+				return partialUpdateFailure(stderr, err, appliedSettings, appliedTopics)
+			}
+		}
+		for _, topic := range plan.TopicsToRemove {
+			if err := removeRepoTopic(repo, topic); err != nil {
+				return partialUpdateFailure(stderr, err, appliedSettings, appliedTopics)
+			}
+		}
+		if len(plan.TopicsToAdd) > 0 || len(plan.TopicsToRemove) > 0 {
+			appliedTopics = true
+		}
+		topicsSynced = len(cfg.Repository.Topics)
+
+		for _, label := range plan.LabelsToCreate {
+			if err := createRepoLabel(repo, label); err != nil {
+				return partialUpdateFailure(stderr, err, appliedSettings, appliedTopics)
+			}
+		}
+		for _, label := range plan.LabelsToUpdate {
+			if err := updateRepoLabel(repo, label); err != nil {
+				return partialUpdateFailure(stderr, err, appliedSettings, appliedTopics)
+			}
+		}
+		for _, label := range plan.LabelsToDelete {
+			if err := deleteRepoLabel(repo, label.Name); err != nil {
+				return partialUpdateFailure(stderr, err, appliedSettings, appliedTopics)
+			}
+		}
+		labelsReconciled = len(cfg.Repository.Labels)
+
+		fmt.Fprintf(stdout, "Update complete: %d repo settings updated, %d topics synced, %d labels reconciled.\n", settingsUpdated, topicsSynced, labelsReconciled)
 		return Result{ExitCode: ExitOK}
 	}
 
@@ -291,9 +387,21 @@ func printHelp(w io.Writer) {
 	fmt.Fprintln(w, "  gh flarebyte --help")
 	fmt.Fprintln(w, "  gh flarebyte --version [--json]")
 	fmt.Fprintln(w, "  gh flarebyte repo init --repo owner/name [--overwrite]")
+	fmt.Fprintln(w, "  gh flarebyte repo update [--repo owner/name] [--confirm-deletions] [--accept-visibility-change-consequences]")
 	fmt.Fprintln(w, "  gh flarebyte repo audit [--repo owner/name] [--json]")
 	fmt.Fprintln(w, "  gh flarebyte repos mine --org my-org [--json]")
 	fmt.Fprintln(w, "  gh flarebyte config validate [--config path]")
+}
+
+type UpdatePlan struct {
+	SettingsChanged    bool
+	SettingsChangeCount int
+	VisibilityChange   bool
+	TopicsToAdd        []string
+	TopicsToRemove     []string
+	LabelsToCreate     []LabelState
+	LabelsToUpdate     []LabelState
+	LabelsToDelete     []LabelState
 }
 
 func contains(args []string, flag string) bool {
@@ -360,6 +468,27 @@ func parseRepoAuditArgs(args []string) (repo string, asJSON bool, err error) {
 	return repo, asJSON, nil
 }
 
+func parseRepoUpdateArgs(args []string) (repo string, confirmDeletions bool, acceptVisibility bool, err error) {
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		switch arg {
+		case "--repo":
+			if i+1 >= len(args) {
+				return "", false, false, errors.New("invalid invocation: --repo requires owner/name")
+			}
+			repo = args[i+1]
+			i++
+		case "--confirm-deletions":
+			confirmDeletions = true
+		case "--accept-visibility-change-consequences":
+			acceptVisibility = true
+		default:
+			return "", false, false, fmt.Errorf("invalid invocation: unknown argument %q", arg)
+		}
+	}
+	return repo, confirmDeletions, acceptVisibility, nil
+}
+
 func parseReposMineArgs(args []string) (org string, asJSON bool, err error) {
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
@@ -393,7 +522,7 @@ func ghReadRepoMetadata(repo string) (RepoMetadata, error) {
 	}
 	cmd := exec.Command(
 		"gh", "repo", "view", repo,
-		"--json", "description,defaultBranchRef,homepageUrl,isPrivate,isTemplate,repositoryTopics",
+		"--json", "description,defaultBranchRef,homepageUrl,isPrivate,isTemplate,repositoryTopics,labels",
 	)
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
@@ -421,6 +550,13 @@ func ghReadRepoMetadata(repo string) (RepoMetadata, error) {
 				} `json:"topic"`
 			} `json:"nodes"`
 		} `json:"repositoryTopics"`
+		Labels struct {
+			Nodes []struct {
+				Name        string `json:"name"`
+				Color       string `json:"color"`
+				Description string `json:"description"`
+			} `json:"nodes"`
+		} `json:"labels"`
 	}
 	if err := json.Unmarshal(stdout.Bytes(), &payload); err != nil {
 		return RepoMetadata{}, err
@@ -436,6 +572,7 @@ func ghReadRepoMetadata(repo string) (RepoMetadata, error) {
 		Visibility:    visibility,
 		Template:      payload.IsTemplate,
 		Topics:        extractTopics(payload.RepositoryTopics.Nodes),
+		Labels:        extractLabelsFromState(payload.Labels.Nodes),
 	}
 	return meta, nil
 }
@@ -454,6 +591,22 @@ func extractTopics(nodes []struct {
 	return topics
 }
 
+func extractLabelsFromState(nodes []struct {
+	Name        string `json:"name"`
+	Color       string `json:"color"`
+	Description string `json:"description"`
+}) []LabelState {
+	labels := make([]LabelState, 0, len(nodes))
+	for _, node := range nodes {
+		labels = append(labels, LabelState{
+			Name:        node.Name,
+			Color:       node.Color,
+			Description: node.Description,
+		})
+	}
+	return labels
+}
+
 func defaultRepoMetadata(repo string) RepoMetadata {
 	return RepoMetadata{
 		Description:   "CLI for landing your git commands right",
@@ -462,7 +615,92 @@ func defaultRepoMetadata(repo string) RepoMetadata {
 		Visibility:    "public",
 		Template:      false,
 		Topics:        []string{"gh-extension", "github-cli", "git", "flarebyte"},
+		Labels: []LabelState{
+			{Name: "bug", Color: "B60205", Description: "Something is broken"},
+			{Name: "enhancement", Color: "0E8A16", Description: "New feature"},
+		},
 	}
+}
+
+func buildUpdatePlan(cfg config.Config, remote RepoMetadata) UpdatePlan {
+	plan := UpdatePlan{
+		TopicsToAdd:    diffStrings(cfg.Repository.Topics, remote.Topics),
+		TopicsToRemove: diffStrings(remote.Topics, cfg.Repository.Topics),
+	}
+	settingsChangeCount := 0
+	if cfg.Repository.Description != remote.Description {
+		settingsChangeCount++
+	}
+	if cfg.Repository.DefaultBranch != remote.DefaultBranch {
+		settingsChangeCount++
+	}
+	if cfg.Repository.Homepage != remote.Homepage {
+		settingsChangeCount++
+	}
+	if cfg.Repository.Visibility != remote.Visibility {
+		settingsChangeCount++
+		plan.VisibilityChange = true
+	}
+	if cfg.Repository.Template != remote.Template {
+		settingsChangeCount++
+	}
+	plan.SettingsChangeCount = settingsChangeCount
+	plan.SettingsChanged = settingsChangeCount > 0
+
+	remoteByName := make(map[string]LabelState, len(remote.Labels))
+	for _, r := range remote.Labels {
+		remoteByName[r.Name] = r
+	}
+	localNames := make(map[string]struct{}, len(cfg.Repository.Labels))
+	for _, l := range cfg.Repository.Labels {
+		localNames[l.Name] = struct{}{}
+		desired := LabelState{Name: l.Name, Color: l.Color, Description: l.Description}
+		r, ok := remoteByName[l.Name]
+		if !ok {
+			plan.LabelsToCreate = append(plan.LabelsToCreate, desired)
+			continue
+		}
+		if r.Color != desired.Color || r.Description != desired.Description {
+			plan.LabelsToUpdate = append(plan.LabelsToUpdate, desired)
+		}
+	}
+	for _, r := range remote.Labels {
+		if _, ok := localNames[r.Name]; !ok {
+			plan.LabelsToDelete = append(plan.LabelsToDelete, r)
+		}
+	}
+	return plan
+}
+
+func diffStrings(source []string, minus []string) []string {
+	minusSet := make(map[string]struct{}, len(minus))
+	for _, m := range minus {
+		minusSet[m] = struct{}{}
+	}
+	out := make([]string, 0)
+	for _, s := range source {
+		if _, ok := minusSet[s]; !ok {
+			out = append(out, s)
+		}
+	}
+	return out
+}
+
+func partialUpdateFailure(stderr io.Writer, cause error, settingsApplied bool, topicsApplied bool) Result {
+	parts := make([]string, 0)
+	if settingsApplied {
+		parts = append(parts, "repository settings")
+	}
+	if topicsApplied {
+		parts = append(parts, "topics")
+	}
+	prefix := "Update failed before applying changes."
+	if len(parts) > 0 {
+		prefix = fmt.Sprintf("Update stopped after %s were applied.", strings.Join(parts, " and "))
+	}
+	msg := fmt.Sprintf("%s Label sync failed, and no rollback was attempted. Fix the error and rerun gh flarebyte repo update. Cause: %v", prefix, cause)
+	fmt.Fprintln(stderr, msg)
+	return Result{ExitCode: ExitFailure, Err: cause}
 }
 
 func buildAuditReport(repo string, cfg config.Config, remote RepoMetadata) AuditReport {
@@ -672,6 +910,84 @@ release: {
 	includeChecksums: true
 }
 `, owner, name, meta.Description, meta.DefaultBranch, meta.Homepage, meta.Visibility, meta.Template)
+}
+
+func ghApplyRepoSettings(repo string, desired config.RepositoryConfig) error {
+	if os.Getenv("GH_FLAREBYTE_FAKE_READONLY") == "1" {
+		return nil
+	}
+	args := []string{
+		"repo", "edit", repo,
+		"--description", desired.Description,
+		"--default-branch", desired.DefaultBranch,
+		"--homepage", desired.Homepage,
+		"--visibility", desired.Visibility,
+	}
+	if desired.Template {
+		args = append(args, "--template")
+	} else {
+		args = append(args, "--template=false")
+	}
+	cmd := exec.Command("gh", args...)
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		msg := strings.TrimSpace(stderr.String())
+		if msg == "" {
+			msg = err.Error()
+		}
+		return errors.New(msg)
+	}
+	return nil
+}
+
+func ghAddRepoTopic(repo string, topic string) error {
+	if os.Getenv("GH_FLAREBYTE_FAKE_READONLY") == "1" {
+		return nil
+	}
+	return runGH("repo", "edit", repo, "--add-topic", topic)
+}
+
+func ghRemoveRepoTopic(repo string, topic string) error {
+	if os.Getenv("GH_FLAREBYTE_FAKE_READONLY") == "1" {
+		return nil
+	}
+	return runGH("repo", "edit", repo, "--remove-topic", topic)
+}
+
+func ghCreateRepoLabel(repo string, label LabelState) error {
+	if os.Getenv("GH_FLAREBYTE_FAKE_READONLY") == "1" {
+		return nil
+	}
+	return runGH("label", "create", label.Name, "--repo", repo, "--color", label.Color, "--description", label.Description, "--force")
+}
+
+func ghUpdateRepoLabel(repo string, label LabelState) error {
+	if os.Getenv("GH_FLAREBYTE_FAKE_READONLY") == "1" {
+		return nil
+	}
+	return runGH("label", "edit", label.Name, "--repo", repo, "--color", label.Color, "--description", label.Description)
+}
+
+func ghDeleteRepoLabel(repo string, labelName string) error {
+	if os.Getenv("GH_FLAREBYTE_FAKE_READONLY") == "1" {
+		return nil
+	}
+	return runGH("label", "delete", labelName, "--repo", repo, "--yes")
+}
+
+func runGH(args ...string) error {
+	cmd := exec.Command("gh", args...)
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		msg := strings.TrimSpace(stderr.String())
+		if msg == "" {
+			msg = err.Error()
+		}
+		return errors.New(msg)
+	}
+	return nil
 }
 
 func mustAbs(path string) string {

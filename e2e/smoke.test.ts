@@ -84,6 +84,18 @@ repository: {
   visibility: "public"
   template: false
   topics: ["gh-extension", "github-cli", "git", "flarebyte"]
+  labels: [
+    {
+      name: "bug"
+      color: "B60205"
+      description: "Something is broken"
+    },
+    {
+      name: "enhancement"
+      color: "0E8A16"
+      description: "New feature"
+    },
+  ]
 }
 build: {
   language: "go"

@@ -36,6 +36,13 @@ type RepositoryConfig struct {
 	Visibility    string   `json:"visibility"`
 	Template      bool     `json:"template"`
 	Topics        []string `json:"topics"`
+	Labels        []LabelConfig `json:"labels"`
+}
+
+type LabelConfig struct {
+	Name        string `json:"name"`
+	Color       string `json:"color"`
+	Description string `json:"description"`
 }
 
 type BuildConfig struct {
@@ -56,6 +63,7 @@ type ReleaseConfigRaw struct {
 
 var targetPattern = regexp.MustCompile(`^(linux|darwin|windows)-(amd64|arm64)$`)
 var quotedStringPattern = regexp.MustCompile(`"([^"]+)"`)
+var labelObjectPattern = regexp.MustCompile(`(?s)\{([^{}]*)\}`)
 
 func ResolvePath(path string) (string, error) {
 	p := path
@@ -146,6 +154,10 @@ func parseCueConfig(raw string) (Config, error) {
 	if err != nil {
 		return cfg, err
 	}
+	cfg.Repository.Labels, err = extractLabels(raw)
+	if err != nil {
+		return cfg, err
+	}
 	cfg.Release.VersionSource, err = extractStringField(raw, "versionSource")
 	if err != nil {
 		return cfg, err
@@ -220,6 +232,42 @@ func extractStringListBlock(raw, field string) ([]string, error) {
 	return values, nil
 }
 
+func extractLabels(raw string) ([]LabelConfig, error) {
+	open := strings.Index(raw, "labels: [")
+	if open == -1 {
+		return nil, errors.New("missing required list field labels")
+	}
+	start := open + len("labels: [")
+	end := strings.Index(raw[start:], "]")
+	if end == -1 {
+		return nil, errors.New("malformed list field labels")
+	}
+	block := raw[start : start+end]
+	matches := labelObjectPattern.FindAllStringSubmatch(block, -1)
+	if len(matches) == 0 {
+		return nil, errors.New("list field labels has no entries")
+	}
+	labels := make([]LabelConfig, 0, len(matches))
+	for _, match := range matches {
+		item := match[1]
+		name, err := extractStringField(item, "name")
+		if err != nil {
+			return nil, fmt.Errorf("invalid repository.labels entry: %w", err)
+		}
+		color, err := extractStringField(item, "color")
+		if err != nil {
+			return nil, fmt.Errorf("invalid repository.labels entry: %w", err)
+		}
+		description := extractOptionalStringField(item, "description")
+		labels = append(labels, LabelConfig{
+			Name:        name,
+			Color:       color,
+			Description: description,
+		})
+	}
+	return labels, nil
+}
+
 func Validate(cfg Config) error {
 	if cfg.Project.Org == "" {
 		return errors.New("invalid project.org: value is required")
@@ -237,6 +285,17 @@ func Validate(cfg Config) error {
 	}
 	if len(cfg.Repository.Topics) == 0 {
 		return errors.New("invalid repository.topics: at least one topic is required")
+	}
+	if len(cfg.Repository.Labels) == 0 {
+		return errors.New("invalid repository.labels: at least one label is required")
+	}
+	for _, label := range cfg.Repository.Labels {
+		if label.Name == "" {
+			return errors.New("invalid repository.labels.name: value is required")
+		}
+		if label.Color == "" {
+			return fmt.Errorf("invalid repository.labels[%s].color: value is required", label.Name)
+		}
 	}
 	if cfg.Sync.Mode != "push" {
 		return fmt.Errorf("invalid sync.mode %q: expected push", cfg.Sync.Mode)

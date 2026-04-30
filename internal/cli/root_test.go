@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/flarebyte/gh-flarebyte/internal/config"
 )
 
 func TestRunHelp(t *testing.T) {
@@ -415,6 +417,205 @@ func TestRunReposMineRequiresOrg(t *testing.T) {
 	}
 }
 
+func TestRunRepoUpdateBlocksDeletionsWithoutConfirmFlag(t *testing.T) {
+	oldWD, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("getwd failed: %v", err)
+	}
+	tmpDir := t.TempDir()
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatalf("chdir failed: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chdir(oldWD) })
+	if err := os.WriteFile(".gh-flarebyte.cue", []byte(testConfigCue()), 0o644); err != nil {
+		t.Fatalf("write config failed: %v", err)
+	}
+
+	oldReadRepoMetadata := readRepoMetadata
+	t.Cleanup(func() { readRepoMetadata = oldReadRepoMetadata })
+	readRepoMetadata = func(repo string) (RepoMetadata, error) {
+		return RepoMetadata{
+			Description:   "CLI for landing your git commands right",
+			DefaultBranch: "main",
+			Homepage:      "https://github.com/flarebyte/gh-flarebyte",
+			Visibility:    "public",
+			Template:      false,
+			Topics:        []string{"gh-extension", "github-cli", "git", "flarebyte", "extra-topic"},
+			Labels: []LabelState{
+				{Name: "bug", Color: "B60205", Description: "Something is broken"},
+				{Name: "enhancement", Color: "0E8A16", Description: "New feature"},
+				{Name: "legacy", Color: "CCCCCC", Description: "Legacy"},
+			},
+		}, nil
+	}
+
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	result := Run([]string{"repo", "update"}, &out, &errOut)
+	if result.ExitCode != ExitBlockedDeletions {
+		t.Fatalf("expected exit code %d, got %d", ExitBlockedDeletions, result.ExitCode)
+	}
+	if !strings.Contains(errOut.String(), "--confirm-deletions") {
+		t.Fatalf("expected deletion safety guidance, got: %s", errOut.String())
+	}
+}
+
+func TestRunRepoUpdateBlocksVisibilityWithoutAcceptFlag(t *testing.T) {
+	oldWD, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("getwd failed: %v", err)
+	}
+	tmpDir := t.TempDir()
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatalf("chdir failed: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chdir(oldWD) })
+	if err := os.WriteFile(".gh-flarebyte.cue", []byte(testConfigCue()), 0o644); err != nil {
+		t.Fatalf("write config failed: %v", err)
+	}
+
+	oldReadRepoMetadata := readRepoMetadata
+	t.Cleanup(func() { readRepoMetadata = oldReadRepoMetadata })
+	readRepoMetadata = func(repo string) (RepoMetadata, error) {
+		return RepoMetadata{
+			Description:   "CLI for landing your git commands right",
+			DefaultBranch: "main",
+			Homepage:      "https://github.com/flarebyte/gh-flarebyte",
+			Visibility:    "private",
+			Template:      false,
+			Topics:        []string{"gh-extension", "github-cli", "git", "flarebyte"},
+			Labels: []LabelState{
+				{Name: "bug", Color: "B60205", Description: "Something is broken"},
+				{Name: "enhancement", Color: "0E8A16", Description: "New feature"},
+			},
+		}, nil
+	}
+
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	result := Run([]string{"repo", "update"}, &out, &errOut)
+	if result.ExitCode != ExitBlockedVisibility {
+		t.Fatalf("expected exit code %d, got %d", ExitBlockedVisibility, result.ExitCode)
+	}
+	if !strings.Contains(errOut.String(), "--accept-visibility-change-consequences") {
+		t.Fatalf("expected visibility safety guidance, got: %s", errOut.String())
+	}
+}
+
+func TestRunRepoUpdateSuccessSummary(t *testing.T) {
+	oldWD, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("getwd failed: %v", err)
+	}
+	tmpDir := t.TempDir()
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatalf("chdir failed: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chdir(oldWD) })
+	if err := os.WriteFile(".gh-flarebyte.cue", []byte(testConfigCue()), 0o644); err != nil {
+		t.Fatalf("write config failed: %v", err)
+	}
+
+	oldReadRepoMetadata := readRepoMetadata
+	oldApplyRepoSettings := applyRepoSettings
+	oldAddRepoTopic := addRepoTopic
+	oldRemoveRepoTopic := removeRepoTopic
+	oldCreateRepoLabel := createRepoLabel
+	oldUpdateRepoLabel := updateRepoLabel
+	oldDeleteRepoLabel := deleteRepoLabel
+	t.Cleanup(func() {
+		readRepoMetadata = oldReadRepoMetadata
+		applyRepoSettings = oldApplyRepoSettings
+		addRepoTopic = oldAddRepoTopic
+		removeRepoTopic = oldRemoveRepoTopic
+		createRepoLabel = oldCreateRepoLabel
+		updateRepoLabel = oldUpdateRepoLabel
+		deleteRepoLabel = oldDeleteRepoLabel
+	})
+
+	readRepoMetadata = func(repo string) (RepoMetadata, error) {
+		return RepoMetadata{
+			Description:   "Old description",
+			DefaultBranch: "main",
+			Homepage:      "https://github.com/flarebyte/gh-flarebyte",
+			Visibility:    "public",
+			Template:      false,
+			Topics:        []string{"gh-extension"},
+			Labels: []LabelState{
+				{Name: "bug", Color: "AAAAAA", Description: "Old"},
+			},
+		}, nil
+	}
+	applyRepoSettings = func(repo string, desired config.RepositoryConfig) error { return nil }
+	addRepoTopic = func(repo string, topic string) error { return nil }
+	removeRepoTopic = func(repo string, topic string) error { return nil }
+	createRepoLabel = func(repo string, label LabelState) error { return nil }
+	updateRepoLabel = func(repo string, label LabelState) error { return nil }
+	deleteRepoLabel = func(repo string, labelName string) error { return nil }
+
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	result := Run([]string{"repo", "update", "--confirm-deletions"}, &out, &errOut)
+	if result.ExitCode != ExitOK {
+		t.Fatalf("expected exit code %d, got %d, err=%v", ExitOK, result.ExitCode, result.Err)
+	}
+	if !strings.Contains(out.String(), "Update complete:") {
+		t.Fatalf("expected success summary, got: %s", out.String())
+	}
+	if errOut.Len() != 0 {
+		t.Fatalf("expected empty stderr, got: %s", errOut.String())
+	}
+}
+
+func TestRunRepoUpdatePartialFailureMessage(t *testing.T) {
+	oldWD, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("getwd failed: %v", err)
+	}
+	tmpDir := t.TempDir()
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatalf("chdir failed: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chdir(oldWD) })
+	if err := os.WriteFile(".gh-flarebyte.cue", []byte(testConfigCue()), 0o644); err != nil {
+		t.Fatalf("write config failed: %v", err)
+	}
+
+	oldReadRepoMetadata := readRepoMetadata
+	oldApplyRepoSettings := applyRepoSettings
+	oldAddRepoTopic := addRepoTopic
+	t.Cleanup(func() {
+		readRepoMetadata = oldReadRepoMetadata
+		applyRepoSettings = oldApplyRepoSettings
+		addRepoTopic = oldAddRepoTopic
+	})
+	readRepoMetadata = func(repo string) (RepoMetadata, error) {
+		return RepoMetadata{
+			Description:   "Old description",
+			DefaultBranch: "main",
+			Homepage:      "https://github.com/flarebyte/gh-flarebyte",
+			Visibility:    "public",
+			Template:      false,
+			Topics:        []string{"gh-extension"},
+			Labels: []LabelState{
+				{Name: "bug", Color: "B60205", Description: "Something is broken"},
+				{Name: "enhancement", Color: "0E8A16", Description: "New feature"},
+			},
+		}, nil
+	}
+	applyRepoSettings = func(repo string, desired config.RepositoryConfig) error { return nil }
+	addRepoTopic = func(repo string, topic string) error { return errors.New("topic write failed") }
+
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	result := Run([]string{"repo", "update", "--confirm-deletions"}, &out, &errOut)
+	if result.ExitCode != ExitFailure {
+		t.Fatalf("expected exit code %d, got %d", ExitFailure, result.ExitCode)
+	}
+	if !strings.Contains(errOut.String(), "no rollback was attempted") {
+		t.Fatalf("expected partial-failure guidance, got: %s", errOut.String())
+	}
+}
 func testConfigCue() string {
 	return `package ghflarebyte
 
@@ -439,6 +640,18 @@ repository: {
 		"github-cli",
 		"git",
 		"flarebyte",
+	]
+	labels: [
+		{
+			name:        "bug"
+			color:       "B60205"
+			description: "Something is broken"
+		},
+		{
+			name:        "enhancement"
+			color:       "0E8A16"
+			description: "New feature"
+		},
 	]
 }
 
