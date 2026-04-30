@@ -26,6 +26,10 @@ Use `gh flarebyte` to keep a GitHub repository aligned with the config checked i
 - `gh flarebyte build` builds the project using the language defined in `.gh-flarebyte.cue`.
 - `gh flarebyte release` publishes a GitHub release from the build outputs.
 
+### Runtime info
+- `gh flarebyte --version` prints the CLI version metadata, including version, commit id, and build date.
+- `gh flarebyte --version --json` prints the same version metadata in a machine-readable JSON shape.
+
 Each command should provide actionable help with `--help`, and error output should explain the problem, the affected config or target, and the next useful command or flag.
 
 ## Config

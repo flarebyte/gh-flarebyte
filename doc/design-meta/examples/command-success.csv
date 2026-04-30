@@ -1,5 +1,7 @@
 scenario,expectation,example_output
 "general success","Successful commands should confirm what was done in plain language, not just exit silently.","`Repository settings updated successfully.`"
+"version success","The root `--version` flag should print structured build metadata rather than only a semantic version string.","`gh-flarebyte v1.2.3 commitId=a1b2c3d4 date=2026-04-30T09:15:00Z os=darwin arch=arm64 goVersion=go1.25.0`"
+"version json success","When `--version --json` is requested the CLI should emit machine-readable version metadata using the documented shape.","`{""version"":""v1.2.3"",""commitId"":""a1b2c3d4"",""date"":""2026-04-30T09:15:00Z"",""os"":""darwin"",""arch"":""arm64"",""goVersion"":""go1.25.0""}`"
 "init success","Init should say where the config file was created or updated and what the next command is.","`Created .gh-flarebyte.cue in /path/to/repo. Next: review the config, then run gh flarebyte repo update.`"
 "update success","Update should summarize what changed, including counts for topics, labels, and repo settings when relevant.","`Update complete: 3 repo settings updated, 4 topics synced, 8 labels reconciled.`"
 "audit success","Audit should summarize whether drift exists and what the user should do next.","`No drift found. GitHub matches .gh-flarebyte.cue.`"

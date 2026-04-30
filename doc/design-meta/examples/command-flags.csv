@@ -1,4 +1,6 @@
 command,flag,kind,required_when,automation_mode,purpose
+"gh flarebyte","--version",boolean,optional,script-friendly,"Print CLI version metadata including version, commitId, and build date."
+"gh flarebyte","--json",boolean,optional,script-friendly,"When combined with `--version`, print version metadata as JSON instead of plain text."
 gh flarebyte build,--repo,string,always,script-friendly,Identify the repository whose checked-in config drives the build.
 gh flarebyte build,--target,string,optional,script-friendly,Limit the build to one configured target such as `linux-amd64`.
 gh flarebyte build,--output-dir,string,optional,script-friendly,Override the configured output directory for one invocation.

@@ -400,6 +400,8 @@ CLI flags that define the initial command surface for the extension.
 
 | automation_mode | command | flag | kind | purpose | required_when |
 | --- | --- | --- | --- | --- | --- |
+| script-friendly | gh flarebyte | --version | boolean | Print CLI version metadata including version, commitId, and build date. | optional |
+| script-friendly | gh flarebyte | --json | boolean | When combined with `--version`, print version metadata as JSON instead of plain text. | optional |
 | script-friendly | gh flarebyte build | --repo | string | Identify the repository whose checked-in config drives the build. | always |
 | script-friendly | gh flarebyte build | --target | string | Limit the build to one configured target such as `linux-amd64`. | optional |
 | script-friendly | gh flarebyte build | --output-dir | string | Override the configured output directory for one invocation. | optional |
@@ -444,6 +446,8 @@ How successful commands should report outcomes and next steps.
 | example_output | expectation | scenario |
 | --- | --- | --- |
 | `Repository settings updated successfully.` | Successful commands should confirm what was done in plain language, not just exit silently. | general success |
+| `gh-flarebyte v1.2.3 commitId=a1b2c3d4 date=2026-04-30T09:15:00Z os=darwin arch=arm64 goVersion=go1.25.0` | The root `--version` flag should print structured build metadata rather than only a semantic version string. | version success |
+| `{"version":"v1.2.3","commitId":"a1b2c3d4","date":"2026-04-30T09:15:00Z","os":"darwin","arch":"arm64","goVersion":"go1.25.0"}` | When `--version --json` is requested the CLI should emit machine-readable version metadata using the documented shape. | version json success |
 | `Created .gh-flarebyte.cue in /path/to/repo. Next: review the config, then run gh flarebyte repo update.` | Init should say where the config file was created or updated and what the next command is. | init success |
 | `Update complete: 3 repo settings updated, 4 topics synced, 8 labels reconciled.` | Update should summarize what changed, including counts for topics, labels, and repo settings when relevant. | update success |
 | `No drift found. GitHub matches .gh-flarebyte.cue.` | Audit should summarize whether drift exists and what the user should do next. | audit success |
@@ -451,15 +455,45 @@ How successful commands should report outcomes and next steps.
 | `Release v1.2.3 published from build/ with checksums attached.` | Release should summarize the tag published and the asset source directory. | release success |
 | `Found 12 repositories for contributor olivier in flarebyte.` | Repos mine should report how many repositories were found for the requested organization. | discovery success |
 
-### 07 Build
+### 07 Version
+
+How the root CLI version flag exposes embedded build metadata.
+
+#### Version Output
+
+```ts
+export type VersionInfo = {
+  version: string;
+  commitId: string;
+  date: string;
+  os: string;
+  arch: string;
+  goVersion: string;
+};
+
+export const versionExample: VersionInfo = {
+  version: "v1.2.3",
+  commitId: "a1b2c3d4",
+  date: "2026-04-30T09:15:00Z",
+  os: "darwin",
+  arch: "arm64",
+  goVersion: "go1.25.0",
+};
+```
+
+#### Version Output Policy
+
+The root `gh flarebyte --version` command should print concise human-readable plain text by default. When `--json` is passed alongside `--version`, it should emit machine-readable JSON using the documented version metadata shape. This keeps the default friendly for humans while making automation explicit and stable.
+
+### 08 Build
 
 How build orchestration is driven from config.
 
 #### Build Command
 
-Build the project from the top-level `build` block. Start with Go only, but keep the config shape open for Dart so the command can grow without changing its contract. The first implementation should produce `<outputDir>/<name>-<target>` artifacts and a configured checksum file, with target names expressed as `os-arch` strings such as `linux-amd64` or `windows-amd64` and driven from config rather than shell scripts. The target list is explicit per project rather than globally mandatory. When the command fails it should report the target, failing step, and next useful action. On success it should summarize which targets were built and where artifacts and checksums were written.
+Build the project from the top-level `build` block. Start with Go only, but keep the config shape open for Dart so the command can grow without changing its contract. The first implementation should produce `<outputDir>/<name>-<target>` artifacts and a configured checksum file, with target names expressed as `os-arch` strings such as `linux-amd64` or `windows-amd64` and driven from config rather than shell scripts. The target list is explicit per project rather than globally mandatory. Build output should also embed version metadata so the compiled CLI can report `version`, `commitId`, `date`, and related runtime details via `--version`, and the same metadata should be available as JSON with `--version --json`. When the command fails it should report the target, failing step, and next useful action. On success it should summarize which targets were built and where artifacts and checksums were written.
 
-### 08 Release
+### 09 Release
 
 How release publication is driven from config.
 
@@ -467,7 +501,7 @@ How release publication is driven from config.
 
 Run `gh flarebyte build` first, then publish a GitHub release from the resulting build outputs. Use the top-level `release` block to choose the tag, artifacts, and release note behavior, requiring `releaseNotesFilePath` when `notesMode` is `notes-file`, and implement the command in Go rather than the current Bun helper. On failure, the CLI should distinguish between build failure, tag/version resolution failure, and release upload failure. On success it should confirm the published tag and the artifact source used.
 
-### 09 Init
+### 10 Init
 
 What repo bootstrap does.
 
@@ -475,7 +509,7 @@ What repo bootstrap does.
 
 Bootstrap a repository by seeding `.gh-flarebyte.cue` with repository, build, and release defaults and then applying the initial syncable repo settings. The command should explain what file it created or updated and point users to `gh flarebyte repo update --help` for the next step. Success output should make the next action obvious.
 
-### 10 Update
+### 11 Update
 
 What reconciliation from cue config means.
 
@@ -483,7 +517,7 @@ What reconciliation from cue config means.
 
 Reconcile the live GitHub repository from `.gh-flarebyte.cue`, including repo settings, topics, and label definitions. Topics and labels are exact-set sync targets, so remote items missing from config should be treated as deletions. The command must fail unless the user explicitly confirms deletions with `--confirm-deletions`. Visibility changes should also require explicit CLI confirmation with `--accept-visibility-change-consequences` rather than a committed config flag. Failure output should explain what would change, why it was blocked, and the exact next command or flag to use. Success output should summarize what changed rather than only saying the command succeeded.
 
-### 11 Audit
+### 12 Audit
 
 What read-only drift checking means.
 
@@ -491,7 +525,7 @@ What read-only drift checking means.
 
 Compare the checked-in Cue config with GitHub and report drift without changing remote state. Output should summarize the number of differences and point users to `gh flarebyte repo update` when remediation is appropriate. A clean run should say clearly that no drift was found.
 
-### 12 Repos Mine
+### 13 Repos Mine
 
 What repository discovery returns.
 
@@ -499,7 +533,7 @@ What repository discovery returns.
 
 List repositories the current user contributes to within an organization so the extension can discover target repos before sync. Success output should include the organization queried and how many repositories were found.
 
-### 13 GitHub Flags
+### 14 GitHub Flags
 
 The existing `gh repo edit` knobs that `gh flarebyte repo update` applies from config.
 

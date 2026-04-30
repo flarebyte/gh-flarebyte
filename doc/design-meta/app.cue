@@ -116,43 +116,50 @@ reports: [{
 				"command.success",
 			]
 		}, {
-			title:       "07 Build"
+			title:       "07 Version"
+			description: "How the root CLI version flag exposes embedded build metadata."
+			notes: [
+				"command.version.policy",
+				"command.version",
+			]
+		}, {
+			title:       "08 Build"
 			description: "How build orchestration is driven from config."
 			notes: [
 				"command.build",
 			]
 		}, {
-			title:       "08 Release"
+			title:       "09 Release"
 			description: "How release publication is driven from config."
 			notes: [
 				"command.release",
 			]
 		}, {
-			title:       "09 Init"
+			title:       "10 Init"
 			description: "What repo bootstrap does."
 			notes: [
 				"command.init",
 			]
 		}, {
-			title:       "10 Update"
+			title:       "11 Update"
 			description: "What reconciliation from cue config means."
 			notes: [
 				"command.update",
 			]
 		}, {
-			title:       "11 Audit"
+			title:       "12 Audit"
 			description: "What read-only drift checking means."
 			notes: [
 				"command.audit",
 			]
 		}, {
-			title:       "12 Repos Mine"
+			title:       "13 Repos Mine"
 			description: "What repository discovery returns."
 			notes: [
 				"command.repos.mine",
 			]
 		}, {
-			title:       "13 GitHub Flags"
+			title:       "14 GitHub Flags"
 			description: "The existing `gh repo edit` knobs that `gh flarebyte repo update` applies from config."
 			notes: [
 				"gh.repo.edit.flags",
@@ -306,9 +313,21 @@ notes: [
 		labels:   ["commands", "ux", "success", "spec"]
 	},
 	{
+		name:     "command.version.policy"
+		title:    "Version Output Policy"
+		markdown: "The root `gh flarebyte --version` command should print concise human-readable plain text by default. When `--json` is passed alongside `--version`, it should emit machine-readable JSON using the documented version metadata shape. This keeps the default friendly for humans while making automation explicit and stable."
+		labels:   ["commands", "version", "policy", "spec"]
+	},
+	{
+		name:     "command.version"
+		title:    "Version Output"
+		filepath: "examples/version-output.ts"
+		labels:   ["commands", "version", "typescript", "spec"]
+	},
+	{
 		name:     "command.build"
 		title:    "Build Command"
-		markdown: "Build the project from the top-level `build` block. Start with Go only, but keep the config shape open for Dart so the command can grow without changing its contract. The first implementation should produce `<outputDir>/<name>-<target>` artifacts and a configured checksum file, with target names expressed as `os-arch` strings such as `linux-amd64` or `windows-amd64` and driven from config rather than shell scripts. The target list is explicit per project rather than globally mandatory. When the command fails it should report the target, failing step, and next useful action. On success it should summarize which targets were built and where artifacts and checksums were written."
+		markdown: "Build the project from the top-level `build` block. Start with Go only, but keep the config shape open for Dart so the command can grow without changing its contract. The first implementation should produce `<outputDir>/<name>-<target>` artifacts and a configured checksum file, with target names expressed as `os-arch` strings such as `linux-amd64` or `windows-amd64` and driven from config rather than shell scripts. The target list is explicit per project rather than globally mandatory. Build output should also embed version metadata so the compiled CLI can report `version`, `commitId`, `date`, and related runtime details via `--version`, and the same metadata should be available as JSON with `--version --json`. When the command fails it should report the target, failing step, and next useful action. On success it should summarize which targets were built and where artifacts and checksums were written."
 		labels:   ["commands", "build", "spec"]
 	},
 	{
