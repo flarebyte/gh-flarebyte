@@ -64,6 +64,15 @@ type LabelState struct {
 	Description string
 }
 
+type RepoSettingsPatch struct {
+	Description   string
+	DefaultBranch string
+	Homepage      string
+	Template      bool
+	Visibility    string
+	SetVisibility bool
+}
+
 type AuditDiff struct {
 	Field  string `json:"field"`
 	Local  any    `json:"local"`
@@ -240,7 +249,7 @@ func Run(args []string, stdout, stderr io.Writer) Result {
 		appliedTopics := false
 
 		if plan.SettingsChanged {
-			if err := applyRepoSettings(repo, cfg.Repository); err != nil {
+			if err := applyRepoSettings(repo, plan.SettingsPatch); err != nil {
 				fmt.Fprintln(stderr, err.Error())
 				return Result{ExitCode: ExitFailure, Err: err}
 			}
@@ -505,6 +514,7 @@ type UpdatePlan struct {
 	SettingsChanged    bool
 	SettingsChangeCount int
 	VisibilityChange   bool
+	SettingsPatch      RepoSettingsPatch
 	TopicsToAdd        []string
 	TopicsToRemove     []string
 	LabelsToCreate     []LabelState
@@ -681,12 +691,10 @@ func ghReadRepoMetadata(repo string) (RepoMetadata, error) {
 				} `json:"topic"`
 			} `json:"nodes"`
 		} `json:"repositoryTopics"`
-		Labels struct {
-			Nodes []struct {
-				Name        string `json:"name"`
-				Color       string `json:"color"`
-				Description string `json:"description"`
-			} `json:"nodes"`
+		Labels []struct {
+			Name        string `json:"name"`
+			Color       string `json:"color"`
+			Description string `json:"description"`
 		} `json:"labels"`
 	}
 	if err := json.Unmarshal(stdout.Bytes(), &payload); err != nil {
@@ -703,7 +711,7 @@ func ghReadRepoMetadata(repo string) (RepoMetadata, error) {
 		Visibility:    visibility,
 		Template:      payload.IsTemplate,
 		Topics:        extractTopics(payload.RepositoryTopics.Nodes),
-		Labels:        extractLabelsFromState(payload.Labels.Nodes),
+		Labels:        extractLabelsFromState(payload.Labels),
 	}
 	return meta, nil
 }
@@ -759,6 +767,12 @@ func buildUpdatePlan(cfg config.Config, remote RepoMetadata) UpdatePlan {
 		TopicsToRemove: diffStrings(remote.Topics, cfg.Repository.Topics),
 	}
 	settingsChangeCount := 0
+	patch := RepoSettingsPatch{
+		Description:   cfg.Repository.Description,
+		DefaultBranch: cfg.Repository.DefaultBranch,
+		Homepage:      cfg.Repository.Homepage,
+		Template:      cfg.Repository.Template,
+	}
 	if cfg.Repository.Description != remote.Description {
 		settingsChangeCount++
 	}
@@ -771,12 +785,15 @@ func buildUpdatePlan(cfg config.Config, remote RepoMetadata) UpdatePlan {
 	if cfg.Repository.Visibility != remote.Visibility {
 		settingsChangeCount++
 		plan.VisibilityChange = true
+		patch.Visibility = cfg.Repository.Visibility
+		patch.SetVisibility = true
 	}
 	if cfg.Repository.Template != remote.Template {
 		settingsChangeCount++
 	}
 	plan.SettingsChangeCount = settingsChangeCount
 	plan.SettingsChanged = settingsChangeCount > 0
+	plan.SettingsPatch = patch
 
 	remoteByName := make(map[string]LabelState, len(remote.Labels))
 	for _, r := range remote.Labels {
@@ -1172,7 +1189,7 @@ release: {
 `, owner, name, meta.Description, meta.DefaultBranch, meta.Homepage, meta.Visibility, meta.Template)
 }
 
-func ghApplyRepoSettings(repo string, desired config.RepositoryConfig) error {
+func ghApplyRepoSettings(repo string, desired RepoSettingsPatch) error {
 	if os.Getenv("GH_FLAREBYTE_FAKE_READONLY") == "1" {
 		return nil
 	}
@@ -1181,7 +1198,9 @@ func ghApplyRepoSettings(repo string, desired config.RepositoryConfig) error {
 		"--description", desired.Description,
 		"--default-branch", desired.DefaultBranch,
 		"--homepage", desired.Homepage,
-		"--visibility", desired.Visibility,
+	}
+	if desired.SetVisibility {
+		args = append(args, "--visibility", desired.Visibility)
 	}
 	if desired.Template {
 		args = append(args, "--template")

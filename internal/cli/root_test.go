@@ -13,7 +13,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/flarebyte/gh-flarebyte/internal/config"
 )
 
 func TestRunHelp(t *testing.T) {
@@ -550,7 +549,7 @@ func TestRunRepoUpdateSuccessSummary(t *testing.T) {
 			},
 		}, nil
 	}
-	applyRepoSettings = func(repo string, desired config.RepositoryConfig) error { return nil }
+	applyRepoSettings = func(repo string, desired RepoSettingsPatch) error { return nil }
 	addRepoTopic = func(repo string, topic string) error { return nil }
 	removeRepoTopic = func(repo string, topic string) error { return nil }
 	createRepoLabel = func(repo string, label LabelState) error { return nil }
@@ -607,7 +606,7 @@ func TestRunRepoUpdatePartialFailureMessage(t *testing.T) {
 			},
 		}, nil
 	}
-	applyRepoSettings = func(repo string, desired config.RepositoryConfig) error { return nil }
+	applyRepoSettings = func(repo string, desired RepoSettingsPatch) error { return nil }
 	addRepoTopic = func(repo string, topic string) error { return errors.New("topic write failed") }
 
 	var out bytes.Buffer
