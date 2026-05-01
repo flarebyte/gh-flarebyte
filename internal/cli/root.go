@@ -134,22 +134,22 @@ func Run(args []string, stdout, stderr io.Writer) Result {
 	if len(args) >= 2 && args[0] == "repo" && args[1] == "init" {
 		repo, overwrite, err := parseRepoInitArgs(args[2:])
 		if err != nil {
-			fmt.Fprintln(stderr, err.Error())
+			_, _ = fmt.Fprintln(stderr, err.Error())
 			return Result{ExitCode: ExitUsage, Err: err}
 		}
 		if repo == "" {
 			err := errors.New("invalid invocation: --repo owner/name is required")
-			fmt.Fprintln(stderr, err.Error())
+			_, _ = fmt.Fprintln(stderr, err.Error())
 			return Result{ExitCode: ExitUsage, Err: err}
 		}
 		if fileExists(config.DefaultPath) && !overwrite {
-			err := fmt.Errorf("%s already exists in %s. Re-run with --overwrite if replacing it is intentional.", config.DefaultPath, mustAbs("."))
-			fmt.Fprintln(stderr, err.Error())
+			err := fmt.Errorf("%s already exists in %s. Re-run with --overwrite if replacing it is intentional", config.DefaultPath, mustAbs("."))
+			_, _ = fmt.Fprintln(stderr, err.Error())
 			return Result{ExitCode: ExitUsage, Err: err}
 		}
 		owner, name, err := splitRepo(repo)
 		if err != nil {
-			fmt.Fprintln(stderr, err.Error())
+			_, _ = fmt.Fprintln(stderr, err.Error())
 			return Result{ExitCode: ExitUsage, Err: err}
 		}
 
@@ -159,19 +159,19 @@ func Run(args []string, stdout, stderr io.Writer) Result {
 			meta = m
 			imported = true
 		} else {
-			fmt.Fprintf(stderr, "warning: unable to import remote metadata for %s, using defaults (%v)\n", repo, err)
+			_, _ = fmt.Fprintf(stderr, "warning: unable to import remote metadata for %s, using defaults (%v)\n", repo, err)
 		}
 
 		content := renderCueConfig(owner, name, meta)
 		if err := writeFile(config.DefaultPath, []byte(content)); err != nil {
-			fmt.Fprintln(stderr, err.Error())
+			_, _ = fmt.Fprintln(stderr, err.Error())
 			return Result{ExitCode: ExitFailure, Err: err}
 		}
 		absPath := mustAbs(config.DefaultPath)
 		if imported {
-			fmt.Fprintf(stdout, "created %s from current GitHub state. Next: review the config, then run gh flarebyte repo update.\n", absPath)
+			_, _ = fmt.Fprintf(stdout, "created %s from current GitHub state. Next: review the config, then run gh flarebyte repo update.\n", absPath)
 		} else {
-			fmt.Fprintf(stdout, "created %s from defaults. Next: review the config, then run gh flarebyte repo update.\n", absPath)
+			_, _ = fmt.Fprintf(stdout, "created %s from defaults. Next: review the config, then run gh flarebyte repo update.\n", absPath)
 		}
 		return Result{ExitCode: ExitOK}
 	}
@@ -179,12 +179,12 @@ func Run(args []string, stdout, stderr io.Writer) Result {
 	if len(args) >= 2 && args[0] == "repo" && args[1] == "audit" {
 		repo, asJSON, err := parseRepoAuditArgs(args[2:])
 		if err != nil {
-			fmt.Fprintln(stderr, err.Error())
+			_, _ = fmt.Fprintln(stderr, err.Error())
 			return Result{ExitCode: ExitUsage, Err: err}
 		}
 		cfg, err := config.Load("")
 		if err != nil {
-			fmt.Fprintln(stderr, err.Error())
+			_, _ = fmt.Fprintln(stderr, err.Error())
 			return Result{ExitCode: ExitUsage, Err: err}
 		}
 		if repo == "" {
@@ -192,7 +192,7 @@ func Run(args []string, stdout, stderr io.Writer) Result {
 		}
 		remote, err := readRepoMetadata(repo)
 		if err != nil {
-			fmt.Fprintln(stderr, err.Error())
+			_, _ = fmt.Fprintln(stderr, err.Error())
 			return Result{ExitCode: ExitFailure, Err: err}
 		}
 		report := buildAuditReport(repo, cfg, remote)
@@ -203,12 +203,12 @@ func Run(args []string, stdout, stderr io.Writer) Result {
 				return Result{ExitCode: ExitFailure, Err: err}
 			}
 		} else if report.HasDrift {
-			fmt.Fprintf(stdout, "%d differences found. Review the drift report below, then run gh flarebyte repo update when ready to apply changes.\n", report.DriftCount)
+			_, _ = fmt.Fprintf(stdout, "%d differences found. Review the drift report below, then run gh flarebyte repo update when ready to apply changes.\n", report.DriftCount)
 			for _, diff := range report.Diffs {
-				fmt.Fprintf(stdout, "- %s local=%v remote=%v\n", diff.Field, diff.Local, diff.Remote)
+				_, _ = fmt.Fprintf(stdout, "- %s local=%v remote=%v\n", diff.Field, diff.Local, diff.Remote)
 			}
 		} else {
-			fmt.Fprintln(stdout, "No drift found. GitHub matches .gh-flarebyte.cue.")
+			_, _ = fmt.Fprintln(stdout, "No drift found. GitHub matches .gh-flarebyte.cue.")
 		}
 		if report.HasDrift {
 			return Result{ExitCode: ExitDrift}
@@ -219,12 +219,12 @@ func Run(args []string, stdout, stderr io.Writer) Result {
 	if len(args) >= 2 && args[0] == "repo" && args[1] == "update" {
 		repo, confirmDeletions, acceptVisibility, err := parseRepoUpdateArgs(args[2:])
 		if err != nil {
-			fmt.Fprintln(stderr, err.Error())
+			_, _ = fmt.Fprintln(stderr, err.Error())
 			return Result{ExitCode: ExitUsage, Err: err}
 		}
 		cfg, err := config.Load("")
 		if err != nil {
-			fmt.Fprintln(stderr, err.Error())
+			_, _ = fmt.Fprintln(stderr, err.Error())
 			return Result{ExitCode: ExitUsage, Err: err}
 		}
 		if repo == "" {
@@ -232,18 +232,18 @@ func Run(args []string, stdout, stderr io.Writer) Result {
 		}
 		remote, err := readRepoMetadata(repo)
 		if err != nil {
-			fmt.Fprintln(stderr, err.Error())
+			_, _ = fmt.Fprintln(stderr, err.Error())
 			return Result{ExitCode: ExitFailure, Err: err}
 		}
 		plan := buildUpdatePlan(cfg, remote)
 		if plan.VisibilityChange && !acceptVisibility {
-			err := fmt.Errorf("Visibility would change from %s to %s. Re-run with --accept-visibility-change-consequences if that is intentional.", remote.Visibility, cfg.Repository.Visibility)
-			fmt.Fprintln(stderr, err.Error())
+			err := fmt.Errorf("visibility would change from %s to %s. Re-run with --accept-visibility-change-consequences if that is intentional", remote.Visibility, cfg.Repository.Visibility)
+			_, _ = fmt.Fprintln(stderr, err.Error())
 			return Result{ExitCode: ExitBlockedVisibility, Err: err}
 		}
 		if (len(plan.TopicsToRemove) > 0 || len(plan.LabelsToDelete) > 0) && !confirmDeletions {
-			err := fmt.Errorf("Update would delete %d labels and %d topics. Re-run with --confirm-deletions if that is intentional.", len(plan.LabelsToDelete), len(plan.TopicsToRemove))
-			fmt.Fprintln(stderr, err.Error())
+			err := fmt.Errorf("update would delete %d labels and %d topics. Re-run with --confirm-deletions if that is intentional", len(plan.LabelsToDelete), len(plan.TopicsToRemove))
+			_, _ = fmt.Fprintln(stderr, err.Error())
 			return Result{ExitCode: ExitBlockedDeletions, Err: err}
 		}
 
@@ -255,7 +255,7 @@ func Run(args []string, stdout, stderr io.Writer) Result {
 
 		if plan.SettingsChanged {
 			if err := applyRepoSettings(repo, plan.SettingsPatch); err != nil {
-				fmt.Fprintln(stderr, err.Error())
+				_, _ = fmt.Fprintln(stderr, err.Error())
 				return Result{ExitCode: ExitFailure, Err: err}
 			}
 			settingsUpdated = plan.SettingsChangeCount
@@ -293,24 +293,24 @@ func Run(args []string, stdout, stderr io.Writer) Result {
 		}
 		labelsReconciled = len(cfg.Repository.Labels)
 
-		fmt.Fprintf(stdout, "Update complete: %d repo settings updated, %d topics synced, %d labels reconciled.\n", settingsUpdated, topicsSynced, labelsReconciled)
+		_, _ = fmt.Fprintf(stdout, "Update complete: %d repo settings updated, %d topics synced, %d labels reconciled.\n", settingsUpdated, topicsSynced, labelsReconciled)
 		return Result{ExitCode: ExitOK}
 	}
 
 	if len(args) >= 2 && args[0] == "repos" && args[1] == "mine" {
 		org, asJSON, err := parseReposMineArgs(args[2:])
 		if err != nil {
-			fmt.Fprintln(stderr, err.Error())
+			_, _ = fmt.Fprintln(stderr, err.Error())
 			return Result{ExitCode: ExitUsage, Err: err}
 		}
 		if org == "" {
 			err := errors.New("invalid invocation: --org is required")
-			fmt.Fprintln(stderr, err.Error())
+			_, _ = fmt.Fprintln(stderr, err.Error())
 			return Result{ExitCode: ExitUsage, Err: err}
 		}
 		contributor, repos, err := readReposMine(org)
 		if err != nil {
-			fmt.Fprintln(stderr, err.Error())
+			_, _ = fmt.Fprintln(stderr, err.Error())
 			return Result{ExitCode: ExitFailure, Err: err}
 		}
 		report := ReposMineReport{
@@ -327,9 +327,9 @@ func Run(args []string, stdout, stderr io.Writer) Result {
 			}
 			return Result{ExitCode: ExitOK}
 		}
-		fmt.Fprintf(stdout, "Found %d repositories in org %s for contributor %s.\n", report.Count, report.Org, report.Contributor)
+		_, _ = fmt.Fprintf(stdout, "Found %d repositories in org %s for contributor %s.\n", report.Count, report.Org, report.Contributor)
 		for _, repo := range report.Repos {
-			fmt.Fprintf(stdout, "- %s/%s (%s, default branch: %s)\n", repo.Owner, repo.Name, repo.Visibility, repo.DefaultBranch)
+			_, _ = fmt.Fprintf(stdout, "- %s/%s (%s, default branch: %s)\n", repo.Owner, repo.Name, repo.Visibility, repo.DefaultBranch)
 		}
 		return Result{ExitCode: ExitOK}
 	}
@@ -337,43 +337,43 @@ func Run(args []string, stdout, stderr io.Writer) Result {
 	if len(args) >= 2 && args[0] == "config" && args[1] == "validate" {
 		configPath, err := parseConfigPath(args[2:])
 		if err != nil {
-			fmt.Fprintln(stderr, err.Error())
+			_, _ = fmt.Fprintln(stderr, err.Error())
 			return Result{ExitCode: ExitUsage, Err: err}
 		}
 		absPath, err := config.ResolvePath(configPath)
 		if err != nil {
-			fmt.Fprintln(stderr, err.Error())
+			_, _ = fmt.Fprintln(stderr, err.Error())
 			return Result{ExitCode: ExitUsage, Err: err}
 		}
 		if _, err := config.Load(configPath); err != nil {
-			fmt.Fprintln(stderr, err.Error())
+			_, _ = fmt.Fprintln(stderr, err.Error())
 			return Result{ExitCode: ExitUsage, Err: err}
 		}
-		fmt.Fprintf(stdout, "config is valid: %s\n", absPath)
+		_, _ = fmt.Fprintf(stdout, "config is valid: %s\n", absPath)
 		return Result{ExitCode: ExitOK}
 	}
 
 	if len(args) >= 1 && args[0] == "build" {
 		targetFilter, outputDirOverride, err := parseBuildArgs(args[1:])
 		if err != nil {
-			fmt.Fprintln(stderr, err.Error())
+			_, _ = fmt.Fprintln(stderr, err.Error())
 			return Result{ExitCode: ExitUsage, Err: err}
 		}
 		cfg, err := config.Load("")
 		if err != nil {
-			fmt.Fprintln(stderr, err.Error())
+			_, _ = fmt.Fprintln(stderr, err.Error())
 			return Result{ExitCode: ExitUsage, Err: err}
 		}
 		if cfg.Build.Language != "go" {
 			err := fmt.Errorf("build.language %q is not supported yet. Supported values: go", cfg.Build.Language)
-			fmt.Fprintln(stderr, err.Error())
+			_, _ = fmt.Fprintln(stderr, err.Error())
 			return Result{ExitCode: ExitUsage, Err: err}
 		}
 		targets := cfg.Build.Targets
 		if targetFilter != "" {
 			if !contains(targets, targetFilter) {
 				err := fmt.Errorf("invalid --target %q: not present in build.targets", targetFilter)
-				fmt.Fprintln(stderr, err.Error())
+				_, _ = fmt.Fprintln(stderr, err.Error())
 				return Result{ExitCode: ExitUsage, Err: err}
 			}
 			targets = []string{targetFilter}
@@ -383,12 +383,12 @@ func Run(args []string, stdout, stderr io.Writer) Result {
 			outputDir = outputDirOverride
 		}
 		if err := os.MkdirAll(outputDir, 0o755); err != nil {
-			fmt.Fprintln(stderr, err.Error())
+			_, _ = fmt.Fprintln(stderr, err.Error())
 			return Result{ExitCode: ExitFailure, Err: err}
 		}
 		tmpDir := filepath.Join(outputDir, ".tmp")
 		if err := os.MkdirAll(tmpDir, 0o755); err != nil {
-			fmt.Fprintln(stderr, err.Error())
+			_, _ = fmt.Fprintln(stderr, err.Error())
 			return Result{ExitCode: ExitFailure, Err: err}
 		}
 		type artifactDigest struct {
@@ -399,7 +399,7 @@ func Run(args []string, stdout, stderr io.Writer) Result {
 		for _, target := range targets {
 			goos, goarch, err := splitTarget(target)
 			if err != nil {
-				fmt.Fprintln(stderr, err.Error())
+				_, _ = fmt.Fprintln(stderr, err.Error())
 				return Result{ExitCode: ExitUsage, Err: err}
 			}
 			binBase := fmt.Sprintf("%s-%s-%s", cfg.Project.Repo, goos, goarch)
@@ -410,7 +410,7 @@ func Run(args []string, stdout, stderr io.Writer) Result {
 			binPath := filepath.Join(tmpDir, binName)
 			if err := buildTargetBinary(target, binPath); err != nil {
 				msg := fmt.Sprintf("Build failed for %s during go build. Re-run with --target %s to isolate the failure.", target, target)
-				fmt.Fprintln(stderr, msg)
+				_, _ = fmt.Fprintln(stderr, msg)
 				return Result{ExitCode: ExitBuildFailure, Err: err}
 			}
 			artifactName := binBase + ".tar.gz"
@@ -419,12 +419,12 @@ func Run(args []string, stdout, stderr io.Writer) Result {
 			}
 			artifactPath := filepath.Join(outputDir, artifactName)
 			if err := packageBinary(binPath, target, artifactPath); err != nil {
-				fmt.Fprintf(stderr, "Build failed for %s during packaging. Re-run with --target %s to isolate the failure.\n", target, target)
+				_, _ = fmt.Fprintf(stderr, "Build failed for %s during packaging. Re-run with --target %s to isolate the failure.\n", target, target)
 				return Result{ExitCode: ExitBuildFailure, Err: err}
 			}
 			sum, err := sha256File(artifactPath)
 			if err != nil {
-				fmt.Fprintln(stderr, err.Error())
+				_, _ = fmt.Fprintln(stderr, err.Error())
 				return Result{ExitCode: ExitBuildFailure, Err: err}
 			}
 			digests = append(digests, artifactDigest{Name: artifactName, SHA: sum})
@@ -432,7 +432,7 @@ func Run(args []string, stdout, stderr io.Writer) Result {
 		sort.Slice(digests, func(i, j int) bool { return digests[i].Name < digests[j].Name })
 		checksumPath := resolveChecksumPath(cfg.Build.ChecksumFile, outputDirOverride)
 		if err := os.MkdirAll(filepath.Dir(checksumPath), 0o755); err != nil {
-			fmt.Fprintln(stderr, err.Error())
+			_, _ = fmt.Fprintln(stderr, err.Error())
 			return Result{ExitCode: ExitFailure, Err: err}
 		}
 		var b strings.Builder
@@ -443,22 +443,22 @@ func Run(args []string, stdout, stderr io.Writer) Result {
 			b.WriteString("\n")
 		}
 		if err := os.WriteFile(checksumPath, []byte(b.String()), 0o644); err != nil {
-			fmt.Fprintln(stderr, err.Error())
+			_, _ = fmt.Fprintln(stderr, err.Error())
 			return Result{ExitCode: ExitFailure, Err: err}
 		}
-		fmt.Fprintf(stdout, "Build complete: %d targets written to %s/ with checksums in %s.\n", len(targets), outputDir, checksumPath)
+		_, _ = fmt.Fprintf(stdout, "Build complete: %d targets written to %s/ with checksums in %s.\n", len(targets), outputDir, checksumPath)
 		return Result{ExitCode: ExitOK}
 	}
 
 	if len(args) >= 1 && args[0] == "release" {
 		draft, notesFileOverride, err := parseReleaseArgs(args[1:])
 		if err != nil {
-			fmt.Fprintln(stderr, err.Error())
+			_, _ = fmt.Fprintln(stderr, err.Error())
 			return Result{ExitCode: ExitUsage, Err: err}
 		}
 		cfg, err := config.Load("")
 		if err != nil {
-			fmt.Fprintln(stderr, err.Error())
+			_, _ = fmt.Fprintln(stderr, err.Error())
 			return Result{ExitCode: ExitUsage, Err: err}
 		}
 		buildRes := Run([]string{"build"}, io.Discard, stderr)
@@ -470,23 +470,23 @@ func Run(args []string, stdout, stderr io.Writer) Result {
 		}
 		version, err := findVersion(cfg.Release.VersionSource)
 		if err != nil {
-			fmt.Fprintln(stderr, err.Error())
+			_, _ = fmt.Fprintln(stderr, err.Error())
 			return Result{ExitCode: ExitUsage, Err: err}
 		}
 		tag := cfg.Release.TagPrefix + version
 		exists, err := tagExists(tag)
 		if err != nil {
-			fmt.Fprintln(stderr, err.Error())
+			_, _ = fmt.Fprintln(stderr, err.Error())
 			return Result{ExitCode: ExitReleaseFailure, Err: err}
 		}
 		if exists {
-			err := fmt.Errorf("release tag %s already exists. Refusing to mutate existing release implicitly.", tag)
-			fmt.Fprintln(stderr, err.Error())
+			err := fmt.Errorf("release tag %s already exists. refusing to mutate existing release implicitly", tag)
+			_, _ = fmt.Fprintln(stderr, err.Error())
 			return Result{ExitCode: ExitReleaseFailure, Err: err}
 		}
 		artifacts, err := listReleaseArtifacts(cfg.Release.ArtifactDir, cfg.Release.IncludeChecksums)
 		if err != nil {
-			fmt.Fprintln(stderr, err.Error())
+			_, _ = fmt.Fprintln(stderr, err.Error())
 			return Result{ExitCode: ExitReleaseFailure, Err: err}
 		}
 		notesFile := ""
@@ -500,19 +500,19 @@ func Run(args []string, stdout, stderr io.Writer) Result {
 			}
 			if notesFile == "" {
 				err := errors.New("release notes mode is notes-file but no notes file was provided. Set release.releaseNotesFilePath or pass --notes-file")
-				fmt.Fprintln(stderr, err.Error())
+				_, _ = fmt.Fprintln(stderr, err.Error())
 				return Result{ExitCode: ExitUsage, Err: err}
 			}
 		default:
 			err := fmt.Errorf("invalid release.notesMode %q", cfg.Release.NotesMode)
-			fmt.Fprintln(stderr, err.Error())
+			_, _ = fmt.Fprintln(stderr, err.Error())
 			return Result{ExitCode: ExitUsage, Err: err}
 		}
 		if err := createRelease(tag, artifacts, cfg.Release.NotesMode, notesFile, draft); err != nil {
-			fmt.Fprintln(stderr, err.Error())
+			_, _ = fmt.Fprintln(stderr, err.Error())
 			return Result{ExitCode: ExitReleaseFailure, Err: err}
 		}
-		fmt.Fprintf(stdout, "Release %s published from %s with checksums %s.\n", tag, cfg.Release.ArtifactDir, ternary(cfg.Release.IncludeChecksums, "attached", "skipped"))
+		_, _ = fmt.Fprintf(stdout, "Release %s published from %s with checksums %s.\n", tag, cfg.Release.ArtifactDir, ternary(cfg.Release.IncludeChecksums, "attached", "skipped"))
 		return Result{ExitCode: ExitOK}
 	}
 
@@ -520,7 +520,7 @@ func Run(args []string, stdout, stderr io.Writer) Result {
 	hasJSON := contains(args, "--json")
 
 	if hasJSON && !hasVersion {
-		fmt.Fprintln(stderr, "invalid invocation: --json must be used with --version")
+		_, _ = fmt.Fprintln(stderr, "invalid invocation: --json must be used with --version")
 		return Result{ExitCode: ExitUsage, Err: errors.New("invalid invocation")}
 	}
 
@@ -534,7 +534,7 @@ func Run(args []string, stdout, stderr io.Writer) Result {
 			}
 			return Result{ExitCode: ExitOK}
 		}
-		fmt.Fprintf(
+		_, _ = fmt.Fprintf(
 			stdout,
 			"gh-flarebyte %s commitId=%s date=%s os=%s arch=%s goVersion=%s\n",
 			v.Version,
@@ -547,8 +547,8 @@ func Run(args []string, stdout, stderr io.Writer) Result {
 		return Result{ExitCode: ExitOK}
 	}
 
-	fmt.Fprintf(stderr, "unknown arguments: %v\n", args)
-	fmt.Fprintln(stderr, "run `gh flarebyte --help` for usage")
+	_, _ = fmt.Fprintf(stderr, "unknown arguments: %v\n", args)
+	_, _ = fmt.Fprintln(stderr, "run `gh flarebyte --help` for usage")
 	return Result{ExitCode: ExitUsage, Err: errors.New("invalid invocation")}
 }
 
@@ -568,18 +568,19 @@ func currentVersionInfo() VersionInfo {
 }
 
 func printHelp(w io.Writer) {
-	fmt.Fprintln(w, "gh flarebyte - manage GitHub repository state from .gh-flarebyte.cue")
-	fmt.Fprintln(w, "")
-	fmt.Fprintln(w, "Usage:")
-	fmt.Fprintln(w, "  gh flarebyte --help")
-	fmt.Fprintln(w, "  gh flarebyte --version [--json]")
-	fmt.Fprintln(w, "  gh flarebyte build [--target os-arch] [--output-dir path]")
-	fmt.Fprintln(w, "  gh flarebyte release [--draft] [--notes-file path]")
-	fmt.Fprintln(w, "  gh flarebyte repo init --repo owner/name [--overwrite]")
-	fmt.Fprintln(w, "  gh flarebyte repo update [--repo owner/name] [--confirm-deletions] [--accept-visibility-change-consequences]")
-	fmt.Fprintln(w, "  gh flarebyte repo audit [--repo owner/name] [--json]")
-	fmt.Fprintln(w, "  gh flarebyte repos mine --org my-org [--json]")
-	fmt.Fprintln(w, "  gh flarebyte config validate [--config path]")
+	_, _ = io.WriteString(w, `gh flarebyte - manage GitHub repository state from .gh-flarebyte.cue
+
+Usage:
+  gh flarebyte --help
+  gh flarebyte --version [--json]
+  gh flarebyte build [--target os-arch] [--output-dir path]
+  gh flarebyte release [--draft] [--notes-file path]
+  gh flarebyte repo init --repo owner/name [--overwrite]
+  gh flarebyte repo update [--repo owner/name] [--confirm-deletions] [--accept-visibility-change-consequences]
+  gh flarebyte repo audit [--repo owner/name] [--json]
+  gh flarebyte repos mine --org my-org [--json]
+  gh flarebyte config validate [--config path]
+`)
 }
 
 type UpdatePlan struct {
@@ -938,7 +939,7 @@ func partialUpdateFailure(stderr io.Writer, cause error, settingsApplied bool, t
 		prefix = fmt.Sprintf("Update stopped after %s were applied.", strings.Join(parts, " and "))
 	}
 	msg := fmt.Sprintf("%s Label sync failed, and no rollback was attempted. Fix the error and rerun gh flarebyte repo update. Cause: %v", prefix, cause)
-	fmt.Fprintln(stderr, msg)
+	_, _ = fmt.Fprintln(stderr, msg)
 	return Result{ExitCode: ExitFailure, Err: cause}
 }
 
@@ -1103,7 +1104,7 @@ func packageTarGz(binaryPath string, artifactPath string) error {
 	if err != nil {
 		return err
 	}
-	defer src.Close()
+	defer func() { _ = src.Close() }()
 	info, err := src.Stat()
 	if err != nil {
 		return err
@@ -1112,11 +1113,11 @@ func packageTarGz(binaryPath string, artifactPath string) error {
 	if err != nil {
 		return err
 	}
-	defer out.Close()
+	defer func() { _ = out.Close() }()
 	gw := gzip.NewWriter(out)
-	defer gw.Close()
+	defer func() { _ = gw.Close() }()
 	tw := tar.NewWriter(gw)
-	defer tw.Close()
+	defer func() { _ = tw.Close() }()
 	hdr := &tar.Header{
 		Name:    filepath.Base(binaryPath),
 		Mode:    0o755,
@@ -1141,9 +1142,9 @@ func packageZip(binaryPath string, artifactPath string) error {
 	if err != nil {
 		return err
 	}
-	defer out.Close()
+	defer func() { _ = out.Close() }()
 	zw := zip.NewWriter(out)
-	defer zw.Close()
+	defer func() { _ = zw.Close() }()
 	hdr := &zip.FileHeader{
 		Name:   path.Base(binaryPath),
 		Method: zip.Deflate,

@@ -48,6 +48,7 @@ node_modules/
 .gocache/
 .gomodcache/
 .cache/
+.golangci-lint-cache/
 
 # Local GOPATH when sandboxed
 _gopath/

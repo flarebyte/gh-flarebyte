@@ -706,12 +706,12 @@ func TestPackageBinaryArchiveTarGzAndZip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open tar.gz failed: %v", err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	gr, err := gzip.NewReader(f)
 	if err != nil {
 		t.Fatalf("gzip reader failed: %v", err)
 	}
-	defer gr.Close()
+	defer func() { _ = gr.Close() }()
 	tr := tar.NewReader(gr)
 	hdr, err := tr.Next()
 	if err != nil {
@@ -740,7 +740,7 @@ func TestPackageBinaryArchiveTarGzAndZip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open zip failed: %v", err)
 	}
-	defer zr.Close()
+	defer func() { _ = zr.Close() }()
 	if len(zr.File) != 1 {
 		t.Fatalf("expected one zip entry, got %d", len(zr.File))
 	}
@@ -751,7 +751,7 @@ func TestPackageBinaryArchiveTarGzAndZip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open zip entry failed: %v", err)
 	}
-	defer rc.Close()
+	defer func() { _ = rc.Close() }()
 	winContent, err := io.ReadAll(rc)
 	if err != nil {
 		t.Fatalf("read zip content failed: %v", err)
