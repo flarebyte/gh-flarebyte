@@ -1254,6 +1254,9 @@ func listReleaseArtifacts(artifactDir string, includeChecksums bool) ([]string, 
 }
 
 func ghTagExists(tag string) (bool, error) {
+	if os.Getenv("GH_FLAREBYTE_FAKE_RELEASE") == "1" {
+		return false, nil
+	}
 	cmd := exec.Command("gh", "release", "view", tag)
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
@@ -1274,6 +1277,9 @@ func ghTagExists(tag string) (bool, error) {
 }
 
 func ghCreateRelease(tag string, artifacts []string, notesMode string, notesFile string, draft bool) error {
+	if os.Getenv("GH_FLAREBYTE_FAKE_RELEASE") == "1" {
+		return nil
+	}
 	args := []string{"release", "create", tag}
 	args = append(args, artifacts...)
 	switch notesMode {
