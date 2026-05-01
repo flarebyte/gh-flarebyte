@@ -68,9 +68,13 @@ func handleBuild(args []string, stdout, stderr io.Writer) Result {
 			_, _ = fmt.Fprintln(stderr, msg)
 			return Result{ExitCode: ExitBuildFailure, Err: err}
 		}
-		artifactName := binBase + ".tar.gz"
+		artifactBase := cfg.Project.Repo
+		if cfg.Build.ArtifactTargetSuffix {
+			artifactBase = binBase
+		}
+		artifactName := artifactBase + ".tar.gz"
 		if goos == "windows" {
-			artifactName = binBase + ".zip"
+			artifactName = artifactBase + ".zip"
 		}
 		artifactPath := filepath.Join(outputDir, artifactName)
 		if err := packageBinary(binPath, target, artifactPath); err != nil {

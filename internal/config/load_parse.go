@@ -73,6 +73,7 @@ func parseCueConfig(raw string) (Config, error) {
 	if err != nil {
 		return cfg, err
 	}
+	cfg.Build.ArtifactTargetSuffix = extractOptionalBoolField(raw, "artifactTargetSuffix", true)
 	cfg.Repository.Description, err = extractStringField(raw, "description")
 	if err != nil {
 		return cfg, err
@@ -152,6 +153,15 @@ func extractBoolField(raw, field string) (bool, error) {
 		return false, fmt.Errorf("missing required bool field %s", field)
 	}
 	return m[1] == "true", nil
+}
+
+func extractOptionalBoolField(raw, field string, fallback bool) bool {
+	pattern := regexp.MustCompile(fmt.Sprintf(`(?m)\b%s:\s*(true|false)\b`, regexp.QuoteMeta(field)))
+	m := pattern.FindStringSubmatch(raw)
+	if len(m) < 2 {
+		return fallback
+	}
+	return m[1] == "true"
 }
 
 func extractStringListBlock(raw, field string) ([]string, error) {

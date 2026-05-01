@@ -224,6 +224,7 @@ build: {
 	language:     "go"
 	outputDir:    "build"
 	checksumFile: "build/checksums.txt"
+	artifactTargetSuffix: true
 	targets: [
 		"linux-amd64",
 		"darwin-arm64",

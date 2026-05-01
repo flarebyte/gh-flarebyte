@@ -32,17 +32,16 @@ BUILD_DATE ?= unknown
 GO_VERSION ?= $(shell $(GO) version | awk '{print $$3}')
 GO_LDFLAGS := -X github.com/flarebyte/gh-flarebyte/internal/buildinfo.Version=$(VERSION) -X github.com/flarebyte/gh-flarebyte/internal/buildinfo.CommitID=$(COMMIT) -X github.com/flarebyte/gh-flarebyte/internal/buildinfo.Date=$(BUILD_DATE) -X github.com/flarebyte/gh-flarebyte/internal/buildinfo.GoVersion=$(GO_VERSION)
 
-build: build-go build-dist
+build: build-dist
 
 build-go:
 	mkdir -p $(TMP_DIR)
 	mkdir -p $(E2E_BIN_DIR)
 	$(GO_ENV) $(GO) build -ldflags "$(GO_LDFLAGS)" -o $(CLI_BIN) ./cmd/gh-flarebyte
 
-build-dist:
+build-dist: build-go
 	mkdir -p $(TMP_DIR)
-	mkdir -p $(BUILD_DIR)
-	$(BUN_ENV) $(BUN) run build-go.ts
+	$(CLI_BIN) build
 
 test: test-go test-e2e
 
@@ -159,7 +158,7 @@ help:
 	@printf "Targets:\n"
 	@printf "  build        Build the E2E binary and release artifacts.\n"
 	@printf "  build-go     Build the Go CLI into .e2e-bin/ for local and E2E use.\n"
-	@printf "  build-dist   Build release binaries for macOS ARM64 and Linux AMD64 into build/.\n"
+	@printf "  build-dist   Build artifacts via local gh-flarebyte build config.\n"
 	@printf "  test         Run Go tests and Bun E2E tests.\n"
 	@printf "  test-go      Run Go test targets.\n"
 	@printf "  test-unit    Run verbose Go tests and print coverage summary.\n"

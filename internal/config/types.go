@@ -38,10 +38,11 @@ type LabelConfig struct {
 }
 
 type BuildConfig struct {
-	Language     string   `json:"language"`
-	OutputDir    string   `json:"outputDir"`
-	ChecksumFile string   `json:"checksumFile"`
-	Targets      []string `json:"targets"`
+	Language             string   `json:"language"`
+	OutputDir            string   `json:"outputDir"`
+	ChecksumFile         string   `json:"checksumFile"`
+	Targets              []string `json:"targets"`
+	ArtifactTargetSuffix bool     `json:"artifactTargetSuffix"`
 }
 
 type ReleaseConfigRaw struct {

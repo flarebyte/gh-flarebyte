@@ -67,6 +67,7 @@ build: {
   language: "go"
   outputDir: "build"
   checksumFile: "build/checksums.txt"
+  artifactTargetSuffix: true
   targets: ["linux-amd64", "darwin-arm64"]
 }
 
@@ -95,4 +96,5 @@ release: {
 - Topics are managed as a flat list of strings.
 - Labels are managed as structured objects with `name`, `color`, and `description`.
 - Build is Go-first today, with Dart reserved in the config for later.
+- `build.artifactTargetSuffix` controls whether artifact names include `-os-arch` suffixes.
 - Release publication uses the build outputs already produced by `gh flarebyte build`.
