@@ -1,0 +1,13 @@
+locator: internal/cli/root_test.go
+meta:
+  function_list:
+    - baseRepoMetadata
+    - setupTempWorkdirWithConfig
+    - stubBuildArtifacts
+    - stubReleaseFlow
+    - stubRepoInitIO
+    - testConfigCue
+  import_files_list:
+    - os
+    - testing
+  language: go

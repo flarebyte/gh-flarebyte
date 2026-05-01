@@ -1,0 +1,12 @@
+locator: internal/cli/cmd_build.go
+meta:
+  function_list:
+    - handleBuild
+  import_files_list:
+    - fmt
+    - io
+    - os
+    - path/filepath
+    - sort
+    - strings
+  language: go

@@ -1,0 +1,21 @@
+locator: internal/cli/build_release_test.go
+meta:
+  function_list:
+    - TestPackageBinaryArchiveTarGzAndZip
+    - TestResolveVersionFromSourceYAMLAndJSON
+    - TestRunBuildRejectsUnknownConfiguredTargetFilter
+    - TestRunBuildSuccessWritesChecksumAndSummary
+    - TestRunReleaseFailsWhenTagExists
+    - TestRunReleaseNotesFileModeRequiresPath
+    - TestRunReleaseSuccess
+  import_files_list:
+    - archive/tar
+    - archive/zip
+    - bytes
+    - compress/gzip
+    - io
+    - os
+    - path/filepath
+    - strings
+    - testing
+  language: go

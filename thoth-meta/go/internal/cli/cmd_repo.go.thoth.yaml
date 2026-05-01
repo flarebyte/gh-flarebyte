@@ -1,0 +1,13 @@
+locator: internal/cli/cmd_repo.go
+meta:
+  function_list:
+    - handleRepoAudit
+    - handleRepoInit
+    - handleRepoUpdate
+    - handleReposMine
+  import_files_list:
+    - encoding/json
+    - fmt
+    - github.com/flarebyte/gh-flarebyte/internal/config
+    - io
+  language: go

@@ -1,0 +1,11 @@
+locator: internal/cli/cmd_common.go
+meta:
+  function_list:
+    - loadConfigOrUsage
+    - loadRepoContext
+    - resolveRepoOrConfigDefault
+  import_files_list:
+    - fmt
+    - github.com/flarebyte/gh-flarebyte/internal/config
+    - io
+  language: go

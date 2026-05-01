@@ -1,0 +1,11 @@
+locator: internal/config/config_test.go
+meta:
+  function_list:
+    - TestLoadInvalidBuildTarget
+    - TestLoadInvalidNotesFilePath
+    - TestLoadValidConfig
+  import_files_list:
+    - path/filepath
+    - strings
+    - testing
+  language: go

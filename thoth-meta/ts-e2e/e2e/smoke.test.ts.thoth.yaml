@@ -1,0 +1,17 @@
+locator: e2e/smoke.test.ts
+meta:
+  import_files_list:
+    - ./helpers
+    - bun:test
+    - node:fs/promises
+    - node:path
+    - node:process
+  language: typescript
+  testcase_titles_list:
+    - --help returns usage text
+    - --version --json returns documented shape
+    - gh-flarebyte smoke
+    - repo audit --json returns stable report shape
+    - repo init blocks overwrite unless --overwrite is passed
+    - repo init writes config with defaults on metadata import failure
+    - repos mine --json returns report shape
