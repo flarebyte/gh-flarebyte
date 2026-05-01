@@ -1,0 +1,24 @@
+locator: internal/cli/repo_commands_test.go
+meta:
+  function_list:
+    - TestRunRepoAuditJSONNoDrift
+    - TestRunRepoAuditTextWithDrift
+    - TestRunRepoInitOverwriteWritesImportedMetadata
+    - TestRunRepoInitRejectsExistingWithoutOverwrite
+    - TestRunRepoInitRequiresRepo
+    - TestRunRepoInitWritesDefaultsWhenImportFails
+    - TestRunRepoUpdateBlocksDeletionsWithoutConfirmFlag
+    - TestRunRepoUpdateBlocksVisibilityWithoutAcceptFlag
+    - TestRunRepoUpdatePartialFailureMessage
+    - TestRunRepoUpdateSuccessSummary
+    - TestRunReposMineJSON
+    - TestRunReposMineRequiresOrg
+  import_files_list:
+    - bytes
+    - encoding/json
+    - errors
+    - os
+    - path/filepath
+    - strings
+    - testing
+  language: go

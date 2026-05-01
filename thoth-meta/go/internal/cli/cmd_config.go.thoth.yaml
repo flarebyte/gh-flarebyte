@@ -1,0 +1,11 @@
+locator: internal/cli/cmd_config.go
+meta:
+  function_list:
+    - handleConfigValidate
+    - parseConfigPath
+  import_files_list:
+    - errors
+    - fmt
+    - github.com/flarebyte/gh-flarebyte/internal/config
+    - io
+  language: go

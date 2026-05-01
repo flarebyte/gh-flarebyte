@@ -18,8 +18,6 @@ repository: {
 	topics: [
 		"gh-extension",
 		"github-cli",
-		"git",
-		"flarebyte",
 	]
 	labels: [
 		{
@@ -27,29 +25,7 @@ repository: {
 			color:       "B60205"
 			description: "Something is broken"
 		},
-		{
-			name:        "enhancement"
-			color:       "0E8A16"
-			description: "New feature"
-		},
 	]
-	features: {
-		issues:                        true
-		wiki:                          false
-		projects:                      false
-		discussions:                   false
-		autoMerge:                     true
-		mergeCommit:                   false
-		rebaseMerge:                   false
-		squashMerge:                   true
-		squashMergeCommitMessage:      "pr-title"
-		deleteBranchOnMerge:           true
-		allowForking:                  false
-		allowUpdateBranch:             false
-		advancedSecurity:              true
-		secretScanning:                true
-		secretScanningPushProtection:  true
-	}
 }
 
 build: {
@@ -58,7 +34,6 @@ build: {
 	checksumFile: "build/checksums.txt"
 	targets: [
 		"linux-amd64",
-		"darwin-arm64",
 		"windows-amd64",
 	]
 }

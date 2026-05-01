@@ -1,0 +1,15 @@
+locator: internal/cli/version_config_test.go
+meta:
+  function_list:
+    - TestRunConfigValidateInvalid
+    - TestRunConfigValidateValid
+    - TestRunHelp
+    - TestRunJSONWithoutVersionIsUsageError
+    - TestRunVersionJSON
+    - TestRunVersionPlainText
+  import_files_list:
+    - bytes
+    - encoding/json
+    - strings
+    - testing
+  language: go

@@ -1,0 +1,15 @@
+locator: internal/cli/repo_parse.go
+meta:
+  function_list:
+    - mustAbs
+    - parseRepoAuditArgs
+    - parseRepoInitArgs
+    - parseRepoUpdateArgs
+    - parseReposMineArgs
+    - splitRepo
+  import_files_list:
+    - errors
+    - fmt
+    - path/filepath
+    - strings
+  language: go

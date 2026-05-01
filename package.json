@@ -1,0 +1,12 @@
+{
+  "name": "gh-flarebyte-e2e",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test:e2e": "bun test ./e2e"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "@types/bun": "latest"
+  }
+}

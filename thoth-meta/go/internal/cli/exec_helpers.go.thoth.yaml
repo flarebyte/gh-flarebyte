@@ -1,0 +1,8 @@
+locator: internal/cli/exec_helpers.go
+meta:
+  function_list:
+    - commandError
+  import_files_list:
+    - errors
+    - strings
+  language: go

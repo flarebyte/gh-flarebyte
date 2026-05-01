@@ -1,0 +1,22 @@
+locator: internal/cli/release_helpers.go
+meta:
+  function_list:
+    - ghCreateRelease
+    - ghTagExists
+    - isSemver
+    - listReleaseArtifacts
+    - parseReleaseArgs
+    - resolveVersionFromSource
+    - ternary
+  import_files_list:
+    - bytes
+    - encoding/json
+    - errors
+    - fmt
+    - os
+    - os/exec
+    - path/filepath
+    - regexp
+    - sort
+    - strings
+  language: go

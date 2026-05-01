@@ -1,0 +1,10 @@
+locator: cmd/gh-flarebyte/main.go
+meta:
+  function_list:
+    - main
+  import_files_list:
+    - github.com/flarebyte/gh-flarebyte/internal/buildinfo
+    - github.com/flarebyte/gh-flarebyte/internal/cli
+    - os
+    - runtime
+  language: go

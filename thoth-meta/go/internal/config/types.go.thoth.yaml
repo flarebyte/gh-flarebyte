@@ -1,0 +1,6 @@
+locator: internal/config/types.go
+meta:
+  function_list: []
+  import_files_list:
+    - regexp
+  language: go

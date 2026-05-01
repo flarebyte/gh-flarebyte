@@ -1,0 +1,16 @@
+locator: internal/cli/repo_plan.go
+meta:
+  function_list:
+    - buildAuditReport
+    - buildUpdatePlan
+    - defaultRepoMetadata
+    - diffStrings
+    - partialUpdateFailure
+    - renderCueConfig
+    - stringSlicesEqual
+  import_files_list:
+    - fmt
+    - github.com/flarebyte/gh-flarebyte/internal/config
+    - io
+    - strings
+  language: go

@@ -1,0 +1,22 @@
+locator: internal/cli/repo_gh.go
+meta:
+  function_list:
+    - extractLabelsFromState
+    - extractTopics
+    - ghAddRepoTopic
+    - ghApplyRepoSettings
+    - ghCreateRepoLabel
+    - ghDeleteRepoLabel
+    - ghReadRepoMetadata
+    - ghReadReposMine
+    - ghRemoveRepoTopic
+    - ghUpdateRepoLabel
+    - runGH
+    - runGHReadonly
+  import_files_list:
+    - bytes
+    - encoding/json
+    - os
+    - os/exec
+    - strings
+  language: go

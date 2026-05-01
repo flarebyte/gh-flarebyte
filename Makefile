@@ -16,11 +16,11 @@ GO_MOD_CACHE_DIR := $(ROOT_DIR)/.gomodcache
 GO_LINT_CACHE_DIR := $(ROOT_DIR)/.golangci-lint-cache
 E2E_BIN_DIR := $(ROOT_DIR)/.e2e-bin
 BUILD_DIR := $(ROOT_DIR)/build
-SEER := $(E2E_BIN_DIR)/seer
+CLI_BIN := $(E2E_BIN_DIR)/gh-flarebyte
 GO_PACKAGES := ./...
 GO_ENV := GOTOOLCHAIN=local GOCACHE=$(GO_CACHE_DIR) GOMODCACHE=$(GO_MOD_CACHE_DIR)
 BUN_ENV := TMPDIR=$(TMP_DIR)
-BIOME := $(BUN_ENV) $(BUN) run biome
+BIOME := $(BUN_ENV) $(BUN)x @biomejs/biome
 THOTH := thoth
 FLYB := flyb
 GOLINT_ENV := $(GO_ENV) GOLANGCI_LINT_CACHE=$(GO_LINT_CACHE_DIR)
@@ -29,14 +29,15 @@ COVER_HTML := $(TMP_DIR)/test-unit.coverage.html
 VERSION ?= dev
 COMMIT ?= unknown
 BUILD_DATE ?= unknown
-GO_LDFLAGS := -X github.com/flarebyte/baldrick-seer/internal/buildinfo.Version=$(VERSION) -X github.com/flarebyte/baldrick-seer/internal/buildinfo.Commit=$(COMMIT) -X github.com/flarebyte/baldrick-seer/internal/buildinfo.Date=$(BUILD_DATE)
+GO_VERSION ?= $(shell $(GO) version | awk '{print $$3}')
+GO_LDFLAGS := -X github.com/flarebyte/gh-flarebyte/internal/buildinfo.Version=$(VERSION) -X github.com/flarebyte/gh-flarebyte/internal/buildinfo.CommitID=$(COMMIT) -X github.com/flarebyte/gh-flarebyte/internal/buildinfo.Date=$(BUILD_DATE) -X github.com/flarebyte/gh-flarebyte/internal/buildinfo.GoVersion=$(GO_VERSION)
 
 build: build-go build-dist
 
 build-go:
 	mkdir -p $(TMP_DIR)
 	mkdir -p $(E2E_BIN_DIR)
-	$(GO_ENV) $(GO) build -ldflags "$(GO_LDFLAGS)" -o $(E2E_BIN_DIR)/seer ./cmd/seer
+	$(GO_ENV) $(GO) build -ldflags "$(GO_LDFLAGS)" -o $(CLI_BIN) ./cmd/gh-flarebyte
 
 build-dist:
 	mkdir -p $(TMP_DIR)
@@ -64,7 +65,6 @@ coverage-go: test-unit
 
 test-e2e: build-go
 	mkdir -p $(TMP_DIR)
-	$(BUN_ENV) $(BUN) install
 	$(BUN_ENV) $(BUN) test ./e2e
 
 lint: lint-go lint-e2e
@@ -106,7 +106,7 @@ doc-design:
 doc-decision: build-go
 	mkdir -p doc/decision-meta
 	mkdir -p doc/decision
-	SEER_BIN=$(SEER) sh ./script/generate-decision-docs.sh
+	SEER_BIN=$(CLI_BIN) sh ./script/generate-decision-docs.sh
 
 dup:
 	npx jscpd --format go --min-lines 10 --ignore "**/.gomodcache/**,**/.gocache/**,**/.e2e-bin/**,**/node_modules/**,**/dist/**" --gitignore .
@@ -116,8 +116,9 @@ complexity:
 	scc --sort complexity --by-file -i go . | head -n 15
 	scc --sort complexity --by-file -i ts . | head -n 15
 
-release:
-	$(BUN_ENV) $(BUN) run release-go.ts
+release: build-go
+	mkdir -p $(TMP_DIR)
+	GH_FLAREBYTE_FAKE_RELEASE=$${GH_FLAREBYTE_FAKE_RELEASE:-0} $(CLI_BIN) release
 
 sec:
 	semgrep scan --config auto
@@ -177,7 +178,7 @@ help:
 	@printf "  doc-decision Validate decision configs and regenerate markdown decision reports.\n"
 	@printf "  dup          Run duplicate code detection.\n"
 	@printf "  complexity   Show top Go and TypeScript files by complexity.\n"
-	@printf "  release      Run the local release helper script.\n"
+	@printf "  release      Build CLI then run local gh-flarebyte release.\n"
 	@printf "  sec          Run Semgrep security scan.\n"
 	@printf "  thoth-meta   Refresh thoth metadata for Go, Go tests, and E2E TypeScript.\n"
 	@printf "  check-tools  Report required tool availability as key=value pairs.\n"

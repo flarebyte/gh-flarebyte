@@ -1,0 +1,19 @@
+locator: internal/config/load_parse.go
+meta:
+  function_list:
+    - Load
+    - ResolvePath
+    - extractBoolField
+    - extractLabels
+    - extractOptionalStringField
+    - extractStringField
+    - extractStringListBlock
+    - parseCueConfig
+  import_files_list:
+    - errors
+    - fmt
+    - os
+    - path/filepath
+    - regexp
+    - strings
+  language: go

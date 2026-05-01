@@ -1,0 +1,16 @@
+locator: internal/cli/root.go
+meta:
+  function_list:
+    - Run
+    - contains
+    - currentVersionInfo
+    - printHelp
+  import_files_list:
+    - encoding/json
+    - errors
+    - fmt
+    - github.com/flarebyte/gh-flarebyte/internal/buildinfo
+    - io
+    - os
+    - runtime
+  language: go

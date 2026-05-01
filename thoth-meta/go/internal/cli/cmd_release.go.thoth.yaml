@@ -1,0 +1,8 @@
+locator: internal/cli/cmd_release.go
+meta:
+  function_list:
+    - handleRelease
+  import_files_list:
+    - fmt
+    - io
+  language: go

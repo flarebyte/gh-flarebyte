@@ -42,30 +42,6 @@ project: {
 
 sync: {
 	mode: "push"
-	managedFields: [
-		"description",
-		"defaultBranch",
-		"homepage",
-		"visibility",
-		"template",
-		"topics",
-		"labels",
-		"features.issues",
-		"features.wiki",
-		"features.projects",
-		"features.discussions",
-		"features.autoMerge",
-		"features.mergeCommit",
-		"features.rebaseMerge",
-		"features.squashMerge",
-		"features.squashMergeCommitMessage",
-		"features.deleteBranchOnMerge",
-		"features.allowForking",
-		"features.allowUpdateBranch",
-		"features.advancedSecurity",
-		"features.secretScanning",
-		"features.secretScanningPushProtection",
-	]
 }
 
 repository: {
@@ -291,8 +267,6 @@ export type GhFlarebyteConfig = {
 
 export type SyncPlan = {
   mode: SyncMode;
-  managedFields: string[];
-  dryRun: boolean;
 };
 
 export type DriftItem = {

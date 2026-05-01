@@ -75,8 +75,6 @@ export type GhFlarebyteConfig = {
 
 export type SyncPlan = {
   mode: SyncMode;
-  managedFields: string[];
-  dryRun: boolean;
 };
 
 export type DriftItem = {
