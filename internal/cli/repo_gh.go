@@ -3,7 +3,6 @@ package cli
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"os"
 	"os/exec"
 	"strings"
@@ -22,11 +21,7 @@ func ghReadRepoMetadata(repo string) (RepoMetadata, error) {
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {
-		msg := strings.TrimSpace(stderr.String())
-		if msg == "" {
-			msg = err.Error()
-		}
-		return RepoMetadata{}, errors.New(msg)
+		return RepoMetadata{}, commandError(err, stderr.String())
 	}
 	var payload struct {
 		Description      string `json:"description"`
@@ -124,11 +119,7 @@ func ghReadReposMine(org string) (string, []ContributedRepo, error) {
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {
-		msg := strings.TrimSpace(stderr.String())
-		if msg == "" {
-			msg = err.Error()
-		}
-		return "", nil, errors.New(msg)
+		return "", nil, commandError(err, stderr.String())
 	}
 	var payload struct {
 		Data struct {
@@ -189,48 +180,36 @@ func ghApplyRepoSettings(repo string, desired RepoSettingsPatch) error {
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {
-		msg := strings.TrimSpace(stderr.String())
-		if msg == "" {
-			msg = err.Error()
-		}
-		return errors.New(msg)
+		return commandError(err, stderr.String())
 	}
 	return nil
 }
 
 func ghAddRepoTopic(repo string, topic string) error {
-	if os.Getenv("GH_FLAREBYTE_FAKE_READONLY") == "1" {
-		return nil
-	}
-	return runGH("repo", "edit", repo, "--add-topic", topic)
+	return runGHReadonly("repo", "edit", repo, "--add-topic", topic)
 }
 
 func ghRemoveRepoTopic(repo string, topic string) error {
-	if os.Getenv("GH_FLAREBYTE_FAKE_READONLY") == "1" {
-		return nil
-	}
-	return runGH("repo", "edit", repo, "--remove-topic", topic)
+	return runGHReadonly("repo", "edit", repo, "--remove-topic", topic)
 }
 
 func ghCreateRepoLabel(repo string, label LabelState) error {
-	if os.Getenv("GH_FLAREBYTE_FAKE_READONLY") == "1" {
-		return nil
-	}
-	return runGH("label", "create", label.Name, "--repo", repo, "--color", label.Color, "--description", label.Description, "--force")
+	return runGHReadonly("label", "create", label.Name, "--repo", repo, "--color", label.Color, "--description", label.Description, "--force")
 }
 
 func ghUpdateRepoLabel(repo string, label LabelState) error {
-	if os.Getenv("GH_FLAREBYTE_FAKE_READONLY") == "1" {
-		return nil
-	}
-	return runGH("label", "edit", label.Name, "--repo", repo, "--color", label.Color, "--description", label.Description)
+	return runGHReadonly("label", "edit", label.Name, "--repo", repo, "--color", label.Color, "--description", label.Description)
 }
 
 func ghDeleteRepoLabel(repo string, labelName string) error {
+	return runGHReadonly("label", "delete", labelName, "--repo", repo, "--yes")
+}
+
+func runGHReadonly(args ...string) error {
 	if os.Getenv("GH_FLAREBYTE_FAKE_READONLY") == "1" {
 		return nil
 	}
-	return runGH("label", "delete", labelName, "--repo", repo, "--yes")
+	return runGH(args...)
 }
 
 func runGH(args ...string) error {
@@ -238,11 +217,7 @@ func runGH(args ...string) error {
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {
-		msg := strings.TrimSpace(stderr.String())
-		if msg == "" {
-			msg = err.Error()
-		}
-		return errors.New(msg)
+		return commandError(err, stderr.String())
 	}
 	return nil
 }

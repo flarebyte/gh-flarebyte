@@ -3,8 +3,6 @@ package cli
 import (
 	"fmt"
 	"io"
-
-	"github.com/flarebyte/gh-flarebyte/internal/config"
 )
 
 func handleRelease(args []string, stdout, stderr io.Writer) Result {
@@ -13,10 +11,9 @@ func handleRelease(args []string, stdout, stderr io.Writer) Result {
 		_, _ = fmt.Fprintln(stderr, err.Error())
 		return Result{ExitCode: ExitUsage, Err: err}
 	}
-	cfg, err := config.Load("")
-	if err != nil {
-		_, _ = fmt.Fprintln(stderr, err.Error())
-		return Result{ExitCode: ExitUsage, Err: err}
+	cfg, usage := loadConfigOrUsage(stderr)
+	if usage != nil {
+		return *usage
 	}
 	buildRes := Run([]string{"build"}, io.Discard, stderr)
 	if buildRes.ExitCode != ExitOK {

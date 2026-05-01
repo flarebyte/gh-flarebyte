@@ -59,18 +59,9 @@ func handleRepoAudit(args []string, stdout, stderr io.Writer) Result {
 		_, _ = fmt.Fprintln(stderr, err.Error())
 		return Result{ExitCode: ExitUsage, Err: err}
 	}
-	cfg, err := config.Load("")
-	if err != nil {
-		_, _ = fmt.Fprintln(stderr, err.Error())
-		return Result{ExitCode: ExitUsage, Err: err}
-	}
-	if repo == "" {
-		repo = fmt.Sprintf("%s/%s", cfg.Project.Org, cfg.Project.Repo)
-	}
-	remote, err := readRepoMetadata(repo)
-	if err != nil {
-		_, _ = fmt.Fprintln(stderr, err.Error())
-		return Result{ExitCode: ExitFailure, Err: err}
+	repo, cfg, remote, fail := loadRepoContext(repo, stderr)
+	if fail != nil {
+		return *fail
 	}
 	report := buildAuditReport(repo, cfg, remote)
 	if asJSON {
@@ -99,18 +90,9 @@ func handleRepoUpdate(args []string, stdout, stderr io.Writer) Result {
 		_, _ = fmt.Fprintln(stderr, err.Error())
 		return Result{ExitCode: ExitUsage, Err: err}
 	}
-	cfg, err := config.Load("")
-	if err != nil {
-		_, _ = fmt.Fprintln(stderr, err.Error())
-		return Result{ExitCode: ExitUsage, Err: err}
-	}
-	if repo == "" {
-		repo = fmt.Sprintf("%s/%s", cfg.Project.Org, cfg.Project.Repo)
-	}
-	remote, err := readRepoMetadata(repo)
-	if err != nil {
-		_, _ = fmt.Fprintln(stderr, err.Error())
-		return Result{ExitCode: ExitFailure, Err: err}
+	repo, cfg, remote, fail := loadRepoContext(repo, stderr)
+	if fail != nil {
+		return *fail
 	}
 	plan := buildUpdatePlan(cfg, remote)
 	if plan.VisibilityChange && !acceptVisibility {

@@ -61,11 +61,7 @@ func goBuildTargetBinary(target string, outputPath string) error {
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {
-		msg := strings.TrimSpace(stderr.String())
-		if msg == "" {
-			msg = err.Error()
-		}
-		return errors.New(msg)
+		return commandError(err, stderr.String())
 	}
 	return nil
 }

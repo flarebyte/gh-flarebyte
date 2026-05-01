@@ -59,18 +59,7 @@ func stubReleaseFlow(t *testing.T, version string, tagAlreadyExists bool) {
 }
 
 func baseRepoMetadata() RepoMetadata {
-	return RepoMetadata{
-		Description:   "CLI for landing your git commands right",
-		DefaultBranch: "main",
-		Homepage:      "https://github.com/flarebyte/gh-flarebyte",
-		Visibility:    "public",
-		Template:      false,
-		Topics:        []string{"gh-extension", "github-cli", "git", "flarebyte"},
-		Labels: []LabelState{
-			{Name: "bug", Color: "B60205", Description: "Something is broken"},
-			{Name: "enhancement", Color: "0E8A16", Description: "New feature"},
-		},
-	}
+	return defaultRepoMetadata("flarebyte/gh-flarebyte")
 }
 
 func stubRepoInitIO(t *testing.T, exists bool, readFn func(repo string) (RepoMetadata, error)) {

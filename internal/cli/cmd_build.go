@@ -7,8 +7,6 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
-
-	"github.com/flarebyte/gh-flarebyte/internal/config"
 )
 
 func handleBuild(args []string, stdout, stderr io.Writer) Result {
@@ -17,10 +15,9 @@ func handleBuild(args []string, stdout, stderr io.Writer) Result {
 		_, _ = fmt.Fprintln(stderr, err.Error())
 		return Result{ExitCode: ExitUsage, Err: err}
 	}
-	cfg, err := config.Load("")
-	if err != nil {
-		_, _ = fmt.Fprintln(stderr, err.Error())
-		return Result{ExitCode: ExitUsage, Err: err}
+	cfg, usage := loadConfigOrUsage(stderr)
+	if usage != nil {
+		return *usage
 	}
 	if cfg.Build.Language != "go" {
 		err := fmt.Errorf("build.language %q is not supported yet. Supported values: go", cfg.Build.Language)
