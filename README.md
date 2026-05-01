@@ -17,20 +17,20 @@ Use `gh flarebyte` to keep a GitHub repository aligned with the config checked i
 ## Commands
 
 ### Repo sync
-- `gh flarebyte repo init` creates or seeds `.gh-flarebyte.cue` for a repository.
-- `gh flarebyte repo update` applies the repo config to GitHub.
-- `gh flarebyte repo audit` compares the local config with the live GitHub repository.
+- `gh flarebyte repo init --repo <owner/name> [--overwrite]` creates or seeds `.gh-flarebyte.cue` for a repository.
+- `gh flarebyte repo update [--repo <owner/name>] [--confirm-deletions] [--accept-visibility-change-consequences]` applies the repo config to GitHub.
+- `gh flarebyte repo audit [--repo <owner/name>] [--json]` compares the local config with the live GitHub repository.
 - `gh flarebyte repos mine --org <org>` lists repositories you contribute to in an organization.
 
 ### Build and release
-- `gh flarebyte build` builds the project using the language defined in `.gh-flarebyte.cue`.
-- `gh flarebyte release` publishes a GitHub release from the build outputs.
+- `gh flarebyte build [--target <os-arch>] [--output-dir <path>]` builds the project using the language defined in `.gh-flarebyte.cue`.
+- `gh flarebyte release [--draft] [--notes-file <path>]` builds first, then publishes a GitHub release from the build outputs.
 
 ### Runtime info
 - `gh flarebyte --version` prints the CLI version metadata, including version, commit id, and build date.
 - `gh flarebyte --version --json` prints the same version metadata in a machine-readable JSON shape.
 
-Each command should provide actionable help with `--help`, and error output should explain the problem, the affected config or target, and the next useful command or flag.
+Use `gh flarebyte --help` for command usage. Error output is designed to include the failing config field or target and a practical next step.
 
 ## Config
 The repo config lives in `.gh-flarebyte.cue` and is the source of truth for:
@@ -85,6 +85,11 @@ release: {
 3. Run `gh flarebyte repo update` to sync the repo.
 4. Run `gh flarebyte repo audit` to check for drift.
 5. Run `gh flarebyte build` and `gh flarebyte release` when you are ready to ship.
+
+## Makefile shortcuts
+- `make build-go` builds the local CLI binary at `.e2e-bin/gh-flarebyte`.
+- `make release` runs `.e2e-bin/gh-flarebyte release` (it depends on `build-go`).
+- `GH_FLAREBYTE_FAKE_RELEASE=1 make release` runs the release flow in fake mode (no GitHub mutation).
 
 ## Notes
 - Topics are managed as a flat list of strings.

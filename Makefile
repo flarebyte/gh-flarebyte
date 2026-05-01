@@ -116,8 +116,9 @@ complexity:
 	scc --sort complexity --by-file -i go . | head -n 15
 	scc --sort complexity --by-file -i ts . | head -n 15
 
-release:
-	$(BUN_ENV) $(BUN) run release-go.ts
+release: build-go
+	mkdir -p $(TMP_DIR)
+	GH_FLAREBYTE_FAKE_RELEASE=$${GH_FLAREBYTE_FAKE_RELEASE:-0} $(CLI_BIN) release
 
 sec:
 	semgrep scan --config auto
@@ -177,7 +178,7 @@ help:
 	@printf "  doc-decision Validate decision configs and regenerate markdown decision reports.\n"
 	@printf "  dup          Run duplicate code detection.\n"
 	@printf "  complexity   Show top Go and TypeScript files by complexity.\n"
-	@printf "  release      Run the local release helper script.\n"
+	@printf "  release      Build CLI then run local gh-flarebyte release.\n"
 	@printf "  sec          Run Semgrep security scan.\n"
 	@printf "  thoth-meta   Refresh thoth metadata for Go, Go tests, and E2E TypeScript.\n"
 	@printf "  check-tools  Report required tool availability as key=value pairs.\n"
