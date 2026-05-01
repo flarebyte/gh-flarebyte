@@ -125,6 +125,18 @@ func listReleaseArtifacts(artifactDir string, includeChecksums bool, repoName st
 	return artifacts, nil
 }
 
+func ensureUniqueArtifactBasenames(artifacts []string) error {
+	seen := make(map[string]string, len(artifacts))
+	for _, artifact := range artifacts {
+		base := filepath.Base(artifact)
+		if prev, ok := seen[base]; ok && prev != artifact {
+			return fmt.Errorf("release artifacts include duplicate filename %q (%s and %s). Use build.artifactTargetSuffix=true for multi-target releases or release one target at a time", base, prev, artifact)
+		}
+		seen[base] = artifact
+	}
+	return nil
+}
+
 func ghTagExists(tag string) (bool, error) {
 	if os.Getenv("GH_FLAREBYTE_FAKE_RELEASE") == "1" {
 		return false, nil

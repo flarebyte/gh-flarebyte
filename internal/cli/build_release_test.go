@@ -179,3 +179,25 @@ func TestRunReleaseSuccess(t *testing.T) {
 		t.Fatalf("unexpected release result")
 	}
 }
+
+func TestRunReleaseFailsWithDuplicateArtifactBasenames(t *testing.T) {
+	cfg := strings.Replace(testConfigCue(), `targets: [
+		"linux-amd64",
+	]`, `artifactTargetSuffix: false
+	targets: [
+		"linux-amd64",
+		"darwin-arm64",
+	]`, 1)
+	cfg = strings.Replace(cfg, `artifactTargetSuffix: true`, `artifactTargetSuffix: false`, 1)
+	_ = setupTempWorkdirWithConfig(t, cfg)
+	stubReleaseFlow(t, "1.2.3", false)
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	result := Run([]string{"release"}, &out, &errOut)
+	if result.ExitCode != ExitUsage {
+		t.Fatalf("expected usage failure for duplicate basenames, got %d", result.ExitCode)
+	}
+	if !strings.Contains(errOut.String(), "duplicate filename") {
+		t.Fatalf("expected duplicate filename message, got: %s", errOut.String())
+	}
+}

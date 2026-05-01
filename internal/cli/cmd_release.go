@@ -48,6 +48,10 @@ func handleRelease(args []string, stdout, stderr io.Writer) Result {
 		_, _ = fmt.Fprintln(stderr, err.Error())
 		return Result{ExitCode: ExitReleaseFailure, Err: err}
 	}
+	if err := ensureUniqueArtifactBasenames(artifacts); err != nil {
+		_, _ = fmt.Fprintln(stderr, err.Error())
+		return Result{ExitCode: ExitUsage, Err: err}
+	}
 	notesFile := ""
 	switch cfg.Release.NotesMode {
 	case "generate-notes":
