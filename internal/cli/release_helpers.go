@@ -89,7 +89,7 @@ func listReleaseArtifacts(artifactDir string, includeChecksums bool, repoName st
 	if artifactTargetSuffix {
 		artifactPattern = regexp.MustCompile("^" + regexp.QuoteMeta(repoName) + `-(linux|darwin|windows)-(amd64|arm64)\.(tar\.gz|zip)$`)
 	} else {
-		artifactPattern = regexp.MustCompile("^" + regexp.QuoteMeta(repoName) + `\.(tar\.gz|zip)$`)
+		artifactPattern = regexp.MustCompile("^" + regexp.QuoteMeta(repoName) + `(?:-(linux|darwin|windows)-(amd64|arm64))?\.(tar\.gz|zip)$`)
 	}
 	artifacts := make([]string, 0)
 	for _, e := range entries {

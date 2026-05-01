@@ -56,10 +56,6 @@ func Validate(cfg Config) error {
 			return fmt.Errorf("invalid build.targets entry %q: expected os-arch format such as linux-amd64 or windows-amd64", target)
 		}
 	}
-	if cfg.Release.ArtifactTargetSuffix != cfg.Build.ArtifactTargetSuffix {
-		return errors.New("invalid release.artifactTargetSuffix: must match build.artifactTargetSuffix so release consumes the build output naming scheme")
-	}
-
 	switch cfg.Release.NotesMode {
 	case "generate-notes", "notes-from-tag":
 	case "notes-file":

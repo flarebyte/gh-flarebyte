@@ -49,10 +49,6 @@ func parseCueConfig(raw string) (Config, error) {
 	if err != nil {
 		return cfg, err
 	}
-	releaseBlock, err := extractObjectBlock(raw, "release")
-	if err != nil {
-		return cfg, err
-	}
 	cfg.Project.Org, err = extractStringField(raw, "org")
 	if err != nil {
 		return cfg, err
@@ -128,7 +124,6 @@ func parseCueConfig(raw string) (Config, error) {
 	if err != nil {
 		return cfg, err
 	}
-	cfg.Release.ArtifactTargetSuffix = extractOptionalBoolField(releaseBlock, "artifactTargetSuffix", true)
 	includeChecksums, err := extractBoolField(raw, "includeChecksums")
 	if err != nil {
 		return cfg, err

@@ -76,7 +76,6 @@ release: {
   tagPrefix: "v"
   notesMode: "generate-notes"
   artifactDir: "build"
-  artifactTargetSuffix: true
   includeChecksums: true
 }
 ```
@@ -99,5 +98,4 @@ release: {
 - Build is Go-first today, with Dart reserved in the config for later.
 - `build.artifactTargetSuffix` controls whether artifact names include `-os-arch` suffixes.
   - when `false` with multiple targets, artifacts are written under per-target subdirectories to avoid filename collisions.
-- `release.artifactTargetSuffix` must match the build setting so release selects the expected artifact names.
 - Release publication uses the build outputs already produced by `gh flarebyte build`.

@@ -15,11 +15,6 @@ func handleRelease(args []string, stdout, stderr io.Writer) Result {
 	if usage != nil {
 		return *usage
 	}
-	if cfg.Release.ArtifactTargetSuffix != cfg.Build.ArtifactTargetSuffix {
-		err := fmt.Errorf("release.artifactTargetSuffix (%v) must match build.artifactTargetSuffix (%v)", cfg.Release.ArtifactTargetSuffix, cfg.Build.ArtifactTargetSuffix)
-		_, _ = fmt.Fprintln(stderr, err.Error())
-		return Result{ExitCode: ExitUsage, Err: err}
-	}
 	buildRes := Run([]string{"build"}, io.Discard, stderr)
 	if buildRes.ExitCode != ExitOK {
 		if buildRes.ExitCode == ExitBuildFailure {
@@ -43,7 +38,7 @@ func handleRelease(args []string, stdout, stderr io.Writer) Result {
 		_, _ = fmt.Fprintln(stderr, err.Error())
 		return Result{ExitCode: ExitReleaseFailure, Err: err}
 	}
-	artifacts, err := listReleaseArtifacts(cfg.Release.ArtifactDir, cfg.Release.IncludeChecksums, cfg.Project.Repo, cfg.Release.ArtifactTargetSuffix)
+	artifacts, err := listReleaseArtifacts(cfg.Release.ArtifactDir, cfg.Release.IncludeChecksums, cfg.Project.Repo, cfg.Build.ArtifactTargetSuffix)
 	if err != nil {
 		_, _ = fmt.Fprintln(stderr, err.Error())
 		return Result{ExitCode: ExitReleaseFailure, Err: err}

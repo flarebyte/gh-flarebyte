@@ -108,6 +108,5 @@ release: {
 	tagPrefix:        "v"
 	notesMode:        "generate-notes"
 	artifactDir:      "build"
-	artifactTargetSuffix: false
 	includeChecksums: true
 }

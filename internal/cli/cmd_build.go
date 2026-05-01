@@ -73,7 +73,7 @@ func handleBuild(args []string, stdout, stderr io.Writer) Result {
 			return Result{ExitCode: ExitBuildFailure, Err: err}
 		}
 		artifactBase := cfg.Project.Repo
-		if cfg.Build.ArtifactTargetSuffix {
+		if cfg.Build.ArtifactTargetSuffix || len(targets) > 1 {
 			artifactBase = binBase
 		}
 		artifactName := artifactBase + ".tar.gz"

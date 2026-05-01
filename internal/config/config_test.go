@@ -79,12 +79,11 @@ build: {
 }
 
 release: {
-	versionSource:    "main.project.yaml"
-	tagPrefix:        "v"
-	notesMode:        "generate-notes"
-	artifactDir:      "build"
-	artifactTargetSuffix: false
-	includeChecksums: true
+	versionSource:        "main.project.yaml"
+	tagPrefix:            "v"
+	notesMode:            "generate-notes"
+	artifactDir:          "build"
+	includeChecksums:     true
 }
 `
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
@@ -96,55 +95,5 @@ release: {
 	}
 	if cfg.Build.ArtifactTargetSuffix {
 		t.Fatalf("expected build.artifactTargetSuffix=false")
-	}
-}
-
-func TestLoadInvalidReleaseArtifactTargetSuffixMismatch(t *testing.T) {
-	tmp := t.TempDir()
-	path := filepath.Join(tmp, "invalid-release-artifact-suffix-mismatch.cue")
-	content := `package ghflarebyte
-
-project: {
-	org:  "flarebyte"
-	repo: "gh-flarebyte"
-}
-
-sync: {
-	mode: "push"
-}
-
-repository: {
-	description:   "CLI for landing your git commands right"
-	defaultBranch: "main"
-	homepage:      "https://github.com/flarebyte/gh-flarebyte"
-	visibility:    "public"
-	template:      false
-	topics: ["gh-extension"]
-	labels: [{name: "bug", color: "B60205"}]
-}
-
-build: {
-	language:             "go"
-	outputDir:            "build"
-	checksumFile:         "build/checksums.txt"
-	artifactTargetSuffix: false
-	targets: ["linux-amd64"]
-}
-
-release: {
-	versionSource:        "main.project.yaml"
-	tagPrefix:            "v"
-	notesMode:            "generate-notes"
-	artifactDir:          "build"
-	artifactTargetSuffix: true
-	includeChecksums:     true
-}
-`
-	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
-		t.Fatalf("write temp config failed: %v", err)
-	}
-	_, err := Load(path)
-	if err == nil || !strings.Contains(err.Error(), "release.artifactTargetSuffix") {
-		t.Fatalf("expected release.artifactTargetSuffix mismatch error, got: %v", err)
 	}
 }

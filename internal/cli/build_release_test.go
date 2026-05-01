@@ -71,10 +71,10 @@ func TestRunBuildWithoutSuffixUsesTargetSubdirsForMultipleTargets(t *testing.T) 
 	if result.ExitCode != ExitOK {
 		t.Fatalf("expected exit code %d, got %d (%s)", ExitOK, result.ExitCode, errOut.String())
 	}
-	if _, err := os.Stat(filepath.Join("dist", "linux-amd64", "gh-flarebyte.tar.gz")); err != nil {
+	if _, err := os.Stat(filepath.Join("dist", "linux-amd64", "gh-flarebyte-linux-amd64.tar.gz")); err != nil {
 		t.Fatalf("expected linux artifact in target subdir: %v", err)
 	}
-	if _, err := os.Stat(filepath.Join("dist", "darwin-arm64", "gh-flarebyte.tar.gz")); err != nil {
+	if _, err := os.Stat(filepath.Join("dist", "darwin-arm64", "gh-flarebyte-darwin-arm64.tar.gz")); err != nil {
 		t.Fatalf("expected darwin artifact in target subdir: %v", err)
 	}
 }
@@ -180,7 +180,7 @@ func TestRunReleaseSuccess(t *testing.T) {
 	}
 }
 
-func TestRunReleaseFailsWithDuplicateArtifactBasenames(t *testing.T) {
+func TestRunReleaseSupportsNoSuffixModeWithMultipleTargets(t *testing.T) {
 	cfg := strings.Replace(testConfigCue(), `targets: [
 		"linux-amd64",
 	]`, `artifactTargetSuffix: false
@@ -191,13 +191,18 @@ func TestRunReleaseFailsWithDuplicateArtifactBasenames(t *testing.T) {
 	cfg = strings.Replace(cfg, `artifactTargetSuffix: true`, `artifactTargetSuffix: false`, 1)
 	_ = setupTempWorkdirWithConfig(t, cfg)
 	stubReleaseFlow(t, "1.2.3", false)
+	var capturedArtifacts []string
+	createRelease = func(tag string, artifacts []string, notesMode string, notesFile string, draft bool) error {
+		capturedArtifacts = append([]string{}, artifacts...)
+		return nil
+	}
 	var out bytes.Buffer
 	var errOut bytes.Buffer
 	result := Run([]string{"release"}, &out, &errOut)
-	if result.ExitCode != ExitUsage {
-		t.Fatalf("expected usage failure for duplicate basenames, got %d", result.ExitCode)
+	if result.ExitCode != ExitOK {
+		t.Fatalf("expected release success, got %d (%s)", result.ExitCode, errOut.String())
 	}
-	if !strings.Contains(errOut.String(), "duplicate filename") {
-		t.Fatalf("expected duplicate filename message, got: %s", errOut.String())
+	if len(capturedArtifacts) == 0 {
+		t.Fatalf("expected captured artifacts")
 	}
 }
