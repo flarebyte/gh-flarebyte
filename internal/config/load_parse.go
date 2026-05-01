@@ -45,6 +45,14 @@ func Load(path string) (Config, error) {
 func parseCueConfig(raw string) (Config, error) {
 	var cfg Config
 	var err error
+	buildBlock, err := extractObjectBlock(raw, "build")
+	if err != nil {
+		return cfg, err
+	}
+	releaseBlock, err := extractObjectBlock(raw, "release")
+	if err != nil {
+		return cfg, err
+	}
 	cfg.Project.Org, err = extractStringField(raw, "org")
 	if err != nil {
 		return cfg, err
@@ -73,7 +81,7 @@ func parseCueConfig(raw string) (Config, error) {
 	if err != nil {
 		return cfg, err
 	}
-	cfg.Build.ArtifactTargetSuffix = extractOptionalBoolField(raw, "artifactTargetSuffix", true)
+	cfg.Build.ArtifactTargetSuffix = extractOptionalBoolField(buildBlock, "artifactTargetSuffix", true)
 	cfg.Repository.Description, err = extractStringField(raw, "description")
 	if err != nil {
 		return cfg, err
@@ -120,12 +128,26 @@ func parseCueConfig(raw string) (Config, error) {
 	if err != nil {
 		return cfg, err
 	}
+	cfg.Release.ArtifactTargetSuffix = extractOptionalBoolField(releaseBlock, "artifactTargetSuffix", true)
 	includeChecksums, err := extractBoolField(raw, "includeChecksums")
 	if err != nil {
 		return cfg, err
 	}
 	cfg.Release.IncludeChecksums = includeChecksums
 	return cfg, nil
+}
+
+func extractObjectBlock(raw, field string) (string, error) {
+	open := strings.Index(raw, field+": {")
+	if open == -1 {
+		return "", fmt.Errorf("missing required object field %s", field)
+	}
+	start := open + len(field+": {")
+	end := strings.Index(raw[start:], "\n}")
+	if end == -1 {
+		return "", fmt.Errorf("malformed object field %s", field)
+	}
+	return raw[start : start+end], nil
 }
 
 func extractStringField(raw, field string) (string, error) {

@@ -35,7 +35,7 @@ func stubBuildArtifacts(t *testing.T) {
 	buildTargetBinary = func(target string, outputPath string) error {
 		return os.WriteFile(outputPath, []byte("bin"), 0o755)
 	}
-	packageBinary = func(binaryPath, target, artifactPath string) error {
+	packageBinary = func(binaryPath, target, artifactPath, archiveBinaryName string) error {
 		return os.WriteFile(artifactPath, []byte("pkg"), 0o644)
 	}
 }
@@ -131,6 +131,7 @@ release: {
 	tagPrefix:        "v"
 	notesMode:        "generate-notes"
 	artifactDir:      "build"
+	artifactTargetSuffix: true
 	includeChecksums: true
 }
 `

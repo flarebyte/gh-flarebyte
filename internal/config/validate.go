@@ -51,13 +51,13 @@ func Validate(cfg Config) error {
 	if len(cfg.Build.Targets) == 0 {
 		return errors.New("invalid build.targets: at least one target is required")
 	}
-	if !cfg.Build.ArtifactTargetSuffix && len(cfg.Build.Targets) > 1 {
-		return errors.New("invalid build.artifactTargetSuffix: false requires exactly one build.targets entry to avoid artifact name collisions")
-	}
 	for _, target := range cfg.Build.Targets {
 		if !targetPattern.MatchString(target) {
 			return fmt.Errorf("invalid build.targets entry %q: expected os-arch format such as linux-amd64 or windows-amd64", target)
 		}
+	}
+	if cfg.Release.ArtifactTargetSuffix != cfg.Build.ArtifactTargetSuffix {
+		return errors.New("invalid release.artifactTargetSuffix: must match build.artifactTargetSuffix so release consumes the build output naming scheme")
 	}
 
 	switch cfg.Release.NotesMode {

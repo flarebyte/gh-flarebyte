@@ -43,9 +43,9 @@ func TestLoadInvalidNotesFilePath(t *testing.T) {
 	}
 }
 
-func TestLoadInvalidArtifactTargetSuffixWithoutUniqueTarget(t *testing.T) {
+func TestLoadBuildArtifactTargetSuffixFalseWithMultipleTargets(t *testing.T) {
 	tmp := t.TempDir()
-	path := filepath.Join(tmp, "invalid-artifact-suffix.cue")
+	path := filepath.Join(tmp, "valid-artifact-suffix.cue")
 	content := `package ghflarebyte
 
 project: {
@@ -83,17 +83,68 @@ release: {
 	tagPrefix:        "v"
 	notesMode:        "generate-notes"
 	artifactDir:      "build"
+	artifactTargetSuffix: false
 	includeChecksums: true
 }
 `
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		t.Fatalf("write temp config failed: %v", err)
 	}
-	_, err := Load(path)
-	if err == nil {
-		t.Fatalf("expected invalid artifactTargetSuffix error")
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("expected valid config, got %v", err)
 	}
-	if !strings.Contains(err.Error(), "artifactTargetSuffix") {
-		t.Fatalf("expected artifactTargetSuffix validation error, got: %v", err)
+	if cfg.Build.ArtifactTargetSuffix {
+		t.Fatalf("expected build.artifactTargetSuffix=false")
+	}
+}
+
+func TestLoadInvalidReleaseArtifactTargetSuffixMismatch(t *testing.T) {
+	tmp := t.TempDir()
+	path := filepath.Join(tmp, "invalid-release-artifact-suffix-mismatch.cue")
+	content := `package ghflarebyte
+
+project: {
+	org:  "flarebyte"
+	repo: "gh-flarebyte"
+}
+
+sync: {
+	mode: "push"
+}
+
+repository: {
+	description:   "CLI for landing your git commands right"
+	defaultBranch: "main"
+	homepage:      "https://github.com/flarebyte/gh-flarebyte"
+	visibility:    "public"
+	template:      false
+	topics: ["gh-extension"]
+	labels: [{name: "bug", color: "B60205"}]
+}
+
+build: {
+	language:             "go"
+	outputDir:            "build"
+	checksumFile:         "build/checksums.txt"
+	artifactTargetSuffix: false
+	targets: ["linux-amd64"]
+}
+
+release: {
+	versionSource:        "main.project.yaml"
+	tagPrefix:            "v"
+	notesMode:            "generate-notes"
+	artifactDir:          "build"
+	artifactTargetSuffix: true
+	includeChecksums:     true
+}
+`
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatalf("write temp config failed: %v", err)
+	}
+	_, err := Load(path)
+	if err == nil || !strings.Contains(err.Error(), "release.artifactTargetSuffix") {
+		t.Fatalf("expected release.artifactTargetSuffix mismatch error, got: %v", err)
 	}
 }
