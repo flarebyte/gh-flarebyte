@@ -1,16 +1,23 @@
 package cli
 
 import (
+	"archive/tar"
+	"archive/zip"
 	"bytes"
+	"compress/gzip"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strings"
+	"time"
 
 	"github.com/flarebyte/gh-flarebyte/internal/buildinfo"
 	"github.com/flarebyte/gh-flarebyte/internal/config"
@@ -24,6 +31,7 @@ const (
 	ExitDrift   = 3
 	ExitBlockedDeletions = 4
 	ExitBlockedVisibility = 5
+	ExitBuildFailure = 6
 )
 
 type VersionInfo struct {
@@ -92,6 +100,8 @@ var (
 	createRepoLabel   = ghCreateRepoLabel
 	updateRepoLabel   = ghUpdateRepoLabel
 	deleteRepoLabel   = ghDeleteRepoLabel
+	buildTargetBinary = goBuildTargetBinary
+	packageBinary     = packageBinaryArchive
 	fileExists       = func(path string) bool {
 		_, err := os.Stat(path)
 		return err == nil
@@ -329,6 +339,103 @@ func Run(args []string, stdout, stderr io.Writer) Result {
 		return Result{ExitCode: ExitOK}
 	}
 
+	if len(args) >= 1 && args[0] == "build" {
+		targetFilter, outputDirOverride, err := parseBuildArgs(args[1:])
+		if err != nil {
+			fmt.Fprintln(stderr, err.Error())
+			return Result{ExitCode: ExitUsage, Err: err}
+		}
+		cfg, err := config.Load("")
+		if err != nil {
+			fmt.Fprintln(stderr, err.Error())
+			return Result{ExitCode: ExitUsage, Err: err}
+		}
+		if cfg.Build.Language != "go" {
+			err := fmt.Errorf("build.language %q is not supported yet. Supported values: go", cfg.Build.Language)
+			fmt.Fprintln(stderr, err.Error())
+			return Result{ExitCode: ExitUsage, Err: err}
+		}
+		targets := cfg.Build.Targets
+		if targetFilter != "" {
+			if !contains(targets, targetFilter) {
+				err := fmt.Errorf("invalid --target %q: not present in build.targets", targetFilter)
+				fmt.Fprintln(stderr, err.Error())
+				return Result{ExitCode: ExitUsage, Err: err}
+			}
+			targets = []string{targetFilter}
+		}
+		outputDir := cfg.Build.OutputDir
+		if outputDirOverride != "" {
+			outputDir = outputDirOverride
+		}
+		if err := os.MkdirAll(outputDir, 0o755); err != nil {
+			fmt.Fprintln(stderr, err.Error())
+			return Result{ExitCode: ExitFailure, Err: err}
+		}
+		tmpDir := filepath.Join(outputDir, ".tmp")
+		if err := os.MkdirAll(tmpDir, 0o755); err != nil {
+			fmt.Fprintln(stderr, err.Error())
+			return Result{ExitCode: ExitFailure, Err: err}
+		}
+		type artifactDigest struct {
+			Name string
+			SHA  string
+		}
+		digests := make([]artifactDigest, 0, len(targets))
+		for _, target := range targets {
+			goos, goarch, err := splitTarget(target)
+			if err != nil {
+				fmt.Fprintln(stderr, err.Error())
+				return Result{ExitCode: ExitUsage, Err: err}
+			}
+			binBase := fmt.Sprintf("%s-%s-%s", cfg.Project.Repo, goos, goarch)
+			binName := binBase
+			if goos == "windows" {
+				binName += ".exe"
+			}
+			binPath := filepath.Join(tmpDir, binName)
+			if err := buildTargetBinary(target, binPath); err != nil {
+				msg := fmt.Sprintf("Build failed for %s during go build. Re-run with --target %s to isolate the failure.", target, target)
+				fmt.Fprintln(stderr, msg)
+				return Result{ExitCode: ExitBuildFailure, Err: err}
+			}
+			artifactName := binBase + ".tar.gz"
+			if goos == "windows" {
+				artifactName = binBase + ".zip"
+			}
+			artifactPath := filepath.Join(outputDir, artifactName)
+			if err := packageBinary(binPath, target, artifactPath); err != nil {
+				fmt.Fprintf(stderr, "Build failed for %s during packaging. Re-run with --target %s to isolate the failure.\n", target, target)
+				return Result{ExitCode: ExitBuildFailure, Err: err}
+			}
+			sum, err := sha256File(artifactPath)
+			if err != nil {
+				fmt.Fprintln(stderr, err.Error())
+				return Result{ExitCode: ExitBuildFailure, Err: err}
+			}
+			digests = append(digests, artifactDigest{Name: artifactName, SHA: sum})
+		}
+		sort.Slice(digests, func(i, j int) bool { return digests[i].Name < digests[j].Name })
+		checksumPath := resolveChecksumPath(cfg.Build.ChecksumFile, outputDirOverride)
+		if err := os.MkdirAll(filepath.Dir(checksumPath), 0o755); err != nil {
+			fmt.Fprintln(stderr, err.Error())
+			return Result{ExitCode: ExitFailure, Err: err}
+		}
+		var b strings.Builder
+		for _, d := range digests {
+			b.WriteString(d.SHA)
+			b.WriteString("  ")
+			b.WriteString(d.Name)
+			b.WriteString("\n")
+		}
+		if err := os.WriteFile(checksumPath, []byte(b.String()), 0o644); err != nil {
+			fmt.Fprintln(stderr, err.Error())
+			return Result{ExitCode: ExitFailure, Err: err}
+		}
+		fmt.Fprintf(stdout, "Build complete: %d targets written to %s/ with checksums in %s.\n", len(targets), outputDir, checksumPath)
+		return Result{ExitCode: ExitOK}
+	}
+
 	hasVersion := contains(args, "--version")
 	hasJSON := contains(args, "--json")
 
@@ -386,6 +493,7 @@ func printHelp(w io.Writer) {
 	fmt.Fprintln(w, "Usage:")
 	fmt.Fprintln(w, "  gh flarebyte --help")
 	fmt.Fprintln(w, "  gh flarebyte --version [--json]")
+	fmt.Fprintln(w, "  gh flarebyte build [--target os-arch] [--output-dir path]")
 	fmt.Fprintln(w, "  gh flarebyte repo init --repo owner/name [--overwrite]")
 	fmt.Fprintln(w, "  gh flarebyte repo update [--repo owner/name] [--confirm-deletions] [--accept-visibility-change-consequences]")
 	fmt.Fprintln(w, "  gh flarebyte repo audit [--repo owner/name] [--json]")
@@ -506,6 +614,29 @@ func parseReposMineArgs(args []string) (org string, asJSON bool, err error) {
 		}
 	}
 	return org, asJSON, nil
+}
+
+func parseBuildArgs(args []string) (target string, outputDir string, err error) {
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		switch arg {
+		case "--target":
+			if i+1 >= len(args) {
+				return "", "", errors.New("invalid invocation: --target requires os-arch")
+			}
+			target = args[i+1]
+			i++
+		case "--output-dir":
+			if i+1 >= len(args) {
+				return "", "", errors.New("invalid invocation: --output-dir requires a path")
+			}
+			outputDir = args[i+1]
+			i++
+		default:
+			return "", "", fmt.Errorf("invalid invocation: unknown argument %q", arg)
+		}
+	}
+	return target, outputDir, nil
 }
 
 func splitRepo(repo string) (owner string, name string, err error) {
@@ -810,6 +941,135 @@ func ghReadReposMine(org string) (string, []ContributedRepo, error) {
 		})
 	}
 	return payload.Data.Viewer.Login, repos, nil
+}
+
+func goBuildTargetBinary(target string, outputPath string) error {
+	goos, goarch, err := splitTarget(target)
+	if err != nil {
+		return err
+	}
+	args := []string{
+		"build",
+		"-ldflags",
+		fmt.Sprintf("-X github.com/flarebyte/gh-flarebyte/internal/buildinfo.Version=%s -X github.com/flarebyte/gh-flarebyte/internal/buildinfo.CommitID=%s -X github.com/flarebyte/gh-flarebyte/internal/buildinfo.Date=%s -X github.com/flarebyte/gh-flarebyte/internal/buildinfo.GoVersion=%s",
+			buildinfo.Version, buildinfo.CommitID, buildinfo.Date, buildinfo.GoVersion),
+		"-o",
+		outputPath,
+		"./cmd/gh-flarebyte",
+	}
+	cmd := exec.Command("go", args...)
+	cmd.Env = append(os.Environ(), "GOOS="+goos, "GOARCH="+goarch, "CGO_ENABLED=0")
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		msg := strings.TrimSpace(stderr.String())
+		if msg == "" {
+			msg = err.Error()
+		}
+		return errors.New(msg)
+	}
+	return nil
+}
+
+func splitTarget(target string) (goos, goarch string, err error) {
+	parts := strings.Split(target, "-")
+	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
+		return "", "", fmt.Errorf("invalid target %q: expected os-arch", target)
+	}
+	return parts[0], parts[1], nil
+}
+
+func packageBinaryArchive(binaryPath string, target string, artifactPath string) error {
+	goos, _, err := splitTarget(target)
+	if err != nil {
+		return err
+	}
+	if goos == "windows" {
+		return packageZip(binaryPath, artifactPath)
+	}
+	return packageTarGz(binaryPath, artifactPath)
+}
+
+func packageTarGz(binaryPath string, artifactPath string) error {
+	src, err := os.Open(binaryPath)
+	if err != nil {
+		return err
+	}
+	defer src.Close()
+	info, err := src.Stat()
+	if err != nil {
+		return err
+	}
+	out, err := os.Create(artifactPath)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+	gw := gzip.NewWriter(out)
+	defer gw.Close()
+	tw := tar.NewWriter(gw)
+	defer tw.Close()
+	hdr := &tar.Header{
+		Name:    filepath.Base(binaryPath),
+		Mode:    0o755,
+		Size:    info.Size(),
+		ModTime: zeroTime(),
+	}
+	if err := tw.WriteHeader(hdr); err != nil {
+		return err
+	}
+	if _, err := io.Copy(tw, src); err != nil {
+		return err
+	}
+	return nil
+}
+
+func packageZip(binaryPath string, artifactPath string) error {
+	content, err := os.ReadFile(binaryPath)
+	if err != nil {
+		return err
+	}
+	out, err := os.Create(artifactPath)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+	zw := zip.NewWriter(out)
+	defer zw.Close()
+	hdr := &zip.FileHeader{
+		Name:   path.Base(binaryPath),
+		Method: zip.Deflate,
+	}
+	hdr.SetMode(os.FileMode(0o755))
+	hdr.Modified = zeroTime()
+	w, err := zw.CreateHeader(hdr)
+	if err != nil {
+		return err
+	}
+	if _, err := w.Write(content); err != nil {
+		return err
+	}
+	return nil
+}
+
+func zeroTime() time.Time {
+	return time.Unix(0, 0).UTC()
+}
+
+func sha256File(path string) (string, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return "", err
+	}
+	sum := sha256.Sum256(data)
+	return fmt.Sprintf("%x", sum), nil
+}
+
+func resolveChecksumPath(configPath string, outputOverride string) string {
+	if outputOverride == "" {
+		return configPath
+	}
+	return filepath.Join(outputOverride, filepath.Base(configPath))
 }
 
 func renderCueConfig(owner, name string, meta RepoMetadata) string {
