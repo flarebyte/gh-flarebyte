@@ -25,17 +25,17 @@ type ProjectConfig struct {
 }
 
 type SyncConfig struct {
-	Mode         string   `json:"mode"`
+	Mode          string   `json:"mode"`
 	ManagedFields []string `json:"managedFields"`
 }
 
 type RepositoryConfig struct {
-	Description   string   `json:"description"`
-	DefaultBranch string   `json:"defaultBranch"`
-	Homepage      string   `json:"homepage"`
-	Visibility    string   `json:"visibility"`
-	Template      bool     `json:"template"`
-	Topics        []string `json:"topics"`
+	Description   string        `json:"description"`
+	DefaultBranch string        `json:"defaultBranch"`
+	Homepage      string        `json:"homepage"`
+	Visibility    string        `json:"visibility"`
+	Template      bool          `json:"template"`
+	Topics        []string      `json:"topics"`
 	Labels        []LabelConfig `json:"labels"`
 }
 

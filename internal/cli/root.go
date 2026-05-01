@@ -14,6 +14,7 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"sort"
 	"strings"
@@ -25,13 +26,14 @@ import (
 
 // Exit codes aligned with the current design contract.
 const (
-	ExitOK      = 0
-	ExitFailure = 1
-	ExitUsage   = 2
-	ExitDrift   = 3
-	ExitBlockedDeletions = 4
+	ExitOK                = 0
+	ExitFailure           = 1
+	ExitUsage             = 2
+	ExitDrift             = 3
+	ExitBlockedDeletions  = 4
 	ExitBlockedVisibility = 5
-	ExitBuildFailure = 6
+	ExitBuildFailure      = 6
+	ExitReleaseFailure    = 7
 )
 
 type VersionInfo struct {
@@ -80,10 +82,10 @@ type AuditDiff struct {
 }
 
 type AuditReport struct {
-	Repo      string      `json:"repo"`
-	DriftCount int        `json:"driftCount"`
-	HasDrift  bool        `json:"hasDrift"`
-	Diffs     []AuditDiff `json:"diffs"`
+	Repo       string      `json:"repo"`
+	DriftCount int         `json:"driftCount"`
+	HasDrift   bool        `json:"hasDrift"`
+	Diffs      []AuditDiff `json:"diffs"`
 }
 
 type ContributedRepo struct {
@@ -101,8 +103,8 @@ type ReposMineReport struct {
 }
 
 var (
-	readRepoMetadata = ghReadRepoMetadata
-	readReposMine    = ghReadReposMine
+	readRepoMetadata  = ghReadRepoMetadata
+	readReposMine     = ghReadReposMine
 	applyRepoSettings = ghApplyRepoSettings
 	addRepoTopic      = ghAddRepoTopic
 	removeRepoTopic   = ghRemoveRepoTopic
@@ -111,7 +113,10 @@ var (
 	deleteRepoLabel   = ghDeleteRepoLabel
 	buildTargetBinary = goBuildTargetBinary
 	packageBinary     = packageBinaryArchive
-	fileExists       = func(path string) bool {
+	findVersion       = resolveVersionFromSource
+	tagExists         = ghTagExists
+	createRelease     = ghCreateRelease
+	fileExists        = func(path string) bool {
 		_, err := os.Stat(path)
 		return err == nil
 	}
@@ -445,6 +450,72 @@ func Run(args []string, stdout, stderr io.Writer) Result {
 		return Result{ExitCode: ExitOK}
 	}
 
+	if len(args) >= 1 && args[0] == "release" {
+		draft, notesFileOverride, err := parseReleaseArgs(args[1:])
+		if err != nil {
+			fmt.Fprintln(stderr, err.Error())
+			return Result{ExitCode: ExitUsage, Err: err}
+		}
+		cfg, err := config.Load("")
+		if err != nil {
+			fmt.Fprintln(stderr, err.Error())
+			return Result{ExitCode: ExitUsage, Err: err}
+		}
+		buildRes := Run([]string{"build"}, io.Discard, stderr)
+		if buildRes.ExitCode != ExitOK {
+			if buildRes.ExitCode == ExitBuildFailure {
+				return buildRes
+			}
+			return Result{ExitCode: ExitReleaseFailure, Err: buildRes.Err}
+		}
+		version, err := findVersion(cfg.Release.VersionSource)
+		if err != nil {
+			fmt.Fprintln(stderr, err.Error())
+			return Result{ExitCode: ExitUsage, Err: err}
+		}
+		tag := cfg.Release.TagPrefix + version
+		exists, err := tagExists(tag)
+		if err != nil {
+			fmt.Fprintln(stderr, err.Error())
+			return Result{ExitCode: ExitReleaseFailure, Err: err}
+		}
+		if exists {
+			err := fmt.Errorf("release tag %s already exists. Refusing to mutate existing release implicitly.", tag)
+			fmt.Fprintln(stderr, err.Error())
+			return Result{ExitCode: ExitReleaseFailure, Err: err}
+		}
+		artifacts, err := listReleaseArtifacts(cfg.Release.ArtifactDir, cfg.Release.IncludeChecksums)
+		if err != nil {
+			fmt.Fprintln(stderr, err.Error())
+			return Result{ExitCode: ExitReleaseFailure, Err: err}
+		}
+		notesFile := ""
+		switch cfg.Release.NotesMode {
+		case "generate-notes":
+		case "notes-from-tag":
+		case "notes-file":
+			notesFile = cfg.Release.ReleaseNotesFilePath
+			if notesFileOverride != "" {
+				notesFile = notesFileOverride
+			}
+			if notesFile == "" {
+				err := errors.New("release notes mode is notes-file but no notes file was provided. Set release.releaseNotesFilePath or pass --notes-file")
+				fmt.Fprintln(stderr, err.Error())
+				return Result{ExitCode: ExitUsage, Err: err}
+			}
+		default:
+			err := fmt.Errorf("invalid release.notesMode %q", cfg.Release.NotesMode)
+			fmt.Fprintln(stderr, err.Error())
+			return Result{ExitCode: ExitUsage, Err: err}
+		}
+		if err := createRelease(tag, artifacts, cfg.Release.NotesMode, notesFile, draft); err != nil {
+			fmt.Fprintln(stderr, err.Error())
+			return Result{ExitCode: ExitReleaseFailure, Err: err}
+		}
+		fmt.Fprintf(stdout, "Release %s published from %s with checksums %s.\n", tag, cfg.Release.ArtifactDir, ternary(cfg.Release.IncludeChecksums, "attached", "skipped"))
+		return Result{ExitCode: ExitOK}
+	}
+
 	hasVersion := contains(args, "--version")
 	hasJSON := contains(args, "--json")
 
@@ -503,6 +574,7 @@ func printHelp(w io.Writer) {
 	fmt.Fprintln(w, "  gh flarebyte --help")
 	fmt.Fprintln(w, "  gh flarebyte --version [--json]")
 	fmt.Fprintln(w, "  gh flarebyte build [--target os-arch] [--output-dir path]")
+	fmt.Fprintln(w, "  gh flarebyte release [--draft] [--notes-file path]")
 	fmt.Fprintln(w, "  gh flarebyte repo init --repo owner/name [--overwrite]")
 	fmt.Fprintln(w, "  gh flarebyte repo update [--repo owner/name] [--confirm-deletions] [--accept-visibility-change-consequences]")
 	fmt.Fprintln(w, "  gh flarebyte repo audit [--repo owner/name] [--json]")
@@ -511,15 +583,15 @@ func printHelp(w io.Writer) {
 }
 
 type UpdatePlan struct {
-	SettingsChanged    bool
+	SettingsChanged     bool
 	SettingsChangeCount int
-	VisibilityChange   bool
-	SettingsPatch      RepoSettingsPatch
-	TopicsToAdd        []string
-	TopicsToRemove     []string
-	LabelsToCreate     []LabelState
-	LabelsToUpdate     []LabelState
-	LabelsToDelete     []LabelState
+	VisibilityChange    bool
+	SettingsPatch       RepoSettingsPatch
+	TopicsToAdd         []string
+	TopicsToRemove      []string
+	LabelsToCreate      []LabelState
+	LabelsToUpdate      []LabelState
+	LabelsToDelete      []LabelState
 }
 
 func contains(args []string, flag string) bool {
@@ -647,6 +719,25 @@ func parseBuildArgs(args []string) (target string, outputDir string, err error) 
 		}
 	}
 	return target, outputDir, nil
+}
+
+func parseReleaseArgs(args []string) (draft bool, notesFile string, err error) {
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		switch arg {
+		case "--draft":
+			draft = true
+		case "--notes-file":
+			if i+1 >= len(args) {
+				return false, "", errors.New("invalid invocation: --notes-file requires a path")
+			}
+			notesFile = args[i+1]
+			i++
+		default:
+			return false, "", fmt.Errorf("invalid invocation: unknown argument %q", arg)
+		}
+	}
+	return draft, notesFile, nil
 }
 
 func splitRepo(repo string) (owner string, name string, err error) {
@@ -926,7 +1017,7 @@ func ghReadReposMine(org string) (string, []ContributedRepo, error) {
 	var payload struct {
 		Data struct {
 			Viewer struct {
-				Login                      string `json:"login"`
+				Login                     string `json:"login"`
 				RepositoriesContributedTo struct {
 					Nodes []struct {
 						Name             string `json:"name"`
@@ -1087,6 +1178,121 @@ func resolveChecksumPath(configPath string, outputOverride string) string {
 		return configPath
 	}
 	return filepath.Join(outputOverride, filepath.Base(configPath))
+}
+
+func resolveVersionFromSource(sourcePath string) (string, error) {
+	data, err := os.ReadFile(sourcePath)
+	if err != nil {
+		return "", fmt.Errorf("cannot read release.versionSource %s: %w", sourcePath, err)
+	}
+	ext := strings.ToLower(filepath.Ext(sourcePath))
+	switch ext {
+	case ".json":
+		var payload map[string]any
+		if err := json.Unmarshal(data, &payload); err != nil {
+			return "", fmt.Errorf("cannot parse release.versionSource JSON %s: %w", sourcePath, err)
+		}
+		v, ok := payload["version"].(string)
+		if !ok || strings.TrimSpace(v) == "" {
+			return "", errors.New("invalid release.versionSource: top-level string field version is required")
+		}
+		if !isSemver(v) {
+			return "", fmt.Errorf("invalid version %q: semantic version required", v)
+		}
+		return v, nil
+	case ".yaml", ".yml":
+		lines := strings.Split(string(data), "\n")
+		for _, line := range lines {
+			trim := strings.TrimSpace(line)
+			if strings.HasPrefix(trim, "version:") {
+				v := strings.TrimSpace(strings.TrimPrefix(trim, "version:"))
+				v = strings.Trim(v, `"'`)
+				if v == "" {
+					return "", errors.New("invalid release.versionSource: top-level string field version is required")
+				}
+				if !isSemver(v) {
+					return "", fmt.Errorf("invalid version %q: semantic version required", v)
+				}
+				return v, nil
+			}
+		}
+		return "", errors.New("invalid release.versionSource: top-level string field version is required")
+	default:
+		return "", fmt.Errorf("unsupported release.versionSource format %q: expected YAML or JSON file", ext)
+	}
+}
+
+func isSemver(v string) bool {
+	// Accepts forms like 1.2.3, 1.2.3-rc.1, 1.2.3+build.7
+	re := `^[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$`
+	return regexp.MustCompile(re).MatchString(v)
+}
+
+func listReleaseArtifacts(artifactDir string, includeChecksums bool) ([]string, error) {
+	entries, err := os.ReadDir(artifactDir)
+	if err != nil {
+		return nil, fmt.Errorf("cannot read release.artifactDir %s: %w", artifactDir, err)
+	}
+	artifacts := make([]string, 0)
+	for _, e := range entries {
+		if e.IsDir() {
+			continue
+		}
+		name := e.Name()
+		if strings.HasSuffix(name, ".tar.gz") || strings.HasSuffix(name, ".zip") {
+			artifacts = append(artifacts, filepath.Join(artifactDir, name))
+		}
+		if includeChecksums && (name == "checksums.txt" || strings.HasSuffix(name, "checksums.txt")) {
+			artifacts = append(artifacts, filepath.Join(artifactDir, name))
+		}
+	}
+	sort.Strings(artifacts)
+	if len(artifacts) == 0 {
+		return nil, fmt.Errorf("no release artifacts found in %s", artifactDir)
+	}
+	return artifacts, nil
+}
+
+func ghTagExists(tag string) (bool, error) {
+	cmd := exec.Command("gh", "release", "view", tag)
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	err := cmd.Run()
+	if err == nil {
+		return true, nil
+	}
+	msg := strings.TrimSpace(stderr.String())
+	// treat "not found" as clean false
+	lower := strings.ToLower(msg)
+	if strings.Contains(lower, "not found") || strings.Contains(lower, "http 404") {
+		return false, nil
+	}
+	if msg == "" {
+		msg = err.Error()
+	}
+	return false, errors.New(msg)
+}
+
+func ghCreateRelease(tag string, artifacts []string, notesMode string, notesFile string, draft bool) error {
+	args := []string{"release", "create", tag}
+	args = append(args, artifacts...)
+	switch notesMode {
+	case "generate-notes", "notes-from-tag":
+		args = append(args, "--generate-notes")
+	case "notes-file":
+		args = append(args, "--notes-file", notesFile)
+	}
+	if draft {
+		args = append(args, "--draft")
+	}
+	return runGH(args...)
+}
+
+func ternary(cond bool, yes string, no string) string {
+	if cond {
+		return yes
+	}
+	return no
 }
 
 func renderCueConfig(owner, name string, meta RepoMetadata) string {

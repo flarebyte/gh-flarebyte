@@ -12,7 +12,6 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-
 )
 
 func TestRunHelp(t *testing.T) {
@@ -759,6 +758,174 @@ func TestPackageBinaryArchiveTarGzAndZip(t *testing.T) {
 	}
 	if string(winContent) != "win-binary" {
 		t.Fatalf("unexpected zip content: %s", string(winContent))
+	}
+}
+
+func TestResolveVersionFromSourceYAMLAndJSON(t *testing.T) {
+	tmpDir := t.TempDir()
+	yamlPath := filepath.Join(tmpDir, "v.yaml")
+	if err := os.WriteFile(yamlPath, []byte("version: 1.2.3\n"), 0o644); err != nil {
+		t.Fatalf("write yaml failed: %v", err)
+	}
+	jsonPath := filepath.Join(tmpDir, "v.json")
+	if err := os.WriteFile(jsonPath, []byte(`{"version":"1.2.3-rc.1"}`), 0o644); err != nil {
+		t.Fatalf("write json failed: %v", err)
+	}
+	v1, err := resolveVersionFromSource(yamlPath)
+	if err != nil || v1 != "1.2.3" {
+		t.Fatalf("expected yaml version, got v=%q err=%v", v1, err)
+	}
+	v2, err := resolveVersionFromSource(jsonPath)
+	if err != nil || v2 != "1.2.3-rc.1" {
+		t.Fatalf("expected json version, got v=%q err=%v", v2, err)
+	}
+}
+
+func TestRunReleaseNotesFileModeRequiresPath(t *testing.T) {
+	oldWD, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("getwd failed: %v", err)
+	}
+	tmpDir := t.TempDir()
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatalf("chdir failed: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chdir(oldWD) })
+	cfg := strings.Replace(testConfigCue(), `notesMode:        "generate-notes"`, `notesMode:        "notes-file"`, 1)
+	if err := os.WriteFile(".gh-flarebyte.cue", []byte(cfg), 0o644); err != nil {
+		t.Fatalf("write config failed: %v", err)
+	}
+
+	oldBuildTargetBinary := buildTargetBinary
+	oldPackageBinary := packageBinary
+	oldFindVersion := findVersion
+	oldTagExists := tagExists
+	oldCreateRelease := createRelease
+	t.Cleanup(func() {
+		buildTargetBinary = oldBuildTargetBinary
+		packageBinary = oldPackageBinary
+		findVersion = oldFindVersion
+		tagExists = oldTagExists
+		createRelease = oldCreateRelease
+	})
+	buildTargetBinary = func(target string, outputPath string) error {
+		return os.WriteFile(outputPath, []byte("bin"), 0o755)
+	}
+	packageBinary = func(binaryPath, target, artifactPath string) error {
+		return os.WriteFile(artifactPath, []byte("pkg"), 0o644)
+	}
+	findVersion = func(sourcePath string) (string, error) { return "1.2.3", nil }
+	tagExists = func(tag string) (bool, error) { return false, nil }
+	createRelease = func(tag string, artifacts []string, notesMode string, notesFile string, draft bool) error {
+		return nil
+	}
+
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	result := Run([]string{"release"}, &out, &errOut)
+	if result.ExitCode != ExitUsage {
+		t.Fatalf("expected exit code %d, got %d", ExitUsage, result.ExitCode)
+	}
+	if !strings.Contains(errOut.String(), "notes-file") {
+		t.Fatalf("expected notes file guidance, got: %s", errOut.String())
+	}
+}
+
+func TestRunReleaseFailsWhenTagExists(t *testing.T) {
+	oldWD, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("getwd failed: %v", err)
+	}
+	tmpDir := t.TempDir()
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatalf("chdir failed: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chdir(oldWD) })
+	if err := os.WriteFile(".gh-flarebyte.cue", []byte(testConfigCue()), 0o644); err != nil {
+		t.Fatalf("write config failed: %v", err)
+	}
+
+	oldBuildTargetBinary := buildTargetBinary
+	oldPackageBinary := packageBinary
+	oldFindVersion := findVersion
+	oldTagExists := tagExists
+	t.Cleanup(func() {
+		buildTargetBinary = oldBuildTargetBinary
+		packageBinary = oldPackageBinary
+		findVersion = oldFindVersion
+		tagExists = oldTagExists
+	})
+	buildTargetBinary = func(target string, outputPath string) error {
+		return os.WriteFile(outputPath, []byte("bin"), 0o755)
+	}
+	packageBinary = func(binaryPath, target, artifactPath string) error {
+		return os.WriteFile(artifactPath, []byte("pkg"), 0o644)
+	}
+	findVersion = func(sourcePath string) (string, error) { return "1.2.3", nil }
+	tagExists = func(tag string) (bool, error) { return true, nil }
+
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	result := Run([]string{"release"}, &out, &errOut)
+	if result.ExitCode != ExitReleaseFailure {
+		t.Fatalf("expected exit code %d, got %d", ExitReleaseFailure, result.ExitCode)
+	}
+	if !strings.Contains(errOut.String(), "already exists") {
+		t.Fatalf("expected tag conflict message, got: %s", errOut.String())
+	}
+}
+
+func TestRunReleaseSuccess(t *testing.T) {
+	oldWD, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("getwd failed: %v", err)
+	}
+	tmpDir := t.TempDir()
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatalf("chdir failed: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chdir(oldWD) })
+	if err := os.WriteFile(".gh-flarebyte.cue", []byte(testConfigCue()), 0o644); err != nil {
+		t.Fatalf("write config failed: %v", err)
+	}
+
+	oldBuildTargetBinary := buildTargetBinary
+	oldPackageBinary := packageBinary
+	oldFindVersion := findVersion
+	oldTagExists := tagExists
+	oldCreateRelease := createRelease
+	t.Cleanup(func() {
+		buildTargetBinary = oldBuildTargetBinary
+		packageBinary = oldPackageBinary
+		findVersion = oldFindVersion
+		tagExists = oldTagExists
+		createRelease = oldCreateRelease
+	})
+	buildTargetBinary = func(target string, outputPath string) error {
+		return os.WriteFile(outputPath, []byte("bin"), 0o755)
+	}
+	packageBinary = func(binaryPath, target, artifactPath string) error {
+		return os.WriteFile(artifactPath, []byte("pkg"), 0o644)
+	}
+	findVersion = func(sourcePath string) (string, error) { return "1.2.3", nil }
+	tagExists = func(tag string) (bool, error) { return false, nil }
+	var capturedTag string
+	createRelease = func(tag string, artifacts []string, notesMode string, notesFile string, draft bool) error {
+		capturedTag = tag
+		return nil
+	}
+
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	result := Run([]string{"release", "--draft"}, &out, &errOut)
+	if result.ExitCode != ExitOK {
+		t.Fatalf("expected exit code %d, got %d err=%v", ExitOK, result.ExitCode, result.Err)
+	}
+	if capturedTag != "v1.2.3" {
+		t.Fatalf("expected tag v1.2.3, got %s", capturedTag)
+	}
+	if !strings.Contains(out.String(), "Release v1.2.3 published from build with checksums attached.") {
+		t.Fatalf("expected release summary, got: %s", out.String())
 	}
 }
 func testConfigCue() string {
