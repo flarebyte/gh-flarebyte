@@ -7,7 +7,6 @@ project: {
 
 sync: {
 	mode: "push"
-	managedFields: ["topics"]
 }
 
 repository: {

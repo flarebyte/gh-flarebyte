@@ -938,8 +938,7 @@ project: {
 
 sync: {
 	mode: "push"
-	managedFields: ["topics"]
-}
+	}
 
 repository: {
 	description:   "CLI for landing your git commands right"

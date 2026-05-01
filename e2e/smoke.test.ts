@@ -79,7 +79,7 @@ describe('gh-flarebyte smoke', () => {
       `package ghflarebyte
 
 project: { org: "flarebyte", repo: "gh-flarebyte" }
-sync: { mode: "push", managedFields: ["topics"] }
+sync: { mode: "push" }
 repository: {
   description: "CLI for landing your git commands right"
   defaultBranch: "main"

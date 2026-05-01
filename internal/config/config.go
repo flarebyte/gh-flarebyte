@@ -25,8 +25,7 @@ type ProjectConfig struct {
 }
 
 type SyncConfig struct {
-	Mode          string   `json:"mode"`
-	ManagedFields []string `json:"managedFields"`
+	Mode string `json:"mode"`
 }
 
 type RepositoryConfig struct {
