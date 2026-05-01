@@ -237,6 +237,7 @@ release: {
 	tagPrefix:        "v"
 	notesMode:        "generate-notes"
 	artifactDir:      "build"
+	artifactTargetSuffix: true
 	includeChecksums: true
 }
 `, owner, name, meta.Description, meta.DefaultBranch, meta.Homepage, meta.Visibility, meta.Template)

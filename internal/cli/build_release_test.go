@@ -45,6 +45,40 @@ func TestRunBuildSuccessWritesChecksumAndSummary(t *testing.T) {
 	}
 }
 
+func TestRunBuildWithoutSuffixUsesTargetSubdirsForMultipleTargets(t *testing.T) {
+	cfg := strings.Replace(testConfigCue(), `targets: [
+		"linux-amd64",
+	]`, `artifactTargetSuffix: false
+	targets: [
+		"linux-amd64",
+		"darwin-arm64",
+	]`, 1)
+	cfg = strings.Replace(cfg, `artifactTargetSuffix: true`, `artifactTargetSuffix: false`, 1)
+	_ = setupTempWorkdirWithConfig(t, cfg)
+	oldBuildTargetBinary := buildTargetBinary
+	oldPackageBinary := packageBinary
+	t.Cleanup(func() {
+		buildTargetBinary = oldBuildTargetBinary
+		packageBinary = oldPackageBinary
+	})
+	buildTargetBinary = func(target string, outputPath string) error {
+		return os.WriteFile(outputPath, []byte("binary-"+target), 0o755)
+	}
+	packageBinary = packageBinaryArchive
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	result := Run([]string{"build", "--output-dir", "dist"}, &out, &errOut)
+	if result.ExitCode != ExitOK {
+		t.Fatalf("expected exit code %d, got %d (%s)", ExitOK, result.ExitCode, errOut.String())
+	}
+	if _, err := os.Stat(filepath.Join("dist", "linux-amd64", "gh-flarebyte.tar.gz")); err != nil {
+		t.Fatalf("expected linux artifact in target subdir: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join("dist", "darwin-arm64", "gh-flarebyte.tar.gz")); err != nil {
+		t.Fatalf("expected darwin artifact in target subdir: %v", err)
+	}
+}
+
 func TestPackageBinaryArchiveTarGzAndZip(t *testing.T) {
 	tmpDir := t.TempDir()
 	src := filepath.Join(tmpDir, "gh-flarebyte-linux-amd64")
@@ -52,7 +86,7 @@ func TestPackageBinaryArchiveTarGzAndZip(t *testing.T) {
 		t.Fatalf("write src failed: %v", err)
 	}
 	tarGz := filepath.Join(tmpDir, "artifact.tar.gz")
-	if err := packageBinaryArchive(src, "linux-amd64", tarGz); err != nil {
+	if err := packageBinaryArchive(src, "linux-amd64", tarGz, "gh-flarebyte"); err != nil {
 		t.Fatalf("package tar.gz failed: %v", err)
 	}
 	f, err := os.Open(tarGz)
@@ -67,7 +101,7 @@ func TestPackageBinaryArchiveTarGzAndZip(t *testing.T) {
 	defer func() { _ = gr.Close() }()
 	tr := tar.NewReader(gr)
 	hdr, err := tr.Next()
-	if err != nil || hdr.Name != "gh-flarebyte-linux-amd64" {
+	if err != nil || hdr.Name != "gh-flarebyte" {
 		t.Fatalf("unexpected tar entry")
 	}
 	content, _ := io.ReadAll(tr)
@@ -78,7 +112,7 @@ func TestPackageBinaryArchiveTarGzAndZip(t *testing.T) {
 	winSrc := filepath.Join(tmpDir, "gh-flarebyte-windows-amd64.exe")
 	_ = os.WriteFile(winSrc, []byte("win-binary"), 0o755)
 	zipPath := filepath.Join(tmpDir, "artifact.zip")
-	if err := packageBinaryArchive(winSrc, "windows-amd64", zipPath); err != nil {
+	if err := packageBinaryArchive(winSrc, "windows-amd64", zipPath, "gh-flarebyte.exe"); err != nil {
 		t.Fatalf("package zip failed: %v", err)
 	}
 	zr, err := zip.OpenReader(zipPath)
@@ -86,7 +120,7 @@ func TestPackageBinaryArchiveTarGzAndZip(t *testing.T) {
 		t.Fatalf("open zip failed: %v", err)
 	}
 	defer func() { _ = zr.Close() }()
-	if len(zr.File) != 1 || zr.File[0].Name != "gh-flarebyte-windows-amd64.exe" {
+	if len(zr.File) != 1 || zr.File[0].Name != "gh-flarebyte.exe" {
 		t.Fatalf("unexpected zip content")
 	}
 }

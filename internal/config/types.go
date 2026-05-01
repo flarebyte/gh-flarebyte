@@ -51,6 +51,7 @@ type ReleaseConfigRaw struct {
 	NotesMode            string `json:"notesMode"`
 	ReleaseNotesFilePath string `json:"releaseNotesFilePath,omitempty"`
 	ArtifactDir          string `json:"artifactDir"`
+	ArtifactTargetSuffix bool   `json:"artifactTargetSuffix"`
 	IncludeChecksums     bool   `json:"includeChecksums"`
 }
 

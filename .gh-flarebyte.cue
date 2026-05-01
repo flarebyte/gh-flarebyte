@@ -99,6 +99,7 @@ build: {
 	artifactTargetSuffix: false
 	targets: [
 		"darwin-arm64",
+		"linux-amd64",
 	]
 }
 
@@ -107,5 +108,6 @@ release: {
 	tagPrefix:        "v"
 	notesMode:        "generate-notes"
 	artifactDir:      "build"
+	artifactTargetSuffix: false
 	includeChecksums: true
 }

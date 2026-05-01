@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -79,22 +80,42 @@ func isSemver(v string) bool {
 	return regexp.MustCompile(re).MatchString(v)
 }
 
-func listReleaseArtifacts(artifactDir string, includeChecksums bool) ([]string, error) {
+func listReleaseArtifacts(artifactDir string, includeChecksums bool, repoName string, artifactTargetSuffix bool) ([]string, error) {
 	entries, err := os.ReadDir(artifactDir)
 	if err != nil {
 		return nil, fmt.Errorf("cannot read release.artifactDir %s: %w", artifactDir, err)
 	}
+	var artifactPattern *regexp.Regexp
+	if artifactTargetSuffix {
+		artifactPattern = regexp.MustCompile("^" + regexp.QuoteMeta(repoName) + `-(linux|darwin|windows)-(amd64|arm64)\.(tar\.gz|zip)$`)
+	} else {
+		artifactPattern = regexp.MustCompile("^" + regexp.QuoteMeta(repoName) + `\.(tar\.gz|zip)$`)
+	}
 	artifacts := make([]string, 0)
 	for _, e := range entries {
+		entryPath := filepath.Join(artifactDir, e.Name())
 		if e.IsDir() {
+			_ = filepath.WalkDir(entryPath, func(p string, d os.DirEntry, walkErr error) error {
+				if walkErr != nil || d.IsDir() {
+					return walkErr
+				}
+				name := path.Base(p)
+				if artifactPattern.MatchString(name) {
+					artifacts = append(artifacts, p)
+				}
+				if includeChecksums && (name == "checksums.txt" || strings.HasSuffix(name, "checksums.txt")) {
+					artifacts = append(artifacts, p)
+				}
+				return nil
+			})
 			continue
 		}
 		name := e.Name()
-		if strings.HasSuffix(name, ".tar.gz") || strings.HasSuffix(name, ".zip") {
-			artifacts = append(artifacts, filepath.Join(artifactDir, name))
+		if artifactPattern.MatchString(name) {
+			artifacts = append(artifacts, entryPath)
 		}
 		if includeChecksums && (name == "checksums.txt" || strings.HasSuffix(name, "checksums.txt")) {
-			artifacts = append(artifacts, filepath.Join(artifactDir, name))
+			artifacts = append(artifacts, entryPath)
 		}
 	}
 	sort.Strings(artifacts)

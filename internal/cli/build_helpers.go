@@ -74,18 +74,18 @@ func splitTarget(target string) (goos, goarch string, err error) {
 	return parts[0], parts[1], nil
 }
 
-func packageBinaryArchive(binaryPath string, target string, artifactPath string) error {
+func packageBinaryArchive(binaryPath string, target string, artifactPath string, archiveBinaryName string) error {
 	goos, _, err := splitTarget(target)
 	if err != nil {
 		return err
 	}
 	if goos == "windows" {
-		return packageZip(binaryPath, artifactPath)
+		return packageZip(binaryPath, artifactPath, archiveBinaryName)
 	}
-	return packageTarGz(binaryPath, artifactPath)
+	return packageTarGz(binaryPath, artifactPath, archiveBinaryName)
 }
 
-func packageTarGz(binaryPath string, artifactPath string) error {
+func packageTarGz(binaryPath string, artifactPath string, archiveBinaryName string) error {
 	src, err := os.Open(binaryPath)
 	if err != nil {
 		return err
@@ -105,7 +105,7 @@ func packageTarGz(binaryPath string, artifactPath string) error {
 	tw := tar.NewWriter(gw)
 	defer func() { _ = tw.Close() }()
 	hdr := &tar.Header{
-		Name:    filepath.Base(binaryPath),
+		Name:    archiveBinaryName,
 		Mode:    0o755,
 		Size:    info.Size(),
 		ModTime: zeroTime(),
@@ -119,7 +119,7 @@ func packageTarGz(binaryPath string, artifactPath string) error {
 	return nil
 }
 
-func packageZip(binaryPath string, artifactPath string) error {
+func packageZip(binaryPath string, artifactPath string, archiveBinaryName string) error {
 	content, err := os.ReadFile(binaryPath)
 	if err != nil {
 		return err
@@ -132,7 +132,7 @@ func packageZip(binaryPath string, artifactPath string) error {
 	zw := zip.NewWriter(out)
 	defer func() { _ = zw.Close() }()
 	hdr := &zip.FileHeader{
-		Name:   path.Base(binaryPath),
+		Name:   path.Base(archiveBinaryName),
 		Method: zip.Deflate,
 	}
 	hdr.SetMode(os.FileMode(0o755))

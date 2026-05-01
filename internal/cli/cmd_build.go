@@ -63,6 +63,10 @@ func handleBuild(args []string, stdout, stderr io.Writer) Result {
 			binName += ".exe"
 		}
 		binPath := filepath.Join(tmpDir, binName)
+		archiveBinaryName := cfg.Project.Repo
+		if goos == "windows" {
+			archiveBinaryName += ".exe"
+		}
 		if err := buildTargetBinary(target, binPath); err != nil {
 			msg := fmt.Sprintf("Build failed for %s during go build. Re-run with --target %s to isolate the failure.", target, target)
 			_, _ = fmt.Fprintln(stderr, msg)
@@ -76,8 +80,16 @@ func handleBuild(args []string, stdout, stderr io.Writer) Result {
 		if goos == "windows" {
 			artifactName = artifactBase + ".zip"
 		}
-		artifactPath := filepath.Join(outputDir, artifactName)
-		if err := packageBinary(binPath, target, artifactPath); err != nil {
+		artifactRelPath := artifactName
+		if !cfg.Build.ArtifactTargetSuffix && len(targets) > 1 {
+			artifactRelPath = filepath.Join(target, artifactName)
+		}
+		artifactPath := filepath.Join(outputDir, artifactRelPath)
+		if err := os.MkdirAll(filepath.Dir(artifactPath), 0o755); err != nil {
+			_, _ = fmt.Fprintln(stderr, err.Error())
+			return Result{ExitCode: ExitFailure, Err: err}
+		}
+		if err := packageBinary(binPath, target, artifactPath, archiveBinaryName); err != nil {
 			_, _ = fmt.Fprintf(stderr, "Build failed for %s during packaging. Re-run with --target %s to isolate the failure.\n", target, target)
 			return Result{ExitCode: ExitBuildFailure, Err: err}
 		}
@@ -86,7 +98,7 @@ func handleBuild(args []string, stdout, stderr io.Writer) Result {
 			_, _ = fmt.Fprintln(stderr, err.Error())
 			return Result{ExitCode: ExitBuildFailure, Err: err}
 		}
-		digests = append(digests, artifactDigest{Name: artifactName, SHA: sum})
+		digests = append(digests, artifactDigest{Name: artifactRelPath, SHA: sum})
 	}
 	sort.Slice(digests, func(i, j int) bool { return digests[i].Name < digests[j].Name })
 	checksumPath := resolveChecksumPath(cfg.Build.ChecksumFile, outputDirOverride)
