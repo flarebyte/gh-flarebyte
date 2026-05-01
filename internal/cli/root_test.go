@@ -14,6 +14,91 @@ import (
 	"testing"
 )
 
+func setupTempWorkdirWithConfig(t *testing.T, cfg string) string {
+	t.Helper()
+	oldWD, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("getwd failed: %v", err)
+	}
+	tmpDir := t.TempDir()
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatalf("chdir failed: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chdir(oldWD) })
+	if cfg != "" {
+		if err := os.WriteFile(".gh-flarebyte.cue", []byte(cfg), 0o644); err != nil {
+			t.Fatalf("write config failed: %v", err)
+		}
+	}
+	return tmpDir
+}
+
+func stubBuildArtifacts(t *testing.T) {
+	t.Helper()
+	oldBuildTargetBinary := buildTargetBinary
+	oldPackageBinary := packageBinary
+	t.Cleanup(func() {
+		buildTargetBinary = oldBuildTargetBinary
+		packageBinary = oldPackageBinary
+	})
+	buildTargetBinary = func(target string, outputPath string) error {
+		return os.WriteFile(outputPath, []byte("bin"), 0o755)
+	}
+	packageBinary = func(binaryPath, target, artifactPath string) error {
+		return os.WriteFile(artifactPath, []byte("pkg"), 0o644)
+	}
+}
+
+func stubReleaseFlow(t *testing.T, version string, tagAlreadyExists bool) {
+	t.Helper()
+	oldFindVersion := findVersion
+	oldTagExists := tagExists
+	oldCreateRelease := createRelease
+	t.Cleanup(func() {
+		findVersion = oldFindVersion
+		tagExists = oldTagExists
+		createRelease = oldCreateRelease
+	})
+	stubBuildArtifacts(t)
+	findVersion = func(sourcePath string) (string, error) { return version, nil }
+	tagExists = func(tag string) (bool, error) { return tagAlreadyExists, nil }
+	createRelease = func(tag string, artifacts []string, notesMode string, notesFile string, draft bool) error {
+		return nil
+	}
+}
+
+func baseRepoMetadata() RepoMetadata {
+	return RepoMetadata{
+		Description:   "CLI for landing your git commands right",
+		DefaultBranch: "main",
+		Homepage:      "https://github.com/flarebyte/gh-flarebyte",
+		Visibility:    "public",
+		Template:      false,
+		Topics:        []string{"gh-extension", "github-cli", "git", "flarebyte"},
+		Labels: []LabelState{
+			{Name: "bug", Color: "B60205", Description: "Something is broken"},
+			{Name: "enhancement", Color: "0E8A16", Description: "New feature"},
+		},
+	}
+}
+
+func stubRepoInitIO(t *testing.T, exists bool, readFn func(repo string) (RepoMetadata, error)) {
+	t.Helper()
+	oldReadRepoMetadata := readRepoMetadata
+	oldFileExists := fileExists
+	oldWriteFile := writeFile
+	t.Cleanup(func() {
+		readRepoMetadata = oldReadRepoMetadata
+		fileExists = oldFileExists
+		writeFile = oldWriteFile
+	})
+	readRepoMetadata = readFn
+	fileExists = func(path string) bool { return exists }
+	writeFile = func(path string, data []byte) error {
+		return os.WriteFile(path, data, 0o644)
+	}
+}
+
 func TestRunHelp(t *testing.T) {
 	var out bytes.Buffer
 	var errOut bytes.Buffer
@@ -156,34 +241,10 @@ func TestRunRepoInitRejectsExistingWithoutOverwrite(t *testing.T) {
 }
 
 func TestRunRepoInitWritesDefaultsWhenImportFails(t *testing.T) {
-	oldWD, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("getwd failed: %v", err)
-	}
-	tmpDir := t.TempDir()
-	if err := os.Chdir(tmpDir); err != nil {
-		t.Fatalf("chdir failed: %v", err)
-	}
-	t.Cleanup(func() {
-		_ = os.Chdir(oldWD)
-	})
-
-	oldReadRepoMetadata := readRepoMetadata
-	oldFileExists := fileExists
-	oldWriteFile := writeFile
-	t.Cleanup(func() {
-		readRepoMetadata = oldReadRepoMetadata
-		fileExists = oldFileExists
-		writeFile = oldWriteFile
-	})
-
-	readRepoMetadata = func(repo string) (RepoMetadata, error) {
+	tmpDir := setupTempWorkdirWithConfig(t, "")
+	stubRepoInitIO(t, false, func(repo string) (RepoMetadata, error) {
 		return RepoMetadata{}, errors.New("gh not authenticated")
-	}
-	fileExists = func(path string) bool { return false }
-	writeFile = func(path string, data []byte) error {
-		return os.WriteFile(path, data, 0o644)
-	}
+	})
 
 	var out bytes.Buffer
 	var errOut bytes.Buffer
@@ -217,28 +278,8 @@ func TestRunRepoInitWritesDefaultsWhenImportFails(t *testing.T) {
 }
 
 func TestRunRepoInitOverwriteWritesImportedMetadata(t *testing.T) {
-	oldWD, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("getwd failed: %v", err)
-	}
-	tmpDir := t.TempDir()
-	if err := os.Chdir(tmpDir); err != nil {
-		t.Fatalf("chdir failed: %v", err)
-	}
-	t.Cleanup(func() {
-		_ = os.Chdir(oldWD)
-	})
-
-	oldReadRepoMetadata := readRepoMetadata
-	oldFileExists := fileExists
-	oldWriteFile := writeFile
-	t.Cleanup(func() {
-		readRepoMetadata = oldReadRepoMetadata
-		fileExists = oldFileExists
-		writeFile = oldWriteFile
-	})
-
-	readRepoMetadata = func(repo string) (RepoMetadata, error) {
+	tmpDir := setupTempWorkdirWithConfig(t, "")
+	stubRepoInitIO(t, true, func(repo string) (RepoMetadata, error) {
 		return RepoMetadata{
 			Description:   "Imported description",
 			DefaultBranch: "trunk",
@@ -246,11 +287,7 @@ func TestRunRepoInitOverwriteWritesImportedMetadata(t *testing.T) {
 			Visibility:    "private",
 			Template:      true,
 		}, nil
-	}
-	fileExists = func(path string) bool { return true }
-	writeFile = func(path string, data []byte) error {
-		return os.WriteFile(path, data, 0o644)
-	}
+	})
 
 	var out bytes.Buffer
 	var errOut bytes.Buffer
@@ -286,34 +323,14 @@ func TestRunRepoInitOverwriteWritesImportedMetadata(t *testing.T) {
 }
 
 func TestRunRepoAuditJSONNoDrift(t *testing.T) {
-	oldWD, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("getwd failed: %v", err)
-	}
-	tmpDir := t.TempDir()
-	if err := os.Chdir(tmpDir); err != nil {
-		t.Fatalf("chdir failed: %v", err)
-	}
-	t.Cleanup(func() {
-		_ = os.Chdir(oldWD)
-	})
-	if err := os.WriteFile(".gh-flarebyte.cue", []byte(testConfigCue()), 0o644); err != nil {
-		t.Fatalf("write config failed: %v", err)
-	}
+	_ = setupTempWorkdirWithConfig(t, testConfigCue())
 
 	oldReadRepoMetadata := readRepoMetadata
 	t.Cleanup(func() {
 		readRepoMetadata = oldReadRepoMetadata
 	})
 	readRepoMetadata = func(repo string) (RepoMetadata, error) {
-		return RepoMetadata{
-			Description:   "CLI for landing your git commands right",
-			DefaultBranch: "main",
-			Homepage:      "https://github.com/flarebyte/gh-flarebyte",
-			Visibility:    "public",
-			Template:      false,
-			Topics:        []string{"gh-extension", "github-cli", "git", "flarebyte"},
-		}, nil
+		return baseRepoMetadata(), nil
 	}
 
 	var out bytes.Buffer
@@ -335,34 +352,17 @@ func TestRunRepoAuditJSONNoDrift(t *testing.T) {
 }
 
 func TestRunRepoAuditTextWithDrift(t *testing.T) {
-	oldWD, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("getwd failed: %v", err)
-	}
-	tmpDir := t.TempDir()
-	if err := os.Chdir(tmpDir); err != nil {
-		t.Fatalf("chdir failed: %v", err)
-	}
-	t.Cleanup(func() {
-		_ = os.Chdir(oldWD)
-	})
-	if err := os.WriteFile(".gh-flarebyte.cue", []byte(testConfigCue()), 0o644); err != nil {
-		t.Fatalf("write config failed: %v", err)
-	}
+	_ = setupTempWorkdirWithConfig(t, testConfigCue())
 
 	oldReadRepoMetadata := readRepoMetadata
 	t.Cleanup(func() {
 		readRepoMetadata = oldReadRepoMetadata
 	})
 	readRepoMetadata = func(repo string) (RepoMetadata, error) {
-		return RepoMetadata{
-			Description:   "Different description",
-			DefaultBranch: "main",
-			Homepage:      "https://github.com/flarebyte/gh-flarebyte",
-			Visibility:    "public",
-			Template:      false,
-			Topics:        []string{"gh-extension", "github-cli"},
-		}, nil
+		meta := baseRepoMetadata()
+		meta.Description = "Different description"
+		meta.Topics = []string{"gh-extension", "github-cli"}
+		return meta, nil
 	}
 
 	var out bytes.Buffer
@@ -420,35 +420,15 @@ func TestRunReposMineRequiresOrg(t *testing.T) {
 }
 
 func TestRunRepoUpdateBlocksDeletionsWithoutConfirmFlag(t *testing.T) {
-	oldWD, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("getwd failed: %v", err)
-	}
-	tmpDir := t.TempDir()
-	if err := os.Chdir(tmpDir); err != nil {
-		t.Fatalf("chdir failed: %v", err)
-	}
-	t.Cleanup(func() { _ = os.Chdir(oldWD) })
-	if err := os.WriteFile(".gh-flarebyte.cue", []byte(testConfigCue()), 0o644); err != nil {
-		t.Fatalf("write config failed: %v", err)
-	}
+	_ = setupTempWorkdirWithConfig(t, testConfigCue())
 
 	oldReadRepoMetadata := readRepoMetadata
 	t.Cleanup(func() { readRepoMetadata = oldReadRepoMetadata })
 	readRepoMetadata = func(repo string) (RepoMetadata, error) {
-		return RepoMetadata{
-			Description:   "CLI for landing your git commands right",
-			DefaultBranch: "main",
-			Homepage:      "https://github.com/flarebyte/gh-flarebyte",
-			Visibility:    "public",
-			Template:      false,
-			Topics:        []string{"gh-extension", "github-cli", "git", "flarebyte", "extra-topic"},
-			Labels: []LabelState{
-				{Name: "bug", Color: "B60205", Description: "Something is broken"},
-				{Name: "enhancement", Color: "0E8A16", Description: "New feature"},
-				{Name: "legacy", Color: "CCCCCC", Description: "Legacy"},
-			},
-		}, nil
+		meta := baseRepoMetadata()
+		meta.Topics = append(meta.Topics, "extra-topic")
+		meta.Labels = append(meta.Labels, LabelState{Name: "legacy", Color: "CCCCCC", Description: "Legacy"})
+		return meta, nil
 	}
 
 	var out bytes.Buffer
@@ -463,34 +443,14 @@ func TestRunRepoUpdateBlocksDeletionsWithoutConfirmFlag(t *testing.T) {
 }
 
 func TestRunRepoUpdateBlocksVisibilityWithoutAcceptFlag(t *testing.T) {
-	oldWD, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("getwd failed: %v", err)
-	}
-	tmpDir := t.TempDir()
-	if err := os.Chdir(tmpDir); err != nil {
-		t.Fatalf("chdir failed: %v", err)
-	}
-	t.Cleanup(func() { _ = os.Chdir(oldWD) })
-	if err := os.WriteFile(".gh-flarebyte.cue", []byte(testConfigCue()), 0o644); err != nil {
-		t.Fatalf("write config failed: %v", err)
-	}
+	_ = setupTempWorkdirWithConfig(t, testConfigCue())
 
 	oldReadRepoMetadata := readRepoMetadata
 	t.Cleanup(func() { readRepoMetadata = oldReadRepoMetadata })
 	readRepoMetadata = func(repo string) (RepoMetadata, error) {
-		return RepoMetadata{
-			Description:   "CLI for landing your git commands right",
-			DefaultBranch: "main",
-			Homepage:      "https://github.com/flarebyte/gh-flarebyte",
-			Visibility:    "private",
-			Template:      false,
-			Topics:        []string{"gh-extension", "github-cli", "git", "flarebyte"},
-			Labels: []LabelState{
-				{Name: "bug", Color: "B60205", Description: "Something is broken"},
-				{Name: "enhancement", Color: "0E8A16", Description: "New feature"},
-			},
-		}, nil
+		meta := baseRepoMetadata()
+		meta.Visibility = "private"
+		return meta, nil
 	}
 
 	var out bytes.Buffer
@@ -505,18 +465,7 @@ func TestRunRepoUpdateBlocksVisibilityWithoutAcceptFlag(t *testing.T) {
 }
 
 func TestRunRepoUpdateSuccessSummary(t *testing.T) {
-	oldWD, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("getwd failed: %v", err)
-	}
-	tmpDir := t.TempDir()
-	if err := os.Chdir(tmpDir); err != nil {
-		t.Fatalf("chdir failed: %v", err)
-	}
-	t.Cleanup(func() { _ = os.Chdir(oldWD) })
-	if err := os.WriteFile(".gh-flarebyte.cue", []byte(testConfigCue()), 0o644); err != nil {
-		t.Fatalf("write config failed: %v", err)
-	}
+	_ = setupTempWorkdirWithConfig(t, testConfigCue())
 
 	oldReadRepoMetadata := readRepoMetadata
 	oldApplyRepoSettings := applyRepoSettings
@@ -536,17 +485,11 @@ func TestRunRepoUpdateSuccessSummary(t *testing.T) {
 	})
 
 	readRepoMetadata = func(repo string) (RepoMetadata, error) {
-		return RepoMetadata{
-			Description:   "Old description",
-			DefaultBranch: "main",
-			Homepage:      "https://github.com/flarebyte/gh-flarebyte",
-			Visibility:    "public",
-			Template:      false,
-			Topics:        []string{"gh-extension"},
-			Labels: []LabelState{
-				{Name: "bug", Color: "AAAAAA", Description: "Old"},
-			},
-		}, nil
+		meta := baseRepoMetadata()
+		meta.Description = "Old description"
+		meta.Topics = []string{"gh-extension"}
+		meta.Labels = []LabelState{{Name: "bug", Color: "AAAAAA", Description: "Old"}}
+		return meta, nil
 	}
 	applyRepoSettings = func(repo string, desired RepoSettingsPatch) error { return nil }
 	addRepoTopic = func(repo string, topic string) error { return nil }
@@ -570,18 +513,7 @@ func TestRunRepoUpdateSuccessSummary(t *testing.T) {
 }
 
 func TestRunRepoUpdatePartialFailureMessage(t *testing.T) {
-	oldWD, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("getwd failed: %v", err)
-	}
-	tmpDir := t.TempDir()
-	if err := os.Chdir(tmpDir); err != nil {
-		t.Fatalf("chdir failed: %v", err)
-	}
-	t.Cleanup(func() { _ = os.Chdir(oldWD) })
-	if err := os.WriteFile(".gh-flarebyte.cue", []byte(testConfigCue()), 0o644); err != nil {
-		t.Fatalf("write config failed: %v", err)
-	}
+	_ = setupTempWorkdirWithConfig(t, testConfigCue())
 
 	oldReadRepoMetadata := readRepoMetadata
 	oldApplyRepoSettings := applyRepoSettings
@@ -592,18 +524,10 @@ func TestRunRepoUpdatePartialFailureMessage(t *testing.T) {
 		addRepoTopic = oldAddRepoTopic
 	})
 	readRepoMetadata = func(repo string) (RepoMetadata, error) {
-		return RepoMetadata{
-			Description:   "Old description",
-			DefaultBranch: "main",
-			Homepage:      "https://github.com/flarebyte/gh-flarebyte",
-			Visibility:    "public",
-			Template:      false,
-			Topics:        []string{"gh-extension"},
-			Labels: []LabelState{
-				{Name: "bug", Color: "B60205", Description: "Something is broken"},
-				{Name: "enhancement", Color: "0E8A16", Description: "New feature"},
-			},
-		}, nil
+		meta := baseRepoMetadata()
+		meta.Description = "Old description"
+		meta.Topics = []string{"gh-extension"}
+		return meta, nil
 	}
 	applyRepoSettings = func(repo string, desired RepoSettingsPatch) error { return nil }
 	addRepoTopic = func(repo string, topic string) error { return errors.New("topic write failed") }
@@ -619,18 +543,7 @@ func TestRunRepoUpdatePartialFailureMessage(t *testing.T) {
 	}
 }
 func TestRunBuildRejectsUnknownConfiguredTargetFilter(t *testing.T) {
-	oldWD, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("getwd failed: %v", err)
-	}
-	tmpDir := t.TempDir()
-	if err := os.Chdir(tmpDir); err != nil {
-		t.Fatalf("chdir failed: %v", err)
-	}
-	t.Cleanup(func() { _ = os.Chdir(oldWD) })
-	if err := os.WriteFile(".gh-flarebyte.cue", []byte(testConfigCue()), 0o644); err != nil {
-		t.Fatalf("write config failed: %v", err)
-	}
+	_ = setupTempWorkdirWithConfig(t, testConfigCue())
 
 	var out bytes.Buffer
 	var errOut bytes.Buffer
@@ -644,18 +557,7 @@ func TestRunBuildRejectsUnknownConfiguredTargetFilter(t *testing.T) {
 }
 
 func TestRunBuildSuccessWritesChecksumAndSummary(t *testing.T) {
-	oldWD, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("getwd failed: %v", err)
-	}
-	tmpDir := t.TempDir()
-	if err := os.Chdir(tmpDir); err != nil {
-		t.Fatalf("chdir failed: %v", err)
-	}
-	t.Cleanup(func() { _ = os.Chdir(oldWD) })
-	if err := os.WriteFile(".gh-flarebyte.cue", []byte(testConfigCue()), 0o644); err != nil {
-		t.Fatalf("write config failed: %v", err)
-	}
+	_ = setupTempWorkdirWithConfig(t, testConfigCue())
 
 	oldBuildTargetBinary := buildTargetBinary
 	oldPackageBinary := packageBinary
@@ -782,43 +684,9 @@ func TestResolveVersionFromSourceYAMLAndJSON(t *testing.T) {
 }
 
 func TestRunReleaseNotesFileModeRequiresPath(t *testing.T) {
-	oldWD, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("getwd failed: %v", err)
-	}
-	tmpDir := t.TempDir()
-	if err := os.Chdir(tmpDir); err != nil {
-		t.Fatalf("chdir failed: %v", err)
-	}
-	t.Cleanup(func() { _ = os.Chdir(oldWD) })
 	cfg := strings.Replace(testConfigCue(), `notesMode:        "generate-notes"`, `notesMode:        "notes-file"`, 1)
-	if err := os.WriteFile(".gh-flarebyte.cue", []byte(cfg), 0o644); err != nil {
-		t.Fatalf("write config failed: %v", err)
-	}
-
-	oldBuildTargetBinary := buildTargetBinary
-	oldPackageBinary := packageBinary
-	oldFindVersion := findVersion
-	oldTagExists := tagExists
-	oldCreateRelease := createRelease
-	t.Cleanup(func() {
-		buildTargetBinary = oldBuildTargetBinary
-		packageBinary = oldPackageBinary
-		findVersion = oldFindVersion
-		tagExists = oldTagExists
-		createRelease = oldCreateRelease
-	})
-	buildTargetBinary = func(target string, outputPath string) error {
-		return os.WriteFile(outputPath, []byte("bin"), 0o755)
-	}
-	packageBinary = func(binaryPath, target, artifactPath string) error {
-		return os.WriteFile(artifactPath, []byte("pkg"), 0o644)
-	}
-	findVersion = func(sourcePath string) (string, error) { return "1.2.3", nil }
-	tagExists = func(tag string) (bool, error) { return false, nil }
-	createRelease = func(tag string, artifacts []string, notesMode string, notesFile string, draft bool) error {
-		return nil
-	}
+	_ = setupTempWorkdirWithConfig(t, cfg)
+	stubReleaseFlow(t, "1.2.3", false)
 
 	var out bytes.Buffer
 	var errOut bytes.Buffer
@@ -832,37 +700,8 @@ func TestRunReleaseNotesFileModeRequiresPath(t *testing.T) {
 }
 
 func TestRunReleaseFailsWhenTagExists(t *testing.T) {
-	oldWD, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("getwd failed: %v", err)
-	}
-	tmpDir := t.TempDir()
-	if err := os.Chdir(tmpDir); err != nil {
-		t.Fatalf("chdir failed: %v", err)
-	}
-	t.Cleanup(func() { _ = os.Chdir(oldWD) })
-	if err := os.WriteFile(".gh-flarebyte.cue", []byte(testConfigCue()), 0o644); err != nil {
-		t.Fatalf("write config failed: %v", err)
-	}
-
-	oldBuildTargetBinary := buildTargetBinary
-	oldPackageBinary := packageBinary
-	oldFindVersion := findVersion
-	oldTagExists := tagExists
-	t.Cleanup(func() {
-		buildTargetBinary = oldBuildTargetBinary
-		packageBinary = oldPackageBinary
-		findVersion = oldFindVersion
-		tagExists = oldTagExists
-	})
-	buildTargetBinary = func(target string, outputPath string) error {
-		return os.WriteFile(outputPath, []byte("bin"), 0o755)
-	}
-	packageBinary = func(binaryPath, target, artifactPath string) error {
-		return os.WriteFile(artifactPath, []byte("pkg"), 0o644)
-	}
-	findVersion = func(sourcePath string) (string, error) { return "1.2.3", nil }
-	tagExists = func(tag string) (bool, error) { return true, nil }
+	_ = setupTempWorkdirWithConfig(t, testConfigCue())
+	stubReleaseFlow(t, "1.2.3", true)
 
 	var out bytes.Buffer
 	var errOut bytes.Buffer
@@ -876,39 +715,8 @@ func TestRunReleaseFailsWhenTagExists(t *testing.T) {
 }
 
 func TestRunReleaseSuccess(t *testing.T) {
-	oldWD, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("getwd failed: %v", err)
-	}
-	tmpDir := t.TempDir()
-	if err := os.Chdir(tmpDir); err != nil {
-		t.Fatalf("chdir failed: %v", err)
-	}
-	t.Cleanup(func() { _ = os.Chdir(oldWD) })
-	if err := os.WriteFile(".gh-flarebyte.cue", []byte(testConfigCue()), 0o644); err != nil {
-		t.Fatalf("write config failed: %v", err)
-	}
-
-	oldBuildTargetBinary := buildTargetBinary
-	oldPackageBinary := packageBinary
-	oldFindVersion := findVersion
-	oldTagExists := tagExists
-	oldCreateRelease := createRelease
-	t.Cleanup(func() {
-		buildTargetBinary = oldBuildTargetBinary
-		packageBinary = oldPackageBinary
-		findVersion = oldFindVersion
-		tagExists = oldTagExists
-		createRelease = oldCreateRelease
-	})
-	buildTargetBinary = func(target string, outputPath string) error {
-		return os.WriteFile(outputPath, []byte("bin"), 0o755)
-	}
-	packageBinary = func(binaryPath, target, artifactPath string) error {
-		return os.WriteFile(artifactPath, []byte("pkg"), 0o644)
-	}
-	findVersion = func(sourcePath string) (string, error) { return "1.2.3", nil }
-	tagExists = func(tag string) (bool, error) { return false, nil }
+	_ = setupTempWorkdirWithConfig(t, testConfigCue())
+	stubReleaseFlow(t, "1.2.3", false)
 	var capturedTag string
 	createRelease = func(tag string, artifacts []string, notesMode string, notesFile string, draft bool) error {
 		capturedTag = tag
