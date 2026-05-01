@@ -166,3 +166,11 @@ func resolveChecksumPath(configPath string, outputOverride string) string {
 	}
 	return filepath.Join(outputOverride, filepath.Base(configPath))
 }
+
+func copyFile(srcPath string, dstPath string, mode os.FileMode) error {
+	data, err := os.ReadFile(srcPath)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(dstPath, data, mode)
+}

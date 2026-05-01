@@ -86,20 +86,35 @@ func listReleaseArtifacts(artifactDir string, includeChecksums bool, repoName st
 		return nil, fmt.Errorf("cannot read release.artifactDir %s: %w", artifactDir, err)
 	}
 	var artifactPattern *regexp.Regexp
+	var binaryPattern *regexp.Regexp
 	if artifactTargetSuffix {
 		artifactPattern = regexp.MustCompile("^" + regexp.QuoteMeta(repoName) + `-(linux|darwin|windows)-(amd64|arm64)\.(tar\.gz|zip)$`)
+		binaryPattern = regexp.MustCompile("^" + regexp.QuoteMeta(repoName) + `-(linux|darwin|windows)-(amd64|arm64)(\.exe)?$`)
 	} else {
 		artifactPattern = regexp.MustCompile("^" + regexp.QuoteMeta(repoName) + `(?:-(linux|darwin|windows)-(amd64|arm64))?\.(tar\.gz|zip)$`)
+		binaryPattern = regexp.MustCompile("^" + regexp.QuoteMeta(repoName) + `(?:-(linux|darwin|windows)-(amd64|arm64))?(\.exe)?$`)
 	}
 	artifacts := make([]string, 0)
 	for _, e := range entries {
 		entryPath := filepath.Join(artifactDir, e.Name())
 		if e.IsDir() {
+			if strings.HasPrefix(e.Name(), ".") {
+				continue
+			}
 			_ = filepath.WalkDir(entryPath, func(p string, d os.DirEntry, walkErr error) error {
-				if walkErr != nil || d.IsDir() {
+				if walkErr != nil {
 					return walkErr
 				}
+				if d.IsDir() {
+					if strings.HasPrefix(d.Name(), ".") {
+						return filepath.SkipDir
+					}
+					return nil
+				}
 				name := path.Base(p)
+				if binaryPattern.MatchString(name) {
+					artifacts = append(artifacts, p)
+				}
 				if artifactPattern.MatchString(name) {
 					artifacts = append(artifacts, p)
 				}
@@ -111,6 +126,9 @@ func listReleaseArtifacts(artifactDir string, includeChecksums bool, repoName st
 			continue
 		}
 		name := e.Name()
+		if binaryPattern.MatchString(name) {
+			artifacts = append(artifacts, entryPath)
+		}
 		if artifactPattern.MatchString(name) {
 			artifacts = append(artifacts, entryPath)
 		}

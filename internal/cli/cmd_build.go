@@ -93,12 +93,32 @@ func handleBuild(args []string, stdout, stderr io.Writer) Result {
 			_, _ = fmt.Fprintf(stderr, "Build failed for %s during packaging. Re-run with --target %s to isolate the failure.\n", target, target)
 			return Result{ExitCode: ExitBuildFailure, Err: err}
 		}
+		// Also publish a GH-extension installable binary asset name.
+		releaseBinName := binBase
+		if goos == "windows" {
+			releaseBinName += ".exe"
+		}
+		releaseBinRelPath := releaseBinName
+		if !cfg.Build.ArtifactTargetSuffix && len(targets) > 1 {
+			releaseBinRelPath = filepath.Join(target, releaseBinName)
+		}
+		releaseBinPath := filepath.Join(outputDir, releaseBinRelPath)
+		if err := copyFile(binPath, releaseBinPath, 0o755); err != nil {
+			_, _ = fmt.Fprintln(stderr, err.Error())
+			return Result{ExitCode: ExitBuildFailure, Err: err}
+		}
 		sum, err := sha256File(artifactPath)
 		if err != nil {
 			_, _ = fmt.Fprintln(stderr, err.Error())
 			return Result{ExitCode: ExitBuildFailure, Err: err}
 		}
 		digests = append(digests, artifactDigest{Name: artifactRelPath, SHA: sum})
+		binSum, err := sha256File(releaseBinPath)
+		if err != nil {
+			_, _ = fmt.Fprintln(stderr, err.Error())
+			return Result{ExitCode: ExitBuildFailure, Err: err}
+		}
+		digests = append(digests, artifactDigest{Name: releaseBinRelPath, SHA: binSum})
 	}
 	sort.Slice(digests, func(i, j int) bool { return digests[i].Name < digests[j].Name })
 	checksumPath := resolveChecksumPath(cfg.Build.ChecksumFile, outputDirOverride)
