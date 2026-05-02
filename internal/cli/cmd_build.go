@@ -24,6 +24,7 @@ func handleBuild(args []string, stdout, stderr io.Writer) Result {
 		_, _ = fmt.Fprintln(stderr, err.Error())
 		return Result{ExitCode: ExitUsage, Err: err}
 	}
+	hydrateBuildInfo(cfg.Release.VersionSource)
 	targets := cfg.Build.Targets
 	if targetFilter != "" {
 		if !contains(targets, targetFilter) {
