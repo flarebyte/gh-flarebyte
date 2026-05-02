@@ -1,3 +1,6 @@
+// purpose: Encapsulate GitHub CLI/API I/O for repository metadata reads and repository mutation operations.
+// responsibilities: Read repo/repositories state from gh; translate JSON payloads into internal models; apply settings/topics/labels via gh commands.
+// architecture notes: repositoryTopics decoding accepts both connection and array shapes to tolerate upstream gh output variations without breaking audit/update.
 package cli
 
 import (

@@ -9,3 +9,6 @@ meta:
     - github.com/flarebyte/gh-flarebyte/internal/config
     - io
   language: go
+  purpose: Provide shared command-loading helpers used by multiple CLI workflows.
+  responsibilities: Load and validate config with usage-friendly errors; resolve repo identifiers; fetch remote metadata context.
+  architecture_notes: Helpers return a Result pointer for early-exit propagation so callers keep a uniform error/exit-code contract without duplicating formatting logic.

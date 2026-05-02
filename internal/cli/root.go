@@ -1,3 +1,6 @@
+// purpose: Define the CLI domain model and top-level command router for gh-flarebyte.
+// responsibilities: Declare shared CLI types/exit codes; dispatch subcommands; render help/version output.
+// architecture notes: Command handlers are wired through package-level function variables to keep command orchestration testable with lightweight stubs.
 package cli
 
 import (

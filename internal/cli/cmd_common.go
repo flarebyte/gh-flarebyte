@@ -1,3 +1,6 @@
+// purpose: Provide shared command-loading helpers used by multiple CLI workflows.
+// responsibilities: Load and validate config with usage-friendly errors; resolve repo identifiers; fetch remote metadata context.
+// architecture notes: Helpers return *Result for early-exit propagation so callers keep a uniform error/exit-code contract without duplicating formatting logic.
 package cli
 
 import (

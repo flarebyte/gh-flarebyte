@@ -1,3 +1,6 @@
+// purpose: Load `.gh-flarebyte.cue` files and parse required config fields into strongly typed runtime structures.
+// responsibilities: Resolve config path; read config bytes; extract scalar/list/object fields; assemble Config; invoke validation.
+// architecture notes: Parsing is regex/string-block based (not full CUE evaluation) to keep the CLI self-contained and deterministic for the constrained config dialect it supports.
 package config
 
 import (

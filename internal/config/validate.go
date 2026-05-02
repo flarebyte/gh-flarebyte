@@ -1,3 +1,6 @@
+// purpose: Enforce semantic and structural validity rules for loaded gh-flarebyte configuration.
+// responsibilities: Validate required fields/enums; enforce cross-field constraints; return user-actionable error messages.
+// architecture notes: Validation is intentionally centralized so every command using config.Load shares identical rule enforcement and failure wording.
 package config
 
 import (

@@ -1,3 +1,6 @@
+// purpose: Expose config validation as a CLI command that fails fast on malformed or incomplete cue config.
+// responsibilities: Parse config command flags; resolve config path; load/validate config; print validation status.
+// architecture notes: Validation delegates entirely to internal/config to keep command behavior aligned with the same rules used by build/repo/release flows.
 package cli
 
 import (

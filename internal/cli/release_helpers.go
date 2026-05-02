@@ -1,3 +1,6 @@
+// purpose: Provide argument parsing, version extraction, artifact discovery, and GitHub-side primitives for release flows.
+// responsibilities: Parse release flags; read semver from YAML/JSON; collect artifacts/checksums; guard duplicate names; create/check GitHub releases.
+// architecture notes: Artifact matching intentionally supports both flat and per-target layouts so build.artifactTargetSuffix modes can share one release path.
 package cli
 
 import (

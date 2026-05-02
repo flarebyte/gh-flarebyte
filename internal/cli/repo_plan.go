@@ -1,3 +1,6 @@
+// purpose: Compute reconciliation/audit plans between desired config and remote repository state.
+// responsibilities: Derive settings/topic/label diffs; build audit reports; render default cue config; format partial-update failure messages.
+// architecture notes: Feature-field drift is only evaluated when the field is explicitly set in config, preserving forward-compatible partial feature support.
 package cli
 
 import (

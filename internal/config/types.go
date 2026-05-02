@@ -1,3 +1,6 @@
+// purpose: Define the canonical in-memory schema for gh-flarebyte configuration.
+// responsibilities: Declare config structs/constants; model repository/build/release fields and feature-presence flags used by planning logic.
+// architecture notes: Feature `*Set` booleans preserve "explicitly configured" semantics so unset fields are not treated as forced false during reconciliation.
 package config
 
 import "regexp"

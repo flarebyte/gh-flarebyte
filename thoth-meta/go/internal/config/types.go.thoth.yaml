@@ -4,3 +4,6 @@ meta:
   import_files_list:
     - regexp
   language: go
+  purpose: Define the canonical in-memory schema for gh-flarebyte configuration.
+  responsibilities: Declare config structs/constants; model repository/build/release fields and feature-presence flags used by planning logic.
+  architecture_notes: Feature `*Set` booleans preserve explicitly-configured semantics so unset fields are not treated as forced false during reconciliation.

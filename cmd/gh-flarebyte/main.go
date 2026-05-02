@@ -1,3 +1,6 @@
+// purpose: Provide the gh-flarebyte process entrypoint that initializes runtime build metadata and delegates command execution.
+// responsibilities: Bootstrap runtime defaults; invoke cli.Run with stdio; exit with the returned status code.
+// architecture notes: GoVersion is hydrated at runtime only when missing so ldflags-built binaries keep their embedded value while local dev runs still report accurate runtime info.
 package main
 
 import (

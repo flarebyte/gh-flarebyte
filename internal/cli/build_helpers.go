@@ -1,3 +1,6 @@
+// purpose: Provide reusable build primitives for compiling, packaging, hashing, and build-metadata hydration.
+// responsibilities: Parse build args; compile per-target binaries; package archives; compute checksums; copy artifacts; populate ldflag metadata inputs.
+// architecture notes: External process interactions are exposed through package variables for deterministic test stubbing while keeping production behavior shell-based.
 package cli
 
 import (
