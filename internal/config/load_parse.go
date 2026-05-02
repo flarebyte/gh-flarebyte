@@ -1,3 +1,6 @@
+// purpose: Load `.gh-flarebyte.cue` files and parse required config fields into strongly typed runtime structures.
+// responsibilities: Resolve config path; read config bytes; extract scalar/list/object fields; assemble Config; invoke validation.
+// architecture notes: Parsing is regex/string-block based (not full CUE evaluation) to keep the CLI self-contained and deterministic for the constrained config dialect it supports.
 package config
 
 import (
@@ -107,6 +110,12 @@ func parseCueConfig(raw string) (Config, error) {
 	if err != nil {
 		return cfg, err
 	}
+	if featuresBlock, ok := extractOptionalObjectBlock(raw, "features"); ok {
+		cfg.Repository.Features.MergeCommit, cfg.Repository.Features.MergeCommitSet = extractOptionalBoolFieldWithPresence(featuresBlock, "mergeCommit")
+		cfg.Repository.Features.RebaseMerge, cfg.Repository.Features.RebaseMergeSet = extractOptionalBoolFieldWithPresence(featuresBlock, "rebaseMerge")
+		cfg.Repository.Features.SquashMerge, cfg.Repository.Features.SquashMergeSet = extractOptionalBoolFieldWithPresence(featuresBlock, "squashMerge")
+		cfg.Repository.Features.DeleteBranchOnMerge, cfg.Repository.Features.DeleteBranchOnMergeSet = extractOptionalBoolFieldWithPresence(featuresBlock, "deleteBranchOnMerge")
+	}
 	cfg.Release.VersionSource, err = extractStringField(raw, "versionSource")
 	if err != nil {
 		return cfg, err
@@ -130,6 +139,19 @@ func parseCueConfig(raw string) (Config, error) {
 	}
 	cfg.Release.IncludeChecksums = includeChecksums
 	return cfg, nil
+}
+
+func extractOptionalObjectBlock(raw, field string) (string, bool) {
+	open := strings.Index(raw, field+": {")
+	if open == -1 {
+		return "", false
+	}
+	start := open + len(field+": {")
+	end := strings.Index(raw[start:], "\n}")
+	if end == -1 {
+		return "", false
+	}
+	return raw[start : start+end], true
 }
 
 func extractObjectBlock(raw, field string) (string, error) {
@@ -179,6 +201,15 @@ func extractOptionalBoolField(raw, field string, fallback bool) bool {
 		return fallback
 	}
 	return m[1] == "true"
+}
+
+func extractOptionalBoolFieldWithPresence(raw, field string) (bool, bool) {
+	pattern := regexp.MustCompile(fmt.Sprintf(`(?m)\b%s:\s*(true|false)\b`, regexp.QuoteMeta(field)))
+	m := pattern.FindStringSubmatch(raw)
+	if len(m) < 2 {
+		return false, false
+	}
+	return m[1] == "true", true
 }
 
 func extractStringListBlock(raw, field string) ([]string, error) {

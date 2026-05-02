@@ -1,3 +1,6 @@
+// purpose: Implement release publishing by composing build outputs, version resolution, and GitHub release creation.
+// responsibilities: Parse release flags; trigger build; resolve tag/version; collect artifacts; create release with selected notes mode.
+// architecture notes: Release always shells through the build command first so artifact shape and checksum behavior stay consistent with standalone build execution.
 package cli
 
 import (

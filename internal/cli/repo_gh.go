@@ -1,3 +1,6 @@
+// purpose: Encapsulate GitHub CLI/API I/O for repository metadata reads and repository mutation operations.
+// responsibilities: Read repo/repositories state from gh; translate JSON payloads into internal models; apply settings/topics/labels via gh commands.
+// architecture notes: repositoryTopics decoding accepts both connection and array shapes to tolerate upstream gh output variations without breaking audit/update.
 package cli
 
 import (
@@ -8,13 +11,42 @@ import (
 	"strings"
 )
 
+type repoTopicNode struct {
+	Topic struct {
+		Name string `json:"name"`
+	} `json:"topic"`
+}
+
+type repoTopicsField struct {
+	Nodes []repoTopicNode `json:"nodes"`
+}
+
+func (f *repoTopicsField) UnmarshalJSON(data []byte) error {
+	var asConnection struct {
+		Nodes []repoTopicNode `json:"nodes"`
+	}
+	if err := json.Unmarshal(data, &asConnection); err == nil && asConnection.Nodes != nil {
+		f.Nodes = asConnection.Nodes
+		return nil
+	}
+
+	var asArray []repoTopicNode
+	if err := json.Unmarshal(data, &asArray); err == nil {
+		f.Nodes = asArray
+		return nil
+	}
+
+	// Keep strict behavior for unexpected payloads.
+	return json.Unmarshal(data, &asConnection)
+}
+
 func ghReadRepoMetadata(repo string) (RepoMetadata, error) {
 	if os.Getenv("GH_FLAREBYTE_FAKE_READONLY") == "1" {
 		return defaultRepoMetadata(repo), nil
 	}
 	cmd := exec.Command(
 		"gh", "repo", "view", repo,
-		"--json", "description,defaultBranchRef,homepageUrl,isPrivate,isTemplate,repositoryTopics,labels",
+		"--json", "description,defaultBranchRef,homepageUrl,isPrivate,isTemplate,mergeCommitAllowed,rebaseMergeAllowed,squashMergeAllowed,deleteBranchOnMerge,repositoryTopics,labels",
 	)
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
@@ -24,21 +56,19 @@ func ghReadRepoMetadata(repo string) (RepoMetadata, error) {
 		return RepoMetadata{}, commandError(err, stderr.String())
 	}
 	var payload struct {
-		Description      string `json:"description"`
-		HomepageURL      string `json:"homepageUrl"`
-		IsPrivate        bool   `json:"isPrivate"`
-		IsTemplate       bool   `json:"isTemplate"`
-		DefaultBranchRef struct {
+		Description         string `json:"description"`
+		HomepageURL         string `json:"homepageUrl"`
+		IsPrivate           bool   `json:"isPrivate"`
+		IsTemplate          bool   `json:"isTemplate"`
+		MergeCommitAllowed  bool   `json:"mergeCommitAllowed"`
+		RebaseMergeAllowed  bool   `json:"rebaseMergeAllowed"`
+		SquashMergeAllowed  bool   `json:"squashMergeAllowed"`
+		DeleteBranchOnMerge bool   `json:"deleteBranchOnMerge"`
+		DefaultBranchRef    struct {
 			Name string `json:"name"`
 		} `json:"defaultBranchRef"`
-		RepositoryTopics struct {
-			Nodes []struct {
-				Topic struct {
-					Name string `json:"name"`
-				} `json:"topic"`
-			} `json:"nodes"`
-		} `json:"repositoryTopics"`
-		Labels []struct {
+		RepositoryTopics repoTopicsField `json:"repositoryTopics"`
+		Labels           []struct {
 			Name        string `json:"name"`
 			Color       string `json:"color"`
 			Description string `json:"description"`
@@ -52,22 +82,22 @@ func ghReadRepoMetadata(repo string) (RepoMetadata, error) {
 		visibility = "private"
 	}
 	meta := RepoMetadata{
-		Description:   payload.Description,
-		DefaultBranch: payload.DefaultBranchRef.Name,
-		Homepage:      payload.HomepageURL,
-		Visibility:    visibility,
-		Template:      payload.IsTemplate,
-		Topics:        extractTopics(payload.RepositoryTopics.Nodes),
-		Labels:        extractLabelsFromState(payload.Labels),
+		Description:         payload.Description,
+		DefaultBranch:       payload.DefaultBranchRef.Name,
+		Homepage:            payload.HomepageURL,
+		Visibility:          visibility,
+		Template:            payload.IsTemplate,
+		MergeCommit:         payload.MergeCommitAllowed,
+		RebaseMerge:         payload.RebaseMergeAllowed,
+		SquashMerge:         payload.SquashMergeAllowed,
+		DeleteBranchOnMerge: payload.DeleteBranchOnMerge,
+		Topics:              extractTopics(payload.RepositoryTopics.Nodes),
+		Labels:              extractLabelsFromState(payload.Labels),
 	}
 	return meta, nil
 }
 
-func extractTopics(nodes []struct {
-	Topic struct {
-		Name string `json:"name"`
-	} `json:"topic"`
-}) []string {
+func extractTopics(nodes []repoTopicNode) []string {
 	topics := make([]string, 0, len(nodes))
 	for _, node := range nodes {
 		if node.Topic.Name != "" {
@@ -176,6 +206,18 @@ func ghApplyRepoSettings(repo string, desired RepoSettingsPatch) error {
 	} else {
 		args = append(args, "--template=false")
 	}
+	if desired.SetMergeCommit {
+		args = append(args, "--enable-merge-commit="+boolToCLIValue(desired.MergeCommit))
+	}
+	if desired.SetRebaseMerge {
+		args = append(args, "--enable-rebase-merge="+boolToCLIValue(desired.RebaseMerge))
+	}
+	if desired.SetSquashMerge {
+		args = append(args, "--enable-squash-merge="+boolToCLIValue(desired.SquashMerge))
+	}
+	if desired.SetDeleteBranchOnMerge {
+		args = append(args, "--delete-branch-on-merge="+boolToCLIValue(desired.DeleteBranchOnMerge))
+	}
 	cmd := exec.Command("gh", args...)
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
@@ -183,6 +225,13 @@ func ghApplyRepoSettings(repo string, desired RepoSettingsPatch) error {
 		return commandError(err, stderr.String())
 	}
 	return nil
+}
+
+func boolToCLIValue(v bool) string {
+	if v {
+		return "true"
+	}
+	return "false"
 }
 
 func ghAddRepoTopic(repo string, topic string) error {

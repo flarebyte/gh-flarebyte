@@ -1,3 +1,6 @@
+// purpose: Provide reusable build primitives for compiling, packaging, hashing, and build-metadata hydration.
+// responsibilities: Parse build args; compile per-target binaries; package archives; compute checksums; copy artifacts; populate ldflag metadata inputs.
+// architecture notes: External process interactions are exposed through package variables for deterministic test stubbing while keeping production behavior shell-based.
 package cli
 
 import (
@@ -13,10 +16,25 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
 	"github.com/flarebyte/gh-flarebyte/internal/buildinfo"
+)
+
+var (
+	resolveBuildVersion = resolveVersionFromSource
+	currentTimeUTC      = func() time.Time { return time.Now().UTC() }
+	currentGoVersion    = runtime.Version
+	readGitOutput       = func(args ...string) (string, error) {
+		cmd := exec.Command("git", args...)
+		out, err := cmd.Output()
+		if err != nil {
+			return "", err
+		}
+		return strings.TrimSpace(string(out)), nil
+	}
 )
 
 func parseBuildArgs(args []string) (target string, outputDir string, err error) {
@@ -64,6 +82,17 @@ func goBuildTargetBinary(target string, outputPath string) error {
 		return commandError(err, stderr.String())
 	}
 	return nil
+}
+
+func hydrateBuildInfo(versionSource string) {
+	if version, err := resolveBuildVersion(versionSource); err == nil && version != "" {
+		buildinfo.Version = version
+	}
+	if commitID, err := readGitOutput("rev-parse", "--short=12", "HEAD"); err == nil && commitID != "" {
+		buildinfo.CommitID = commitID
+	}
+	buildinfo.Date = currentTimeUTC().Format(time.RFC3339)
+	buildinfo.GoVersion = currentGoVersion()
 }
 
 func splitTarget(target string) (goos, goarch string, err error) {

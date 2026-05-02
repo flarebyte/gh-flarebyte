@@ -10,7 +10,56 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/flarebyte/gh-flarebyte/internal/buildinfo"
 )
+
+func setupBuildTargetAndPackagingStubs(t *testing.T) {
+	t.Helper()
+	oldBuildTargetBinary := buildTargetBinary
+	oldPackageBinary := packageBinary
+	t.Cleanup(func() {
+		buildTargetBinary = oldBuildTargetBinary
+		packageBinary = oldPackageBinary
+	})
+	buildTargetBinary = func(target string, outputPath string) error {
+		return os.WriteFile(outputPath, []byte("binary-"+target), 0o755)
+	}
+	packageBinary = packageBinaryArchive
+}
+
+func setupHydrateBuildInfoTestEnv(
+	t *testing.T,
+	resolveFn func(sourcePath string) (string, error),
+	gitFn func(args ...string) (string, error),
+	nowFn func() time.Time,
+	goVersionFn func() string,
+) {
+	t.Helper()
+	oldResolveBuildVersion := resolveBuildVersion
+	oldReadGitOutput := readGitOutput
+	oldCurrentTimeUTC := currentTimeUTC
+	oldCurrentGoVersion := currentGoVersion
+	oldVersion := buildinfo.Version
+	oldCommitID := buildinfo.CommitID
+	oldDate := buildinfo.Date
+	oldGoVersion := buildinfo.GoVersion
+	t.Cleanup(func() {
+		resolveBuildVersion = oldResolveBuildVersion
+		readGitOutput = oldReadGitOutput
+		currentTimeUTC = oldCurrentTimeUTC
+		currentGoVersion = oldCurrentGoVersion
+		buildinfo.Version = oldVersion
+		buildinfo.CommitID = oldCommitID
+		buildinfo.Date = oldDate
+		buildinfo.GoVersion = oldGoVersion
+	})
+	resolveBuildVersion = resolveFn
+	readGitOutput = gitFn
+	currentTimeUTC = nowFn
+	currentGoVersion = goVersionFn
+}
 
 func TestRunBuildRejectsUnknownConfiguredTargetFilter(t *testing.T) {
 	_ = setupTempWorkdirWithConfig(t, testConfigCue())
@@ -24,16 +73,7 @@ func TestRunBuildRejectsUnknownConfiguredTargetFilter(t *testing.T) {
 
 func TestRunBuildSuccessWritesChecksumAndSummary(t *testing.T) {
 	_ = setupTempWorkdirWithConfig(t, testConfigCue())
-	oldBuildTargetBinary := buildTargetBinary
-	oldPackageBinary := packageBinary
-	t.Cleanup(func() {
-		buildTargetBinary = oldBuildTargetBinary
-		packageBinary = oldPackageBinary
-	})
-	buildTargetBinary = func(target string, outputPath string) error {
-		return os.WriteFile(outputPath, []byte("binary-"+target), 0o755)
-	}
-	packageBinary = packageBinaryArchive
+	setupBuildTargetAndPackagingStubs(t)
 	var out bytes.Buffer
 	var errOut bytes.Buffer
 	result := Run([]string{"build", "--output-dir", "dist"}, &out, &errOut)
@@ -55,16 +95,7 @@ func TestRunBuildWithoutSuffixUsesTargetSubdirsForMultipleTargets(t *testing.T) 
 	]`, 1)
 	cfg = strings.Replace(cfg, `artifactTargetSuffix: true`, `artifactTargetSuffix: false`, 1)
 	_ = setupTempWorkdirWithConfig(t, cfg)
-	oldBuildTargetBinary := buildTargetBinary
-	oldPackageBinary := packageBinary
-	t.Cleanup(func() {
-		buildTargetBinary = oldBuildTargetBinary
-		packageBinary = oldPackageBinary
-	})
-	buildTargetBinary = func(target string, outputPath string) error {
-		return os.WriteFile(outputPath, []byte("binary-"+target), 0o755)
-	}
-	packageBinary = packageBinaryArchive
+	setupBuildTargetAndPackagingStubs(t)
 	var out bytes.Buffer
 	var errOut bytes.Buffer
 	result := Run([]string{"build", "--output-dir", "dist"}, &out, &errOut)
@@ -204,5 +235,57 @@ func TestRunReleaseSupportsNoSuffixModeWithMultipleTargets(t *testing.T) {
 	}
 	if len(capturedArtifacts) == 0 {
 		t.Fatalf("expected captured artifacts")
+	}
+}
+
+func TestHydrateBuildInfoPopulatesAllFields(t *testing.T) {
+	setupHydrateBuildInfoTestEnv(
+		t,
+		func(sourcePath string) (string, error) { return "1.2.3", nil },
+		func(args ...string) (string, error) { return "abc123def456", nil },
+		func() time.Time { return time.Date(2026, 5, 2, 12, 34, 56, 0, time.UTC) },
+		func() string { return "go1.24.1" },
+	)
+
+	hydrateBuildInfo("main.project.yaml")
+
+	if buildinfo.Version != "1.2.3" {
+		t.Fatalf("unexpected version: %s", buildinfo.Version)
+	}
+	if buildinfo.CommitID != "abc123def456" {
+		t.Fatalf("unexpected commit id: %s", buildinfo.CommitID)
+	}
+	if buildinfo.Date != "2026-05-02T12:34:56Z" {
+		t.Fatalf("unexpected date: %s", buildinfo.Date)
+	}
+	if buildinfo.GoVersion != "go1.24.1" {
+		t.Fatalf("unexpected go version: %s", buildinfo.GoVersion)
+	}
+}
+
+func TestHydrateBuildInfoKeepsExistingWhenVersionAndGitUnavailable(t *testing.T) {
+	setupHydrateBuildInfoTestEnv(
+		t,
+		func(sourcePath string) (string, error) { return "", os.ErrNotExist },
+		func(args ...string) (string, error) { return "", os.ErrNotExist },
+		func() time.Time { return time.Date(2026, 5, 2, 1, 2, 3, 0, time.UTC) },
+		func() string { return "go1.24.2" },
+	)
+	buildinfo.Version = "dev"
+	buildinfo.CommitID = "unknown"
+
+	hydrateBuildInfo("main.project.yaml")
+
+	if buildinfo.Version != "dev" {
+		t.Fatalf("expected existing version to remain, got: %s", buildinfo.Version)
+	}
+	if buildinfo.CommitID != "unknown" {
+		t.Fatalf("expected existing commit to remain, got: %s", buildinfo.CommitID)
+	}
+	if buildinfo.Date != "2026-05-02T01:02:03Z" {
+		t.Fatalf("unexpected date: %s", buildinfo.Date)
+	}
+	if buildinfo.GoVersion != "go1.24.2" {
+		t.Fatalf("unexpected go version: %s", buildinfo.GoVersion)
 	}
 }

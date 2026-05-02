@@ -1,3 +1,6 @@
+// purpose: Parse repo-related CLI arguments into typed values consumed by repo command handlers.
+// responsibilities: Validate repo/audit/update/mine flags; split owner/name repo strings; resolve absolute paths for messages.
+// architecture notes: Parsers are strict (unknown-arg rejection) to keep automation behavior deterministic and avoid silently ignored flags.
 package cli
 
 import (

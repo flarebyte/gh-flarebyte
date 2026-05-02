@@ -1,3 +1,6 @@
+// purpose: Compute reconciliation/audit plans between desired config and remote repository state.
+// responsibilities: Derive settings/topic/label diffs; build audit reports; render default cue config; format partial-update failure messages.
+// architecture notes: Feature-field drift is only evaluated when the field is explicitly set in config, preserving forward-compatible partial feature support.
 package cli
 
 import (
@@ -64,6 +67,34 @@ func buildUpdatePlan(cfg config.Config, remote RepoMetadata) UpdatePlan {
 	}
 	if cfg.Repository.Template != remote.Template {
 		settingsChangeCount++
+	}
+	if cfg.Repository.Features.MergeCommitSet {
+		patch.SetMergeCommit = true
+		patch.MergeCommit = cfg.Repository.Features.MergeCommit
+		if cfg.Repository.Features.MergeCommit != remote.MergeCommit {
+			settingsChangeCount++
+		}
+	}
+	if cfg.Repository.Features.RebaseMergeSet {
+		patch.SetRebaseMerge = true
+		patch.RebaseMerge = cfg.Repository.Features.RebaseMerge
+		if cfg.Repository.Features.RebaseMerge != remote.RebaseMerge {
+			settingsChangeCount++
+		}
+	}
+	if cfg.Repository.Features.SquashMergeSet {
+		patch.SetSquashMerge = true
+		patch.SquashMerge = cfg.Repository.Features.SquashMerge
+		if cfg.Repository.Features.SquashMerge != remote.SquashMerge {
+			settingsChangeCount++
+		}
+	}
+	if cfg.Repository.Features.DeleteBranchOnMergeSet {
+		patch.SetDeleteBranchOnMerge = true
+		patch.DeleteBranchOnMerge = cfg.Repository.Features.DeleteBranchOnMerge
+		if cfg.Repository.Features.DeleteBranchOnMerge != remote.DeleteBranchOnMerge {
+			settingsChangeCount++
+		}
 	}
 	plan.SettingsChangeCount = settingsChangeCount
 	plan.SettingsChanged = settingsChangeCount > 0
@@ -141,6 +172,18 @@ func buildAuditReport(repo string, cfg config.Config, remote RepoMetadata) Audit
 	}
 	if cfg.Repository.Template != remote.Template {
 		diffs = append(diffs, AuditDiff{Field: "repository.template", Local: cfg.Repository.Template, Remote: remote.Template})
+	}
+	if cfg.Repository.Features.MergeCommitSet && cfg.Repository.Features.MergeCommit != remote.MergeCommit {
+		diffs = append(diffs, AuditDiff{Field: "repository.features.mergeCommit", Local: cfg.Repository.Features.MergeCommit, Remote: remote.MergeCommit})
+	}
+	if cfg.Repository.Features.RebaseMergeSet && cfg.Repository.Features.RebaseMerge != remote.RebaseMerge {
+		diffs = append(diffs, AuditDiff{Field: "repository.features.rebaseMerge", Local: cfg.Repository.Features.RebaseMerge, Remote: remote.RebaseMerge})
+	}
+	if cfg.Repository.Features.SquashMergeSet && cfg.Repository.Features.SquashMerge != remote.SquashMerge {
+		diffs = append(diffs, AuditDiff{Field: "repository.features.squashMerge", Local: cfg.Repository.Features.SquashMerge, Remote: remote.SquashMerge})
+	}
+	if cfg.Repository.Features.DeleteBranchOnMergeSet && cfg.Repository.Features.DeleteBranchOnMerge != remote.DeleteBranchOnMerge {
+		diffs = append(diffs, AuditDiff{Field: "repository.features.deleteBranchOnMerge", Local: cfg.Repository.Features.DeleteBranchOnMerge, Remote: remote.DeleteBranchOnMerge})
 	}
 	if !stringSlicesEqual(cfg.Repository.Topics, remote.Topics) {
 		diffs = append(diffs, AuditDiff{Field: "repository.topics", Local: cfg.Repository.Topics, Remote: remote.Topics})

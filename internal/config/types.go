@@ -1,3 +1,6 @@
+// purpose: Define the canonical in-memory schema for gh-flarebyte configuration.
+// responsibilities: Declare config structs/constants; model repository/build/release fields and feature-presence flags used by planning logic.
+// architecture notes: Feature `*Set` booleans preserve "explicitly configured" semantics so unset fields are not treated as forced false during reconciliation.
 package config
 
 import "regexp"
@@ -22,19 +25,31 @@ type SyncConfig struct {
 }
 
 type RepositoryConfig struct {
-	Description   string        `json:"description"`
-	DefaultBranch string        `json:"defaultBranch"`
-	Homepage      string        `json:"homepage"`
-	Visibility    string        `json:"visibility"`
-	Template      bool          `json:"template"`
-	Topics        []string      `json:"topics"`
-	Labels        []LabelConfig `json:"labels"`
+	Description   string                   `json:"description"`
+	DefaultBranch string                   `json:"defaultBranch"`
+	Homepage      string                   `json:"homepage"`
+	Visibility    string                   `json:"visibility"`
+	Template      bool                     `json:"template"`
+	Topics        []string                 `json:"topics"`
+	Labels        []LabelConfig            `json:"labels"`
+	Features      RepositoryFeaturesConfig `json:"features"`
 }
 
 type LabelConfig struct {
 	Name        string `json:"name"`
 	Color       string `json:"color"`
 	Description string `json:"description"`
+}
+
+type RepositoryFeaturesConfig struct {
+	MergeCommit            bool `json:"mergeCommit"`
+	MergeCommitSet         bool `json:"mergeCommitSet"`
+	RebaseMerge            bool `json:"rebaseMerge"`
+	RebaseMergeSet         bool `json:"rebaseMergeSet"`
+	SquashMerge            bool `json:"squashMerge"`
+	SquashMergeSet         bool `json:"squashMergeSet"`
+	DeleteBranchOnMerge    bool `json:"deleteBranchOnMerge"`
+	DeleteBranchOnMergeSet bool `json:"deleteBranchOnMergeSet"`
 }
 
 type BuildConfig struct {

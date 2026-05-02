@@ -1,3 +1,6 @@
+// purpose: Define the CLI domain model and top-level command router for gh-flarebyte.
+// responsibilities: Declare shared CLI types/exit codes; dispatch subcommands; render help/version output.
+// architecture notes: Command handlers are wired through package-level function variables to keep command orchestration testable with lightweight stubs.
 package cli
 
 import (
@@ -37,13 +40,17 @@ type Result struct {
 }
 
 type RepoMetadata struct {
-	Description   string
-	DefaultBranch string
-	Homepage      string
-	Visibility    string
-	Template      bool
-	Topics        []string
-	Labels        []LabelState
+	Description         string
+	DefaultBranch       string
+	Homepage            string
+	Visibility          string
+	Template            bool
+	MergeCommit         bool
+	RebaseMerge         bool
+	SquashMerge         bool
+	DeleteBranchOnMerge bool
+	Topics              []string
+	Labels              []LabelState
 }
 
 type LabelState struct {
@@ -53,12 +60,20 @@ type LabelState struct {
 }
 
 type RepoSettingsPatch struct {
-	Description   string
-	DefaultBranch string
-	Homepage      string
-	Template      bool
-	Visibility    string
-	SetVisibility bool
+	Description            string
+	DefaultBranch          string
+	Homepage               string
+	Template               bool
+	Visibility             string
+	SetVisibility          bool
+	MergeCommit            bool
+	SetMergeCommit         bool
+	RebaseMerge            bool
+	SetRebaseMerge         bool
+	SquashMerge            bool
+	SetSquashMerge         bool
+	DeleteBranchOnMerge    bool
+	SetDeleteBranchOnMerge bool
 }
 
 type AuditDiff struct {

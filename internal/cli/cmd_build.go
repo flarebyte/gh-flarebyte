@@ -1,3 +1,6 @@
+// purpose: Execute the configured build workflow to produce target artifacts and checksums.
+// responsibilities: Validate build arguments/config; iterate targets; build/package binaries; emit checksum and summary output.
+// architecture notes: Build metadata is hydrated before compilation so produced binaries report version info even when the running extension binary was built in dev mode.
 package cli
 
 import (
@@ -24,6 +27,7 @@ func handleBuild(args []string, stdout, stderr io.Writer) Result {
 		_, _ = fmt.Fprintln(stderr, err.Error())
 		return Result{ExitCode: ExitUsage, Err: err}
 	}
+	hydrateBuildInfo(cfg.Release.VersionSource)
 	targets := cfg.Build.Targets
 	if targetFilter != "" {
 		if !contains(targets, targetFilter) {
