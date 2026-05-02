@@ -27,7 +27,7 @@ Use `gh flarebyte` to keep a GitHub repository aligned with the config checked i
 - `gh flarebyte release [--draft] [--notes-file <path>]` builds first, then publishes a GitHub release from the build outputs.
 
 ### Runtime info
-- `gh flarebyte --version` prints the CLI version metadata, including version, commit id, and build date.
+- `gh flarebyte --version` prints the CLI version metadata, including version, commit id, build date, OS/arch, and Go runtime version.
 - `gh flarebyte --version --json` prints the same version metadata in a machine-readable JSON shape.
 
 Use `gh flarebyte --help` for command usage. Error output is designed to include the failing config field or target and a practical next step.
@@ -38,9 +38,10 @@ The repo config lives in `.gh-flarebyte.cue` and is the source of truth for:
 - repository metadata such as description, homepage, visibility, and template status
 - topics
 - labels
+- repository feature flags currently enforced by sync/audit: `repository.features.mergeCommit`, `repository.features.rebaseMerge`, `repository.features.squashMerge`, `repository.features.deleteBranchOnMerge`
 - build language and artifact layout
 - release settings
-- repository feature flags
+- additional repository feature fields may exist in config but are not yet enforced by `repo update` / `repo audit`
 
 Example:
 
