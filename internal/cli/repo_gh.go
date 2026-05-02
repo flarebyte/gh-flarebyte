@@ -43,7 +43,7 @@ func ghReadRepoMetadata(repo string) (RepoMetadata, error) {
 	}
 	cmd := exec.Command(
 		"gh", "repo", "view", repo,
-		"--json", "description,defaultBranchRef,homepageUrl,isPrivate,isTemplate,mergeCommitAllowed,rebaseMergeAllowed,squashMergeAllowed,repositoryTopics,labels",
+		"--json", "description,defaultBranchRef,homepageUrl,isPrivate,isTemplate,mergeCommitAllowed,rebaseMergeAllowed,squashMergeAllowed,deleteBranchOnMerge,repositoryTopics,labels",
 	)
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
@@ -53,14 +53,15 @@ func ghReadRepoMetadata(repo string) (RepoMetadata, error) {
 		return RepoMetadata{}, commandError(err, stderr.String())
 	}
 	var payload struct {
-		Description        string `json:"description"`
-		HomepageURL        string `json:"homepageUrl"`
-		IsPrivate          bool   `json:"isPrivate"`
-		IsTemplate         bool   `json:"isTemplate"`
-		MergeCommitAllowed bool   `json:"mergeCommitAllowed"`
-		RebaseMergeAllowed bool   `json:"rebaseMergeAllowed"`
-		SquashMergeAllowed bool   `json:"squashMergeAllowed"`
-		DefaultBranchRef   struct {
+		Description         string `json:"description"`
+		HomepageURL         string `json:"homepageUrl"`
+		IsPrivate           bool   `json:"isPrivate"`
+		IsTemplate          bool   `json:"isTemplate"`
+		MergeCommitAllowed  bool   `json:"mergeCommitAllowed"`
+		RebaseMergeAllowed  bool   `json:"rebaseMergeAllowed"`
+		SquashMergeAllowed  bool   `json:"squashMergeAllowed"`
+		DeleteBranchOnMerge bool   `json:"deleteBranchOnMerge"`
+		DefaultBranchRef    struct {
 			Name string `json:"name"`
 		} `json:"defaultBranchRef"`
 		RepositoryTopics repoTopicsField `json:"repositoryTopics"`
@@ -78,16 +79,17 @@ func ghReadRepoMetadata(repo string) (RepoMetadata, error) {
 		visibility = "private"
 	}
 	meta := RepoMetadata{
-		Description:   payload.Description,
-		DefaultBranch: payload.DefaultBranchRef.Name,
-		Homepage:      payload.HomepageURL,
-		Visibility:    visibility,
-		Template:      payload.IsTemplate,
-		MergeCommit:   payload.MergeCommitAllowed,
-		RebaseMerge:   payload.RebaseMergeAllowed,
-		SquashMerge:   payload.SquashMergeAllowed,
-		Topics:        extractTopics(payload.RepositoryTopics.Nodes),
-		Labels:        extractLabelsFromState(payload.Labels),
+		Description:         payload.Description,
+		DefaultBranch:       payload.DefaultBranchRef.Name,
+		Homepage:            payload.HomepageURL,
+		Visibility:          visibility,
+		Template:            payload.IsTemplate,
+		MergeCommit:         payload.MergeCommitAllowed,
+		RebaseMerge:         payload.RebaseMergeAllowed,
+		SquashMerge:         payload.SquashMergeAllowed,
+		DeleteBranchOnMerge: payload.DeleteBranchOnMerge,
+		Topics:              extractTopics(payload.RepositoryTopics.Nodes),
+		Labels:              extractLabelsFromState(payload.Labels),
 	}
 	return meta, nil
 }
@@ -209,6 +211,9 @@ func ghApplyRepoSettings(repo string, desired RepoSettingsPatch) error {
 	}
 	if desired.SetSquashMerge {
 		args = append(args, "--enable-squash-merge="+boolToCLIValue(desired.SquashMerge))
+	}
+	if desired.SetDeleteBranchOnMerge {
+		args = append(args, "--delete-branch-on-merge="+boolToCLIValue(desired.DeleteBranchOnMerge))
 	}
 	cmd := exec.Command("gh", args...)
 	var stderr bytes.Buffer

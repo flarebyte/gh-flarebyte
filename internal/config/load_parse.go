@@ -111,6 +111,7 @@ func parseCueConfig(raw string) (Config, error) {
 		cfg.Repository.Features.MergeCommit, cfg.Repository.Features.MergeCommitSet = extractOptionalBoolFieldWithPresence(featuresBlock, "mergeCommit")
 		cfg.Repository.Features.RebaseMerge, cfg.Repository.Features.RebaseMergeSet = extractOptionalBoolFieldWithPresence(featuresBlock, "rebaseMerge")
 		cfg.Repository.Features.SquashMerge, cfg.Repository.Features.SquashMergeSet = extractOptionalBoolFieldWithPresence(featuresBlock, "squashMerge")
+		cfg.Repository.Features.DeleteBranchOnMerge, cfg.Repository.Features.DeleteBranchOnMergeSet = extractOptionalBoolFieldWithPresence(featuresBlock, "deleteBranchOnMerge")
 	}
 	cfg.Release.VersionSource, err = extractStringField(raw, "versionSource")
 	if err != nil {

@@ -39,12 +39,14 @@ type LabelConfig struct {
 }
 
 type RepositoryFeaturesConfig struct {
-	MergeCommit    bool `json:"mergeCommit"`
-	MergeCommitSet bool `json:"mergeCommitSet"`
-	RebaseMerge    bool `json:"rebaseMerge"`
-	RebaseMergeSet bool `json:"rebaseMergeSet"`
-	SquashMerge    bool `json:"squashMerge"`
-	SquashMergeSet bool `json:"squashMergeSet"`
+	MergeCommit            bool `json:"mergeCommit"`
+	MergeCommitSet         bool `json:"mergeCommitSet"`
+	RebaseMerge            bool `json:"rebaseMerge"`
+	RebaseMergeSet         bool `json:"rebaseMergeSet"`
+	SquashMerge            bool `json:"squashMerge"`
+	SquashMergeSet         bool `json:"squashMergeSet"`
+	DeleteBranchOnMerge    bool `json:"deleteBranchOnMerge"`
+	DeleteBranchOnMergeSet bool `json:"deleteBranchOnMergeSet"`
 }
 
 type BuildConfig struct {

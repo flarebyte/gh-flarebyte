@@ -86,6 +86,13 @@ func buildUpdatePlan(cfg config.Config, remote RepoMetadata) UpdatePlan {
 			settingsChangeCount++
 		}
 	}
+	if cfg.Repository.Features.DeleteBranchOnMergeSet {
+		patch.SetDeleteBranchOnMerge = true
+		patch.DeleteBranchOnMerge = cfg.Repository.Features.DeleteBranchOnMerge
+		if cfg.Repository.Features.DeleteBranchOnMerge != remote.DeleteBranchOnMerge {
+			settingsChangeCount++
+		}
+	}
 	plan.SettingsChangeCount = settingsChangeCount
 	plan.SettingsChanged = settingsChangeCount > 0
 	plan.SettingsPatch = patch
@@ -171,6 +178,9 @@ func buildAuditReport(repo string, cfg config.Config, remote RepoMetadata) Audit
 	}
 	if cfg.Repository.Features.SquashMergeSet && cfg.Repository.Features.SquashMerge != remote.SquashMerge {
 		diffs = append(diffs, AuditDiff{Field: "repository.features.squashMerge", Local: cfg.Repository.Features.SquashMerge, Remote: remote.SquashMerge})
+	}
+	if cfg.Repository.Features.DeleteBranchOnMergeSet && cfg.Repository.Features.DeleteBranchOnMerge != remote.DeleteBranchOnMerge {
+		diffs = append(diffs, AuditDiff{Field: "repository.features.deleteBranchOnMerge", Local: cfg.Repository.Features.DeleteBranchOnMerge, Remote: remote.DeleteBranchOnMerge})
 	}
 	if !stringSlicesEqual(cfg.Repository.Topics, remote.Topics) {
 		diffs = append(diffs, AuditDiff{Field: "repository.topics", Local: cfg.Repository.Topics, Remote: remote.Topics})

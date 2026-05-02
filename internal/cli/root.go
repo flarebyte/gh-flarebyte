@@ -37,16 +37,17 @@ type Result struct {
 }
 
 type RepoMetadata struct {
-	Description   string
-	DefaultBranch string
-	Homepage      string
-	Visibility    string
-	Template      bool
-	MergeCommit   bool
-	RebaseMerge   bool
-	SquashMerge   bool
-	Topics        []string
-	Labels        []LabelState
+	Description         string
+	DefaultBranch       string
+	Homepage            string
+	Visibility          string
+	Template            bool
+	MergeCommit         bool
+	RebaseMerge         bool
+	SquashMerge         bool
+	DeleteBranchOnMerge bool
+	Topics              []string
+	Labels              []LabelState
 }
 
 type LabelState struct {
@@ -56,18 +57,20 @@ type LabelState struct {
 }
 
 type RepoSettingsPatch struct {
-	Description    string
-	DefaultBranch  string
-	Homepage       string
-	Template       bool
-	Visibility     string
-	SetVisibility  bool
-	MergeCommit    bool
-	SetMergeCommit bool
-	RebaseMerge    bool
-	SetRebaseMerge bool
-	SquashMerge    bool
-	SetSquashMerge bool
+	Description            string
+	DefaultBranch          string
+	Homepage               string
+	Template               bool
+	Visibility             string
+	SetVisibility          bool
+	MergeCommit            bool
+	SetMergeCommit         bool
+	RebaseMerge            bool
+	SetRebaseMerge         bool
+	SquashMerge            bool
+	SetSquashMerge         bool
+	DeleteBranchOnMerge    bool
+	SetDeleteBranchOnMerge bool
 }
 
 type AuditDiff struct {
