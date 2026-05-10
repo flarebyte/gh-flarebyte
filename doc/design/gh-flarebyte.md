@@ -144,9 +144,9 @@ How config fields map onto GitHub sync targets and extension-local automation se
 | repository.features.secretScanning | boolean | .gh-flarebyte.cue | Secret scanning for the repository. | local-to-remote |
 | repository.features.secretScanningPushProtection | boolean | .gh-flarebyte.cue | Secret scanning push protection. | local-to-remote |
 | build.language | enum | .gh-flarebyte.cue | Build language used by gh flarebyte build: go initially, dart later. | local-only |
-| build.mode | enum | .gh-flarebyte.cue | Build mode: `binary` for target artifacts, or `library` for package compile/test verification. | local-only |
+| build.mode | enum | .gh-flarebyte.cue | Build mode: `binary` for target artifacts or `library` for package compile/test verification. | local-only |
 | build.packages | list | .gh-flarebyte.cue | Package patterns used in `library` mode, defaulting to `["./..."]`. | local-only |
-| build.runTests | boolean | .gh-flarebyte.cue | Whether library mode should run `go test` after `go build`. | local-only |
+| build.runTests | boolean | .gh-flarebyte.cue | Whether library mode runs `go test` after `go build`. | local-only |
 | build.outputDir | string | .gh-flarebyte.cue | Directory for built artifacts. | local-only |
 | build.checksumFile | string | .gh-flarebyte.cue | Checksum manifest for built artifacts. | local-only |
 | build.targets | list | .gh-flarebyte.cue | Target matrix for the build command using `os-arch` strings such as `linux-amd64` or `windows-amd64`. Each project declares only the targets it supports. | local-only |
@@ -154,7 +154,7 @@ How config fields map onto GitHub sync targets and extension-local automation se
 | release.tagPrefix | string | .gh-flarebyte.cue | Prefix used for release tags. | local-only |
 | release.notesMode | enum | .gh-flarebyte.cue | Release note strategy, such as generate-notes or notes-file. | local-only |
 | release.releaseNotesFilePath | string | .gh-flarebyte.cue | Path required when notesMode is `notes-file`. | local-only |
-| release.includeArtifacts | boolean | .gh-flarebyte.cue | Whether release uploads build artifacts (`true`) or publishes tag/notes only (`false`). | local-only |
+| release.includeArtifacts | boolean | .gh-flarebyte.cue | Whether release uploads build artifacts or publishes tag/notes only. | local-only |
 | release.artifactDir | string | .gh-flarebyte.cue | Directory scanned for release assets. | local-only |
 | release.includeChecksums | boolean | .gh-flarebyte.cue | Whether to include the checksum manifest as a release asset. | local-only |
 
@@ -313,8 +313,8 @@ User-facing extension actions and their purpose.
 
 | command | config_touchpoints | output | purpose | read_write |
 | --- | --- | --- | --- | --- |
-| gh flarebyte build | build.* -> build artifacts | language-specific build output | build the project according to the configured language and target matrix | write |
-| gh flarebyte release | build.* and release.* -> GitHub release assets | versioned GitHub release | run build then publish a GitHub release from the configured release settings | write |
+| gh flarebyte build | build.* -> binary artifacts or compile/test verification | language-specific build output | build the project according to the configured language and build mode | write |
+| gh flarebyte release | build.* and release.* -> GitHub release with optional assets | versioned GitHub release | run build then publish a GitHub release from the configured release settings | write |
 | gh flarebyte repo init | .gh-flarebyte.cue created or seeded | initialized repo state | bootstrap a repo-local config and initial GitHub defaults | write |
 | gh flarebyte repo update | .gh-flarebyte.cue -> GitHub repo state with `--confirm-deletions` and `--accept-visibility-change-consequences` when needed | updated remote repo state | reconcile GitHub repo metadata from local config with explicit safety flags | write |
 | gh flarebyte repo audit | .gh-flarebyte.cue and GitHub state | drift report | compare local config with remote GitHub state | read |
@@ -448,7 +448,7 @@ How successful commands should report outcomes and next steps.
 | `Update complete: 3 repo settings updated, 4 topics synced, 8 labels reconciled.` | Update should summarize what changed, including counts for topics, labels, and repo settings when relevant. | update success |
 | `No drift found. GitHub matches .gh-flarebyte.cue.` | Audit should summarize whether drift exists and what the user should do next. | audit success |
 | `Build complete: 3 targets written to build/ with checksums in build/checksums.txt.` | Build should summarize the targets produced and where artifacts were written. | build success |
-| `Release v1.2.3 published from build/ with checksums attached.` | Release should summarize the tag published and the asset source directory. | release success |
+| `Release v1.2.3 published from build with checksums attached.` | Release should summarize the tag published and whether assets were uploaded. | release success |
 | `Found 12 repositories for contributor olivier in flarebyte.` | Repos mine should report how many repositories were found for the requested organization. | discovery success |
 
 ### 07 Exit Codes
@@ -582,7 +582,7 @@ How build orchestration is driven from config.
 
 #### Build Command
 
-Build the project from the top-level `build` block. Start with Go only, but keep the config shape open for Dart so the command can grow without changing its contract. The first implementation should produce deterministic target artifacts and a configured checksum file, with target names expressed as `os-arch` strings such as `linux-amd64` or `windows-amd64` and driven from config rather than shell scripts. Unix targets should be packaged as `tar.gz`, Windows targets as `zip`, Windows binaries should end in `.exe`, and checksums should use SHA-256. The target list is explicit per project rather than globally mandatory. Build output should also embed version metadata so the compiled CLI can report `version`, `commitId`, `date`, and related runtime details via `--version`, and the same metadata should be available as JSON with `--version --json`. When the command fails it should report the target, failing step, and next useful action. On success it should summarize which targets were built and where artifacts and checksums were written.
+Build the project from the top-level `build` block. Start with Go only, but keep the config shape open for Dart so the command can grow without changing its contract. Support `build.mode: "binary"` for deterministic target artifacts and `build.mode: "library"` for package compile verification. In binary mode, target names are expressed as `os-arch` strings such as `linux-amd64` or `windows-amd64` and driven from config rather than shell scripts. Unix targets are packaged as `tar.gz`, Windows targets as `zip`, Windows binaries end in `.exe`, and checksums use SHA-256. In library mode, compile configured package patterns with `go build`, optionally run `go test`, and do not require a synthetic single executable artifact. Build output should also embed version metadata so the compiled CLI can report `version`, `commitId`, `date`, and related runtime details via `--version`, and the same metadata should be available as JSON with `--version --json`. When the command fails it should report the target or mode, failing step, and next useful action.
 
 #### Build Artifact Rules
 
@@ -598,7 +598,7 @@ How release publication is driven from config.
 
 #### Release Command
 
-Run `gh flarebyte build` first, then publish a GitHub release from the resulting build outputs. Use the top-level `release` block to choose the tag, artifacts, and release note behavior, requiring `releaseNotesFilePath` when `notesMode` is `notes-file`, and implement the command in Go rather than the current Bun helper. Release uploads should consume the deterministic packaged artifacts produced by the build command rather than rebuilding different outputs ad hoc. The initial implementation should resolve the version from a repository-local YAML or JSON file containing a top-level `version` string, derive the tag as `tagPrefix + version`, and fail if the target tag already exists. On failure, the CLI should distinguish between build failure, tag/version resolution failure, and release upload failure. On success it should confirm the published tag and the artifact source used.
+Run `gh flarebyte build` first, then publish a GitHub release from the configured release policy. Use the top-level `release` block to choose the tag, whether artifacts are included, and release note behavior, requiring `releaseNotesFilePath` when `notesMode` is `notes-file`. When `includeArtifacts` is true, upload build outputs from `artifactDir`; when false, publish tag and notes only. Resolve the version from a repository-local YAML or JSON file containing a top-level `version` string, derive the tag as `tagPrefix + version`, and fail if the target tag already exists. On failure, the CLI should distinguish between build failure, tag/version resolution failure, and release upload failure. On success it should confirm the published tag and whether assets were uploaded.
 
 #### Release Version Resolution
 
@@ -771,3 +771,4 @@ What still needs agreement before the sync contract hardens.
 #### Open Questions
 
 Clarify the non-interactive CI story for deletion confirmation, the first Dart build contract once it lands, and whether release notes should eventually support templates beyond generated notes and a single notes file path.
+
