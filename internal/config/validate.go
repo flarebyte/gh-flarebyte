@@ -45,19 +45,28 @@ func Validate(cfg Config) error {
 	default:
 		return fmt.Errorf("invalid build.language %q: expected go or dart", cfg.Build.Language)
 	}
-	if cfg.Build.OutputDir == "" {
-		return errors.New("invalid build.outputDir: value is required")
-	}
-	if cfg.Build.ChecksumFile == "" {
-		return errors.New("invalid build.checksumFile: value is required")
-	}
-	if len(cfg.Build.Targets) == 0 {
-		return errors.New("invalid build.targets: at least one target is required")
-	}
-	for _, target := range cfg.Build.Targets {
-		if !targetPattern.MatchString(target) {
-			return fmt.Errorf("invalid build.targets entry %q: expected os-arch format such as linux-amd64 or windows-amd64", target)
+	switch cfg.Build.Mode {
+	case "binary":
+		if cfg.Build.OutputDir == "" {
+			return errors.New("invalid build.outputDir: value is required")
 		}
+		if cfg.Build.ChecksumFile == "" {
+			return errors.New("invalid build.checksumFile: value is required")
+		}
+		if len(cfg.Build.Targets) == 0 {
+			return errors.New("invalid build.targets: at least one target is required")
+		}
+		for _, target := range cfg.Build.Targets {
+			if !targetPattern.MatchString(target) {
+				return fmt.Errorf("invalid build.targets entry %q: expected os-arch format such as linux-amd64 or windows-amd64", target)
+			}
+		}
+	case "library":
+		if len(cfg.Build.Packages) == 0 {
+			return errors.New("invalid build.packages: at least one package pattern is required in library mode")
+		}
+	default:
+		return fmt.Errorf("invalid build.mode %q: expected binary or library", cfg.Build.Mode)
 	}
 	switch cfg.Release.NotesMode {
 	case "generate-notes", "notes-from-tag":
@@ -74,8 +83,13 @@ func Validate(cfg Config) error {
 	if cfg.Release.TagPrefix == "" {
 		return errors.New("invalid release.tagPrefix: value is required")
 	}
-	if cfg.Release.ArtifactDir == "" {
-		return errors.New("invalid release.artifactDir: value is required")
+	if cfg.Release.IncludeArtifacts {
+		if cfg.Release.ArtifactDir == "" {
+			return errors.New("invalid release.artifactDir: value is required when release.includeArtifacts is true")
+		}
+		if cfg.Build.Mode == "library" {
+			return errors.New(`invalid config: build.mode is "library" and release.includeArtifacts is true. Use build.mode: "library" with release.includeArtifacts: false`)
+		}
 	}
 	return nil
 }

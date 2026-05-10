@@ -24,20 +24,30 @@ export type LabelConfig = {
   description: string;
 };
 
-export type BuildConfig = {
-  language: "go" | "dart";
-  outputDir: string;
-  checksumFile: string;
-  targets: BuildTarget[];
-};
+export type BuildConfig =
+  | {
+      language: "go" | "dart";
+      mode: "binary";
+      outputDir: string;
+      checksumFile: string;
+      targets: BuildTarget[];
+      artifactTargetSuffix?: boolean;
+    }
+  | {
+      language: "go" | "dart";
+      mode: "library";
+      packages: string[];
+      runTests?: boolean;
+    };
 
 export type BuildTarget = `${"linux" | "darwin" | "windows"}-${"amd64" | "arm64"}`;
 
 export type ReleaseConfigBase = {
   versionSource: string;
   tagPrefix: string;
-  artifactDir: string;
-  includeChecksums: boolean;
+  includeArtifacts: boolean;
+  artifactDir?: string;
+  includeChecksums?: boolean;
 };
 
 export type ReleaseConfig =

@@ -68,18 +68,18 @@ func parseCueConfig(raw string) (Config, error) {
 	if err != nil {
 		return cfg, err
 	}
-	cfg.Build.OutputDir, err = extractStringField(raw, "outputDir")
-	if err != nil {
-		return cfg, err
+	cfg.Build.Mode = extractOptionalStringField(buildBlock, "mode")
+	if cfg.Build.Mode == "" {
+		cfg.Build.Mode = "binary"
 	}
-	cfg.Build.ChecksumFile, err = extractStringField(raw, "checksumFile")
-	if err != nil {
-		return cfg, err
+	cfg.Build.Packages = extractOptionalStringListBlock(buildBlock, "packages")
+	if len(cfg.Build.Packages) == 0 {
+		cfg.Build.Packages = []string{"./..."}
 	}
-	cfg.Build.Targets, err = extractStringListBlock(raw, "targets")
-	if err != nil {
-		return cfg, err
-	}
+	cfg.Build.RunTests = extractOptionalBoolField(buildBlock, "runTests", false)
+	cfg.Build.OutputDir = extractOptionalStringField(buildBlock, "outputDir")
+	cfg.Build.ChecksumFile = extractOptionalStringField(buildBlock, "checksumFile")
+	cfg.Build.Targets = extractOptionalStringListBlock(buildBlock, "targets")
 	cfg.Build.ArtifactTargetSuffix = extractOptionalBoolField(buildBlock, "artifactTargetSuffix", true)
 	cfg.Repository.Description, err = extractStringField(raw, "description")
 	if err != nil {
@@ -129,15 +129,9 @@ func parseCueConfig(raw string) (Config, error) {
 		return cfg, err
 	}
 	cfg.Release.ReleaseNotesFilePath = extractOptionalStringField(raw, "releaseNotesFilePath")
-	cfg.Release.ArtifactDir, err = extractStringField(raw, "artifactDir")
-	if err != nil {
-		return cfg, err
-	}
-	includeChecksums, err := extractBoolField(raw, "includeChecksums")
-	if err != nil {
-		return cfg, err
-	}
-	cfg.Release.IncludeChecksums = includeChecksums
+	cfg.Release.ArtifactDir = extractOptionalStringField(raw, "artifactDir")
+	cfg.Release.IncludeArtifacts = extractOptionalBoolField(raw, "includeArtifacts", true)
+	cfg.Release.IncludeChecksums = extractOptionalBoolField(raw, "includeChecksums", true)
 	return cfg, nil
 }
 
@@ -232,6 +226,28 @@ func extractStringListBlock(raw, field string) ([]string, error) {
 		values = append(values, match[1])
 	}
 	return values, nil
+}
+
+func extractOptionalStringListBlock(raw, field string) []string {
+	open := strings.Index(raw, field+": [")
+	if open == -1 {
+		return nil
+	}
+	start := open + len(field+": [")
+	end := strings.Index(raw[start:], "]")
+	if end == -1 {
+		return nil
+	}
+	block := raw[start : start+end]
+	matches := quotedStringPattern.FindAllStringSubmatch(block, -1)
+	if len(matches) == 0 {
+		return nil
+	}
+	values := make([]string, 0, len(matches))
+	for _, match := range matches {
+		values = append(values, match[1])
+	}
+	return values
 }
 
 func extractLabels(raw string) ([]LabelConfig, error) {

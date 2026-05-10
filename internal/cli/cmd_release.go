@@ -41,14 +41,17 @@ func handleRelease(args []string, stdout, stderr io.Writer) Result {
 		_, _ = fmt.Fprintln(stderr, err.Error())
 		return Result{ExitCode: ExitReleaseFailure, Err: err}
 	}
-	artifacts, err := listReleaseArtifacts(cfg.Release.ArtifactDir, cfg.Release.IncludeChecksums, cfg.Project.Repo, cfg.Build.ArtifactTargetSuffix)
-	if err != nil {
-		_, _ = fmt.Fprintln(stderr, err.Error())
-		return Result{ExitCode: ExitReleaseFailure, Err: err}
-	}
-	if err := ensureUniqueArtifactBasenames(artifacts); err != nil {
-		_, _ = fmt.Fprintln(stderr, err.Error())
-		return Result{ExitCode: ExitUsage, Err: err}
+	artifacts := make([]string, 0)
+	if cfg.Release.IncludeArtifacts {
+		artifacts, err = listReleaseArtifacts(cfg.Release.ArtifactDir, cfg.Release.IncludeChecksums, cfg.Project.Repo, cfg.Build.ArtifactTargetSuffix)
+		if err != nil {
+			_, _ = fmt.Fprintln(stderr, err.Error())
+			return Result{ExitCode: ExitReleaseFailure, Err: err}
+		}
+		if err := ensureUniqueArtifactBasenames(artifacts); err != nil {
+			_, _ = fmt.Fprintln(stderr, err.Error())
+			return Result{ExitCode: ExitUsage, Err: err}
+		}
 	}
 	notesFile := ""
 	switch cfg.Release.NotesMode {
@@ -73,6 +76,10 @@ func handleRelease(args []string, stdout, stderr io.Writer) Result {
 		_, _ = fmt.Fprintln(stderr, err.Error())
 		return Result{ExitCode: ExitReleaseFailure, Err: err}
 	}
-	_, _ = fmt.Fprintf(stdout, "Release %s published from %s with checksums %s.\n", tag, cfg.Release.ArtifactDir, ternary(cfg.Release.IncludeChecksums, "attached", "skipped"))
+	if cfg.Release.IncludeArtifacts {
+		_, _ = fmt.Fprintf(stdout, "Release %s published from %s with checksums %s.\n", tag, cfg.Release.ArtifactDir, ternary(cfg.Release.IncludeChecksums, "attached", "skipped"))
+	} else {
+		_, _ = fmt.Fprintf(stdout, "Release %s published without binary artifacts.\n", tag)
+	}
 	return Result{ExitCode: ExitOK}
 }

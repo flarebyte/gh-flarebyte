@@ -54,6 +54,9 @@ type RepositoryFeaturesConfig struct {
 
 type BuildConfig struct {
 	Language             string   `json:"language"`
+	Mode                 string   `json:"mode"`
+	Packages             []string `json:"packages"`
+	RunTests             bool     `json:"runTests"`
 	OutputDir            string   `json:"outputDir"`
 	ChecksumFile         string   `json:"checksumFile"`
 	Targets              []string `json:"targets"`
@@ -66,6 +69,7 @@ type ReleaseConfigRaw struct {
 	NotesMode            string `json:"notesMode"`
 	ReleaseNotesFilePath string `json:"releaseNotesFilePath,omitempty"`
 	ArtifactDir          string `json:"artifactDir"`
+	IncludeArtifacts     bool   `json:"includeArtifacts"`
 	IncludeChecksums     bool   `json:"includeChecksums"`
 }
 

@@ -25,6 +25,9 @@ repository.features.advancedSecurity,boolean,.gh-flarebyte.cue,local-to-remote,G
 repository.features.secretScanning,boolean,.gh-flarebyte.cue,local-to-remote,Secret scanning for the repository.
 repository.features.secretScanningPushProtection,boolean,.gh-flarebyte.cue,local-to-remote,Secret scanning push protection.
 build.language,enum,.gh-flarebyte.cue,local-only,"Build language used by gh flarebyte build: go initially, dart later."
+build.mode,enum,.gh-flarebyte.cue,local-only,"Build mode: `binary` for target artifacts or `library` for package compile/test verification."
+build.packages,list,.gh-flarebyte.cue,local-only,"Package patterns used in `library` mode, defaulting to `[""./...""]`."
+build.runTests,boolean,.gh-flarebyte.cue,local-only,Whether library mode runs `go test` after `go build`.
 build.outputDir,string,.gh-flarebyte.cue,local-only,Directory for built artifacts.
 build.checksumFile,string,.gh-flarebyte.cue,local-only,Checksum manifest for built artifacts.
 build.targets,list,.gh-flarebyte.cue,local-only,Target matrix for the build command using `os-arch` strings such as `linux-amd64` or `windows-amd64`. Each project declares only the targets it supports.
@@ -32,5 +35,6 @@ release.versionSource,string,.gh-flarebyte.cue,local-only,File or source that pr
 release.tagPrefix,string,.gh-flarebyte.cue,local-only,Prefix used for release tags.
 release.notesMode,enum,.gh-flarebyte.cue,local-only,"Release note strategy, such as generate-notes or notes-file."
 release.releaseNotesFilePath,string,.gh-flarebyte.cue,local-only,Path required when notesMode is `notes-file`.
+release.includeArtifacts,boolean,.gh-flarebyte.cue,local-only,Whether release uploads build artifacts or publishes tag/notes only.
 release.artifactDir,string,.gh-flarebyte.cue,local-only,Directory scanned for release assets.
 release.includeChecksums,boolean,.gh-flarebyte.cue,local-only,Whether to include the checksum manifest as a release asset.

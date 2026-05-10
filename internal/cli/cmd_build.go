@@ -28,6 +28,33 @@ func handleBuild(args []string, stdout, stderr io.Writer) Result {
 		return Result{ExitCode: ExitUsage, Err: err}
 	}
 	hydrateBuildInfo(cfg.Release.VersionSource)
+	if cfg.Build.Mode == "library" {
+		var goos string
+		var goarch string
+		if targetFilter != "" {
+			var splitErr error
+			goos, goarch, splitErr = splitTarget(targetFilter)
+			if splitErr != nil {
+				err := fmt.Errorf("invalid --target %q: expected os-arch format such as linux-amd64", targetFilter)
+				_, _ = fmt.Fprintln(stderr, err.Error())
+				return Result{ExitCode: ExitUsage, Err: err}
+			}
+		}
+		if err := goBuildPackages(goos, goarch, cfg.Build.Packages, cfg.Build.RunTests); err != nil {
+			msg := "Build failed in library mode during go build/go test."
+			if targetFilter != "" {
+				msg = fmt.Sprintf("Build failed in library mode for target %s during go build/go test.", targetFilter)
+			}
+			_, _ = fmt.Fprintln(stderr, msg)
+			return Result{ExitCode: ExitBuildFailure, Err: err}
+		}
+		if targetFilter != "" {
+			_, _ = fmt.Fprintf(stdout, "Build complete: library compile verification passed for target %s.\n", targetFilter)
+		} else {
+			_, _ = fmt.Fprintln(stdout, "Build complete: library compile verification passed.")
+		}
+		return Result{ExitCode: ExitOK}
+	}
 	targets := cfg.Build.Targets
 	if targetFilter != "" {
 		if !contains(targets, targetFilter) {

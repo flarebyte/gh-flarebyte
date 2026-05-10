@@ -289,3 +289,103 @@ func TestHydrateBuildInfoKeepsExistingWhenVersionAndGitUnavailable(t *testing.T)
 		t.Fatalf("unexpected go version: %s", buildinfo.GoVersion)
 	}
 }
+
+func TestRunBuildLibraryModeSuccess(t *testing.T) {
+	cfg := strings.Replace(testConfigCue(), `build: {
+	language:     "go"
+	outputDir:    "build"
+	checksumFile: "build/checksums.txt"
+	targets: [
+		"linux-amd64",
+	]
+}`, `build: {
+	language: "go"
+	mode:     "library"
+	packages: ["./..."]
+	runTests: true
+}`, 1)
+	cfg = strings.Replace(cfg, `release: {
+	versionSource:    "main.project.yaml"
+	tagPrefix:        "v"
+	notesMode:        "generate-notes"
+	artifactDir:      "build"
+	includeChecksums: true
+}`, `release: {
+	versionSource:    "main.project.yaml"
+	tagPrefix:        "v"
+	notesMode:        "generate-notes"
+	includeArtifacts: false
+}`, 1)
+	_ = setupTempWorkdirWithConfig(t, cfg)
+	oldGoBuildPackages := goBuildPackages
+	t.Cleanup(func() { goBuildPackages = oldGoBuildPackages })
+	var gotRunTests bool
+	goBuildPackages = func(goos string, goarch string, packages []string, runTests bool) error {
+		gotRunTests = runTests
+		return nil
+	}
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	result := Run([]string{"build"}, &out, &errOut)
+	if result.ExitCode != ExitOK {
+		t.Fatalf("expected success, got %d (%s)", result.ExitCode, errOut.String())
+	}
+	if !gotRunTests {
+		t.Fatalf("expected runTests=true in library mode")
+	}
+}
+
+func TestRunReleaseLibraryModeWithoutArtifacts(t *testing.T) {
+	cfg := strings.Replace(testConfigCue(), `build: {
+	language:     "go"
+	outputDir:    "build"
+	checksumFile: "build/checksums.txt"
+	targets: [
+		"linux-amd64",
+	]
+}`, `build: {
+	language: "go"
+	mode:     "library"
+	packages: ["./..."]
+}`, 1)
+	cfg = strings.Replace(cfg, `release: {
+	versionSource:    "main.project.yaml"
+	tagPrefix:        "v"
+	notesMode:        "generate-notes"
+	artifactDir:      "build"
+	includeChecksums: true
+}`, `release: {
+	versionSource:    "main.project.yaml"
+	tagPrefix:        "v"
+	notesMode:        "generate-notes"
+	includeArtifacts: false
+}`, 1)
+	_ = setupTempWorkdirWithConfig(t, cfg)
+	oldGoBuildPackages := goBuildPackages
+	t.Cleanup(func() { goBuildPackages = oldGoBuildPackages })
+	goBuildPackages = func(goos string, goarch string, packages []string, runTests bool) error { return nil }
+	oldFindVersion := findVersion
+	oldTagExists := tagExists
+	oldCreateRelease := createRelease
+	t.Cleanup(func() {
+		findVersion = oldFindVersion
+		tagExists = oldTagExists
+		createRelease = oldCreateRelease
+	})
+	findVersion = func(sourcePath string) (string, error) { return "1.2.3", nil }
+	tagExists = func(tag string) (bool, error) { return false, nil }
+	var capturedArtifacts []string
+	createRelease = func(tag string, artifacts []string, notesMode string, notesFile string, draft bool) error {
+		capturedArtifacts = append([]string{}, artifacts...)
+		return nil
+	}
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	result := Run([]string{"release"}, &out, &errOut)
+	if result.ExitCode != ExitOK {
+		t.Fatalf("expected release success, got %d (%s)", result.ExitCode, errOut.String())
+	}
+	if len(capturedArtifacts) != 0 {
+		t.Fatalf("expected no artifacts, got %v", capturedArtifacts)
+	}
+}

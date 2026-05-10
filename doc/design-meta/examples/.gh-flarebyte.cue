@@ -53,9 +53,11 @@ repository: {
 }
 
 build: {
-	language:     "go"
-	outputDir:    "build"
-	checksumFile: "build/checksums.txt"
+	language:             "go"
+	mode:                 "binary"
+	outputDir:            "build"
+	checksumFile:         "build/checksums.txt"
+	artifactTargetSuffix: true
 	targets: [
 		"linux-amd64",
 		"darwin-arm64",
@@ -67,6 +69,7 @@ release: {
 	versionSource:    "main.project.yaml"
 	tagPrefix:        "v"
 	notesMode:        "generate-notes"
+	includeArtifacts: true
 	artifactDir:      "build"
 	includeChecksums: true
 }
