@@ -27,6 +27,7 @@ var (
 	resolveBuildVersion = resolveVersionFromSource
 	currentTimeUTC      = func() time.Time { return time.Now().UTC() }
 	currentGoVersion    = runtime.Version
+	goBuildPackages     = runGoBuildPackages
 	readGitOutput       = func(args ...string) (string, error) {
 		cmd := exec.Command("git", args...)
 		out, err := cmd.Output()
@@ -36,6 +37,33 @@ var (
 		return strings.TrimSpace(string(out)), nil
 	}
 )
+
+func runGoBuildPackages(goos string, goarch string, packages []string, runTests bool) error {
+	env := append(os.Environ(), "CGO_ENABLED=0")
+	if goos != "" && goarch != "" {
+		env = append(env, "GOOS="+goos, "GOARCH="+goarch)
+	}
+	buildArgs := append([]string{"build"}, packages...)
+	buildCmd := exec.Command("go", buildArgs...)
+	buildCmd.Env = env
+	var buildStderr bytes.Buffer
+	buildCmd.Stderr = &buildStderr
+	if err := buildCmd.Run(); err != nil {
+		return commandError(err, buildStderr.String())
+	}
+	if !runTests {
+		return nil
+	}
+	testArgs := append([]string{"test"}, packages...)
+	testCmd := exec.Command("go", testArgs...)
+	testCmd.Env = env
+	var testStderr bytes.Buffer
+	testCmd.Stderr = &testStderr
+	if err := testCmd.Run(); err != nil {
+		return commandError(err, testStderr.String())
+	}
+	return nil
+}
 
 func parseBuildArgs(args []string) (target string, outputDir string, err error) {
 	for i := 0; i < len(args); i++ {
