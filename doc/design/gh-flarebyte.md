@@ -88,9 +88,11 @@ repository: {
 }
 
 build: {
-	language:     "go"
-	outputDir:    "build"
-	checksumFile: "build/checksums.txt"
+	language:             "go"
+	mode:                 "binary"
+	outputDir:            "build"
+	checksumFile:         "build/checksums.txt"
+	artifactTargetSuffix: true
 	targets: [
 		"linux-amd64",
 		"darwin-arm64",
@@ -102,6 +104,7 @@ release: {
 	versionSource:    "main.project.yaml"
 	tagPrefix:        "v"
 	notesMode:        "generate-notes"
+	includeArtifacts: true
 	artifactDir:      "build"
 	includeChecksums: true
 }
@@ -141,6 +144,9 @@ How config fields map onto GitHub sync targets and extension-local automation se
 | repository.features.secretScanning | boolean | .gh-flarebyte.cue | Secret scanning for the repository. | local-to-remote |
 | repository.features.secretScanningPushProtection | boolean | .gh-flarebyte.cue | Secret scanning push protection. | local-to-remote |
 | build.language | enum | .gh-flarebyte.cue | Build language used by gh flarebyte build: go initially, dart later. | local-only |
+| build.mode | enum | .gh-flarebyte.cue | Build mode: `binary` for target artifacts, or `library` for package compile/test verification. | local-only |
+| build.packages | list | .gh-flarebyte.cue | Package patterns used in `library` mode, defaulting to `["./..."]`. | local-only |
+| build.runTests | boolean | .gh-flarebyte.cue | Whether library mode should run `go test` after `go build`. | local-only |
 | build.outputDir | string | .gh-flarebyte.cue | Directory for built artifacts. | local-only |
 | build.checksumFile | string | .gh-flarebyte.cue | Checksum manifest for built artifacts. | local-only |
 | build.targets | list | .gh-flarebyte.cue | Target matrix for the build command using `os-arch` strings such as `linux-amd64` or `windows-amd64`. Each project declares only the targets it supports. | local-only |
@@ -148,6 +154,7 @@ How config fields map onto GitHub sync targets and extension-local automation se
 | release.tagPrefix | string | .gh-flarebyte.cue | Prefix used for release tags. | local-only |
 | release.notesMode | enum | .gh-flarebyte.cue | Release note strategy, such as generate-notes or notes-file. | local-only |
 | release.releaseNotesFilePath | string | .gh-flarebyte.cue | Path required when notesMode is `notes-file`. | local-only |
+| release.includeArtifacts | boolean | .gh-flarebyte.cue | Whether release uploads build artifacts (`true`) or publishes tag/notes only (`false`). | local-only |
 | release.artifactDir | string | .gh-flarebyte.cue | Directory scanned for release assets. | local-only |
 | release.includeChecksums | boolean | .gh-flarebyte.cue | Whether to include the checksum manifest as a release asset. | local-only |
 
@@ -173,7 +180,7 @@ Build language selection for gh flarebyte build.
 
 #### Build Config
 
-Build orchestration is driven by a top-level `build` block in the Cue config. `gh flarebyte build` reads the configured language and uses a Go implementation initially, with Dart allowed later as a supported language. The command should write language-specific binaries under the configured output directory, emit the configured checksum manifest, and keep the output layout stable across languages. Targets are expressed as `os-arch` strings such as `linux-amd64` or `windows-amd64`, and each project lists only the targets it supports.
+Build orchestration is driven by a top-level `build` block in the Cue config. `gh flarebyte build` reads the configured language and uses a Go implementation initially, with Dart allowed later as a supported language. In `binary` mode the command writes per-target binaries and archives under the configured output directory and emits the checksum manifest. In `library` mode the command performs compile verification across configured packages (`go build`) and optionally runs tests (`go test`) without producing binary artifacts. Targets are expressed as `os-arch` strings such as `linux-amd64` or `windows-amd64`; in library mode `--target` maps to `GOOS/GOARCH` validation.
 
 ### 06 Release
 
@@ -181,7 +188,7 @@ Release publication settings for gh flarebyte release.
 
 #### Release Config
 
-Release publication is driven by a top-level `release` block in the Cue config. `gh flarebyte release` should use the configured release tag prefix, source version, artifact layout, and release notes policy to publish a GitHub release from the build outputs. `releaseNotesFilePath` is required only when `notesMode` is `notes-file`. The initial implementation should treat `release.versionSource` as a repository-local YAML or JSON file path containing a top-level `version` string.
+Release publication is driven by a top-level `release` block in the Cue config. `gh flarebyte release` uses the configured release tag prefix, source version, artifact policy, and release notes policy to publish a GitHub release. When `includeArtifacts` is true it uploads files from `artifactDir`; when false it publishes tag and notes without asset uploads. `releaseNotesFilePath` is required only when `notesMode` is `notes-file`. The implementation treats `release.versionSource` as a repository-local YAML or JSON file path containing a top-level `version` string.
 
 ### 07 Sync Types
 
@@ -216,20 +223,30 @@ export type LabelConfig = {
   description: string;
 };
 
-export type BuildConfig = {
-  language: "go" | "dart";
-  outputDir: string;
-  checksumFile: string;
-  targets: BuildTarget[];
-};
+export type BuildConfig =
+  | {
+      language: "go" | "dart";
+      mode: "binary";
+      outputDir: string;
+      checksumFile: string;
+      targets: BuildTarget[];
+      artifactTargetSuffix?: boolean;
+    }
+  | {
+      language: "go" | "dart";
+      mode: "library";
+      packages: string[];
+      runTests?: boolean;
+    };
 
 export type BuildTarget = `${"linux" | "darwin" | "windows"}-${"amd64" | "arm64"}`;
 
 export type ReleaseConfigBase = {
   versionSource: string;
   tagPrefix: string;
-  artifactDir: string;
-  includeChecksums: boolean;
+  includeArtifacts: boolean;
+  artifactDir?: string;
+  includeChecksums?: boolean;
 };
 
 export type ReleaseConfig =
@@ -754,4 +771,3 @@ What still needs agreement before the sync contract hardens.
 #### Open Questions
 
 Clarify the non-interactive CI story for deletion confirmation, the first Dart build contract once it lands, and whether release notes should eventually support templates beyond generated notes and a single notes file path.
-

@@ -6,5 +6,5 @@ scenario,expectation,example_output
 "update success","Update should summarize what changed, including counts for topics, labels, and repo settings when relevant.","`Update complete: 3 repo settings updated, 4 topics synced, 8 labels reconciled.`"
 "audit success","Audit should summarize whether drift exists and what the user should do next.","`No drift found. GitHub matches .gh-flarebyte.cue.`"
 "build success","Build should summarize the targets produced and where artifacts were written.","`Build complete: 3 targets written to build/ with checksums in build/checksums.txt.`"
-"release success","Release should summarize the tag published and the asset source directory.","`Release v1.2.3 published from build/ with checksums attached.`"
+"release success","Release should summarize the tag published and whether assets were uploaded.","`Release v1.2.3 published from build with checksums attached.`"
 "discovery success","Repos mine should report how many repositories were found for the requested organization.","`Found 12 repositories for contributor olivier in flarebyte.`"
