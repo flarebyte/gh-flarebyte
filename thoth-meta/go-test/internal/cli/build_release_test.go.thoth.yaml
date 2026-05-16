@@ -1,21 +1,34 @@
 locator: internal/cli/build_release_test.go
 meta:
   function_list:
+    - TestHydrateBuildInfoKeepsExistingWhenVersionAndGitUnavailable
+    - TestHydrateBuildInfoPopulatesAllFields
     - TestPackageBinaryArchiveTarGzAndZip
     - TestResolveVersionFromSourceYAMLAndJSON
+    - TestRunBuildFailureIncludesUnderlyingError
+    - TestRunBuildLibraryModeSuccess
     - TestRunBuildRejectsUnknownConfiguredTargetFilter
     - TestRunBuildSuccessWritesChecksumAndSummary
+    - TestRunBuildUsesConfiguredMainPackage
+    - TestRunBuildWithoutSuffixUsesTargetSubdirsForMultipleTargets
     - TestRunReleaseFailsWhenTagExists
+    - TestRunReleaseLibraryModeWithoutArtifacts
     - TestRunReleaseNotesFileModeRequiresPath
     - TestRunReleaseSuccess
+    - TestRunReleaseSupportsNoSuffixModeWithMultipleTargets
+    - setupBuildTargetAndPackagingStubs
+    - setupHydrateBuildInfoTestEnv
   import_files_list:
     - archive/tar
     - archive/zip
     - bytes
     - compress/gzip
+    - errors
+    - github.com/flarebyte/gh-flarebyte/internal/buildinfo
     - io
     - os
     - path/filepath
     - strings
     - testing
+    - time
   language: go

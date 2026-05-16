@@ -118,6 +118,7 @@ release: {
 - Labels are managed as structured objects with `name`, `color`, and `description`.
 - Build is Go-first today, with Dart reserved in the config for later.
 - `build.mode` defaults to `binary`. Use `library` for multi-package libraries (compile verification with `go build`, and optional `go test` when `runTests: true`).
+- `build.mainPackage` controls the Go main package used for binary builds. Default: `./cmd/<project.repo>`.
 - `build.artifactTargetSuffix` controls whether artifact names include `-os-arch` suffixes.
   - when `false` with multiple targets, artifacts are written under per-target subdirectories to avoid filename collisions.
 - In `library` mode, `--target` applies `GOOS/GOARCH` cross-compile checks and does not force artifact generation.

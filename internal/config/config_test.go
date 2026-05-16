@@ -21,6 +21,9 @@ func TestLoadValidConfig(t *testing.T) {
 	if !cfg.Build.ArtifactTargetSuffix {
 		t.Fatalf("expected default build.artifactTargetSuffix=true")
 	}
+	if cfg.Build.MainPackage != "./cmd/gh-flarebyte" {
+		t.Fatalf("expected default build.mainPackage to be ./cmd/gh-flarebyte, got %q", cfg.Build.MainPackage)
+	}
 }
 
 func TestLoadInvalidBuildTarget(t *testing.T) {
@@ -184,13 +187,13 @@ build: {
 	packages: ["./..."]
 }
 
-release: {
-	versionSource:    "main.project.yaml"
-	tagPrefix:        "v"
-	notesMode:        "generate-notes"
-	includeArtifacts: true
-	artifactDir:      "build"
-}
+	release: {
+		versionSource:    "main.project.yaml"
+		tagPrefix:        "v"
+		notesMode:        "generate-notes"
+		includeArtifacts: true
+		artifactDir:      "build"
+	}
 `
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		t.Fatalf("write temp config failed: %v", err)
@@ -201,5 +204,57 @@ release: {
 	}
 	if !strings.Contains(err.Error(), `build.mode is "library"`) {
 		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestLoadBuildMainPackageOverride(t *testing.T) {
+	tmp := t.TempDir()
+	path := filepath.Join(tmp, "valid-main-package.cue")
+	content := `package ghflarebyte
+
+project: {
+	org:  "flarebyte"
+	repo: "gh-flarebyte"
+}
+
+sync: {
+	mode: "push"
+}
+
+repository: {
+	description:   "CLI for landing your git commands right"
+	defaultBranch: "main"
+	homepage:      "https://github.com/flarebyte/gh-flarebyte"
+	visibility:    "public"
+	template:      false
+	topics: ["gh-extension"]
+	labels: [{name: "bug", color: "B60205"}]
+}
+
+build: {
+	language:     "go"
+	mainPackage:  "./cmd/flyb"
+	outputDir:    "build"
+	checksumFile: "build/checksums.txt"
+	targets: ["linux-amd64"]
+}
+
+release: {
+	versionSource:    "main.project.yaml"
+	tagPrefix:        "v"
+	notesMode:        "generate-notes"
+	artifactDir:      "build"
+	includeChecksums: true
+}
+`
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatalf("write temp config failed: %v", err)
+	}
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("expected valid config, got %v", err)
+	}
+	if cfg.Build.MainPackage != "./cmd/flyb" {
+		t.Fatalf("expected build.mainPackage override, got %q", cfg.Build.MainPackage)
 	}
 }

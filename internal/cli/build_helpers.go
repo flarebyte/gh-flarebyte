@@ -88,7 +88,7 @@ func parseBuildArgs(args []string) (target string, outputDir string, err error) 
 	return target, outputDir, nil
 }
 
-func goBuildTargetBinary(target string, outputPath string) error {
+func goBuildTargetBinary(target string, outputPath string, mainPackage string) error {
 	goos, goarch, err := splitTarget(target)
 	if err != nil {
 		return err
@@ -100,7 +100,7 @@ func goBuildTargetBinary(target string, outputPath string) error {
 			buildinfo.Version, buildinfo.CommitID, buildinfo.Date, buildinfo.GoVersion),
 		"-o",
 		outputPath,
-		"./cmd/gh-flarebyte",
+		mainPackage,
 	}
 	cmd := exec.Command("go", args...)
 	cmd.Env = append(os.Environ(), "GOOS="+goos, "GOARCH="+goarch, "CGO_ENABLED=0")

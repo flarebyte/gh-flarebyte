@@ -98,9 +98,9 @@ func handleBuild(args []string, stdout, stderr io.Writer) Result {
 		if goos == "windows" {
 			archiveBinaryName += ".exe"
 		}
-		if err := buildTargetBinary(target, binPath); err != nil {
+		if err := buildTargetBinary(target, binPath, cfg.Build.MainPackage); err != nil {
 			msg := fmt.Sprintf("Build failed for %s during go build. Re-run with --target %s to isolate the failure.", target, target)
-			_, _ = fmt.Fprintln(stderr, msg)
+			_, _ = fmt.Fprintf(stderr, "%s\nUnderlying error: %v\n", msg, err)
 			return Result{ExitCode: ExitBuildFailure, Err: err}
 		}
 		artifactBase := cfg.Project.Repo

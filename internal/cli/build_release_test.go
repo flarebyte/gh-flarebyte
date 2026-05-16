@@ -5,6 +5,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"compress/gzip"
+	"errors"
 	"io"
 	"os"
 	"path/filepath"
@@ -23,7 +24,7 @@ func setupBuildTargetAndPackagingStubs(t *testing.T) {
 		buildTargetBinary = oldBuildTargetBinary
 		packageBinary = oldPackageBinary
 	})
-	buildTargetBinary = func(target string, outputPath string) error {
+	buildTargetBinary = func(target string, outputPath string, mainPackage string) error {
 		return os.WriteFile(outputPath, []byte("binary-"+target), 0o755)
 	}
 	packageBinary = packageBinaryArchive
@@ -85,6 +86,47 @@ func TestRunBuildSuccessWritesChecksumAndSummary(t *testing.T) {
 	}
 }
 
+func TestRunBuildUsesConfiguredMainPackage(t *testing.T) {
+	cfg := strings.Replace(testConfigCue(), `build: {
+	language:     "go"
+	outputDir:    "build"
+	checksumFile: "build/checksums.txt"
+	targets: [
+		"linux-amd64",
+	]
+}`, `build: {
+	language:     "go"
+	mainPackage:  "./cmd/flyb"
+	outputDir:    "build"
+	checksumFile: "build/checksums.txt"
+	targets: [
+		"linux-amd64",
+	]
+}`, 1)
+	_ = setupTempWorkdirWithConfig(t, cfg)
+	oldBuildTargetBinary := buildTargetBinary
+	oldPackageBinary := packageBinary
+	t.Cleanup(func() {
+		buildTargetBinary = oldBuildTargetBinary
+		packageBinary = oldPackageBinary
+	})
+	var gotMainPackage string
+	buildTargetBinary = func(target string, outputPath string, mainPackage string) error {
+		gotMainPackage = mainPackage
+		return os.WriteFile(outputPath, []byte("binary-"+target), 0o755)
+	}
+	packageBinary = packageBinaryArchive
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	result := Run([]string{"build", "--output-dir", "dist"}, &out, &errOut)
+	if result.ExitCode != ExitOK {
+		t.Fatalf("expected exit code %d, got %d", ExitOK, result.ExitCode)
+	}
+	if gotMainPackage != "./cmd/flyb" {
+		t.Fatalf("expected configured main package, got %q", gotMainPackage)
+	}
+}
+
 func TestRunBuildWithoutSuffixUsesTargetSubdirsForMultipleTargets(t *testing.T) {
 	cfg := strings.Replace(testConfigCue(), `targets: [
 		"linux-amd64",
@@ -107,6 +149,26 @@ func TestRunBuildWithoutSuffixUsesTargetSubdirsForMultipleTargets(t *testing.T) 
 	}
 	if _, err := os.Stat(filepath.Join("dist", "darwin-arm64", "gh-flarebyte-darwin-arm64.tar.gz")); err != nil {
 		t.Fatalf("expected darwin artifact in target subdir: %v", err)
+	}
+}
+
+func TestRunBuildFailureIncludesUnderlyingError(t *testing.T) {
+	_ = setupTempWorkdirWithConfig(t, testConfigCue())
+	oldBuildTargetBinary := buildTargetBinary
+	t.Cleanup(func() {
+		buildTargetBinary = oldBuildTargetBinary
+	})
+	buildTargetBinary = func(target string, outputPath string, mainPackage string) error {
+		return errors.New("go: cannot find main module")
+	}
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	result := Run([]string{"build"}, &out, &errOut)
+	if result.ExitCode != ExitBuildFailure {
+		t.Fatalf("expected exit code %d, got %d", ExitBuildFailure, result.ExitCode)
+	}
+	if !strings.Contains(errOut.String(), "Underlying error: go: cannot find main module") {
+		t.Fatalf("expected underlying error in stderr, got: %s", errOut.String())
 	}
 }
 

@@ -12,6 +12,7 @@ import (
 )
 
 type repoTopicNode struct {
+	Name  string `json:"name"`
 	Topic struct {
 		Name string `json:"name"`
 	} `json:"topic"`
@@ -100,8 +101,12 @@ func ghReadRepoMetadata(repo string) (RepoMetadata, error) {
 func extractTopics(nodes []repoTopicNode) []string {
 	topics := make([]string, 0, len(nodes))
 	for _, node := range nodes {
-		if node.Topic.Name != "" {
-			topics = append(topics, node.Topic.Name)
+		name := node.Topic.Name
+		if name == "" {
+			name = node.Name
+		}
+		if name != "" {
+			topics = append(topics, name)
 		}
 	}
 	return topics

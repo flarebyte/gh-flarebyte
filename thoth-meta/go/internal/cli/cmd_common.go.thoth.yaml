@@ -1,5 +1,6 @@
 locator: internal/cli/cmd_common.go
 meta:
+  architecture_notes: Helpers return a Result pointer for early-exit propagation so callers keep a uniform error/exit-code contract without duplicating formatting logic.
   function_list:
     - loadConfigOrUsage
     - loadRepoContext
@@ -11,4 +12,3 @@ meta:
   language: go
   purpose: Provide shared command-loading helpers used by multiple CLI workflows.
   responsibilities: Load and validate config with usage-friendly errors; resolve repo identifiers; fetch remote metadata context.
-  architecture_notes: Helpers return a Result pointer for early-exit propagation so callers keep a uniform error/exit-code contract without duplicating formatting logic.

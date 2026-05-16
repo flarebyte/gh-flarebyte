@@ -1,6 +1,8 @@
 locator: internal/cli/release_helpers.go
 meta:
+  architecture_notes: Artifact matching intentionally supports both flat and per-target layouts so build.artifactTargetSuffix modes can share one release path.
   function_list:
+    - ensureUniqueArtifactBasenames
     - ghCreateRelease
     - ghTagExists
     - isSemver
@@ -15,6 +17,7 @@ meta:
     - fmt
     - os
     - os/exec
+    - path
     - path/filepath
     - regexp
     - sort
@@ -22,4 +25,3 @@ meta:
   language: go
   purpose: Provide argument parsing, version extraction, artifact discovery, and GitHub-side primitives for release flows.
   responsibilities: Parse release flags; read semver from YAML/JSON; collect artifacts/checksums; guard duplicate names; create/check GitHub releases.
-  architecture_notes: Artifact matching intentionally supports both flat and per-target layouts so build.artifactTargetSuffix modes can share one release path.

@@ -1,11 +1,17 @@
 locator: internal/config/load_parse.go
 meta:
+  architecture_notes: Parsing is regex/string-block based (not full CUE evaluation) to keep the CLI self-contained and deterministic for the constrained config dialect it supports.
   function_list:
     - Load
     - ResolvePath
     - extractBoolField
     - extractLabels
+    - extractObjectBlock
+    - extractOptionalBoolField
+    - extractOptionalBoolFieldWithPresence
+    - extractOptionalObjectBlock
     - extractOptionalStringField
+    - extractOptionalStringListBlock
     - extractStringField
     - extractStringListBlock
     - parseCueConfig
@@ -19,4 +25,3 @@ meta:
   language: go
   purpose: Load `.gh-flarebyte.cue` files and parse required config fields into strongly typed runtime structures.
   responsibilities: Resolve config path; read config bytes; extract scalar/list/object fields; assemble Config; invoke validation.
-  architecture_notes: Parsing is regex/string-block based (not full CUE evaluation) to keep the CLI self-contained and deterministic for the constrained config dialect it supports.
