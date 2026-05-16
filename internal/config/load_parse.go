@@ -72,6 +72,10 @@ func parseCueConfig(raw string) (Config, error) {
 	if cfg.Build.Mode == "" {
 		cfg.Build.Mode = "binary"
 	}
+	cfg.Build.MainPackage = extractOptionalStringField(buildBlock, "mainPackage")
+	if cfg.Build.MainPackage == "" {
+		cfg.Build.MainPackage = fmt.Sprintf("./cmd/%s", cfg.Project.Repo)
+	}
 	cfg.Build.Packages = extractOptionalStringListBlock(buildBlock, "packages")
 	if len(cfg.Build.Packages) == 0 {
 		cfg.Build.Packages = []string{"./..."}

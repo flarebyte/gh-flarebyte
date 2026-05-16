@@ -55,6 +55,7 @@ type RepositoryFeaturesConfig struct {
 type BuildConfig struct {
 	Language             string   `json:"language"`
 	Mode                 string   `json:"mode"`
+	MainPackage          string   `json:"mainPackage"`
 	Packages             []string `json:"packages"`
 	RunTests             bool     `json:"runTests"`
 	OutputDir            string   `json:"outputDir"`

@@ -32,7 +32,7 @@ func stubBuildArtifacts(t *testing.T) {
 		buildTargetBinary = oldBuildTargetBinary
 		packageBinary = oldPackageBinary
 	})
-	buildTargetBinary = func(target string, outputPath string) error {
+	buildTargetBinary = func(target string, outputPath string, mainPackage string) error {
 		return os.WriteFile(outputPath, []byte("bin"), 0o755)
 	}
 	packageBinary = func(binaryPath, target, artifactPath, archiveBinaryName string) error {

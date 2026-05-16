@@ -42,3 +42,17 @@ func TestRepoTopicsFieldUnmarshalUnexpectedShapeFails(t *testing.T) {
 		t.Fatal("expected unmarshal error for invalid repositoryTopics shape")
 	}
 }
+
+func TestRepoTopicsFieldUnmarshalConnectionNameShape(t *testing.T) {
+	var payload struct {
+		RepositoryTopics repoTopicsField `json:"repositoryTopics"`
+	}
+	raw := []byte(`{"repositoryTopics":{"nodes":[{"name":"validation"},{"name":"schema"}]}}`)
+	if err := json.Unmarshal(raw, &payload); err != nil {
+		t.Fatalf("unmarshal failed: %v", err)
+	}
+	got := extractTopics(payload.RepositoryTopics.Nodes)
+	if len(got) != 2 || got[0] != "validation" || got[1] != "schema" {
+		t.Fatalf("unexpected topics: %#v", got)
+	}
+}

@@ -1,0 +1,11 @@
+locator: internal/cli/repo_gh_test.go
+meta:
+  function_list:
+    - TestRepoTopicsFieldUnmarshalArrayShape
+    - TestRepoTopicsFieldUnmarshalConnectionNameShape
+    - TestRepoTopicsFieldUnmarshalConnectionShape
+    - TestRepoTopicsFieldUnmarshalUnexpectedShapeFails
+  import_files_list:
+    - encoding/json
+    - testing
+  language: go

@@ -1,8 +1,8 @@
 locator: internal/buildinfo/buildinfo.go
 meta:
+  architecture_notes: Defaults are intentionally non-empty ("dev"/"unknown") so callers can detect missing injection without nil handling.
   function_list: []
   import_files_list: []
   language: go
   purpose: Define mutable build metadata fields that binaries expose through the version command.
   responsibilities: Hold default version/build values; provide ldflags override targets for build pipelines.
-  architecture_notes: Defaults are intentionally non-empty ("dev"/"unknown") so callers can detect missing injection without nil handling.

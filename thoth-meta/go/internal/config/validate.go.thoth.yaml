@@ -1,5 +1,6 @@
 locator: internal/config/validate.go
 meta:
+  architecture_notes: Validation is intentionally centralized so every command using config.Load shares identical rule enforcement and failure wording.
   function_list:
     - Validate
   import_files_list:
@@ -8,4 +9,3 @@ meta:
   language: go
   purpose: Enforce semantic and structural validity rules for loaded gh-flarebyte configuration.
   responsibilities: Validate required fields/enums; enforce cross-field constraints; return user-actionable error messages.
-  architecture_notes: Validation is intentionally centralized so every command using config.Load shares identical rule enforcement and failure wording.
