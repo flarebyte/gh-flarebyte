@@ -8,12 +8,7 @@ import (
 	"io"
 )
 
-func handleRelease(args []string, stdout, stderr io.Writer) Result {
-	draft, notesFileOverride, err := parseReleaseArgs(args)
-	if err != nil {
-		_, _ = fmt.Fprintln(stderr, err.Error())
-		return Result{ExitCode: ExitUsage, Err: err}
-	}
+func runRelease(draft bool, notesFileOverride string, stdout, stderr io.Writer) Result {
 	cfg, usage := loadConfigOrUsage(stderr)
 	if usage != nil {
 		return *usage

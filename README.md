@@ -27,7 +27,7 @@ Use `gh flarebyte` to keep a GitHub repository aligned with the config checked i
 - `gh flarebyte release [--draft] [--notes-file <path>]` builds first, then publishes a GitHub release from the configured release policy.
 
 ### Dev commands
-- `gh flarebyte test` runs tests for the configured build language.
+- `gh flarebyte test [--style summary|per_test]` runs tests for the configured build language, with optional per-invocation style override.
 - `gh flarebyte format` formats source files for the configured build language.
 - `gh flarebyte lint` runs lint/static checks for the configured build language.
 - `gh flarebyte cov [--min <percent>]` computes coverage and can fail below a threshold.

@@ -4,9 +4,6 @@
 package cli
 
 import (
-	"encoding/json"
-	"errors"
-	"fmt"
 	"io"
 	"os"
 	"runtime"
@@ -127,72 +124,7 @@ var (
 )
 
 func Run(args []string, stdout, stderr io.Writer) Result {
-	if len(args) == 0 || contains(args, "--help") {
-		printHelp(stdout)
-		return Result{ExitCode: ExitOK}
-	}
-
-	if len(args) >= 2 && args[0] == "repo" && args[1] == "init" {
-		return handleRepoInit(args[2:], stdout, stderr)
-	}
-	if len(args) >= 2 && args[0] == "repo" && args[1] == "audit" {
-		return handleRepoAudit(args[2:], stdout, stderr)
-	}
-	if len(args) >= 2 && args[0] == "repo" && args[1] == "update" {
-		return handleRepoUpdate(args[2:], stdout, stderr)
-	}
-	if len(args) >= 2 && args[0] == "repos" && args[1] == "mine" {
-		return handleReposMine(args[2:], stdout, stderr)
-	}
-	if len(args) >= 2 && args[0] == "config" && args[1] == "validate" {
-		return handleConfigValidate(args[2:], stdout, stderr)
-	}
-	if len(args) >= 1 && args[0] == "build" {
-		return handleBuild(args[1:], stdout, stderr)
-	}
-	if len(args) >= 1 && args[0] == "test" {
-		return handleTest(args[1:], stdout, stderr)
-	}
-	if len(args) >= 1 && args[0] == "format" {
-		return handleFormat(args[1:], stdout, stderr)
-	}
-	if len(args) >= 1 && args[0] == "lint" {
-		return handleLint(args[1:], stdout, stderr)
-	}
-	if len(args) >= 1 && args[0] == "cov" {
-		return handleCov(args[1:], stdout, stderr)
-	}
-	if len(args) >= 1 && args[0] == "release" {
-		return handleRelease(args[1:], stdout, stderr)
-	}
-
-	hasVersion := contains(args, "--version")
-	hasJSON := contains(args, "--json")
-	if hasJSON && !hasVersion {
-		_, _ = fmt.Fprintln(stderr, "invalid invocation: --json must be used with --version")
-		return Result{ExitCode: ExitUsage, Err: errors.New("invalid invocation")}
-	}
-	if hasVersion {
-		v := currentVersionInfo()
-		if hasJSON {
-			enc := json.NewEncoder(stdout)
-			enc.SetEscapeHTML(false)
-			if err := enc.Encode(v); err != nil {
-				return Result{ExitCode: ExitFailure, Err: err}
-			}
-			return Result{ExitCode: ExitOK}
-		}
-		_, _ = fmt.Fprintf(
-			stdout,
-			"gh-flarebyte %s commitId=%s date=%s os=%s arch=%s goVersion=%s\n",
-			v.Version, v.CommitID, v.Date, v.OS, v.Arch, v.GoVersion,
-		)
-		return Result{ExitCode: ExitOK}
-	}
-
-	_, _ = fmt.Fprintf(stderr, "unknown arguments: %v\n", args)
-	_, _ = fmt.Fprintln(stderr, "run `gh flarebyte --help` for usage")
-	return Result{ExitCode: ExitUsage, Err: errors.New("invalid invocation")}
+	return runWithCobra(args, stdout, stderr)
 }
 
 func currentVersionInfo() VersionInfo {

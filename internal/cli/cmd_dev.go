@@ -5,6 +5,7 @@ package cli
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -60,10 +61,29 @@ var runCommandCapture = func(name string, args []string, env []string) (string, 
 }
 
 func handleTest(args []string, stdout, stderr io.Writer) Result {
-	cfg, env, start, res := prepareDevCommand(args, stdout, stderr, "test", "Run unit tests for the configured build language.")
-	if res != nil {
-		return *res
+	if isHelpArgs(args) {
+		_, _ = fmt.Fprintln(stdout, "Usage: gh flarebyte test [--style summary|per_test]")
+		_, _ = fmt.Fprintln(stdout, "Run unit tests for the configured build language.")
+		return Result{ExitCode: ExitOK}
 	}
+	styleOverride, err := parseTestArgs(args)
+	if err != nil {
+		_, _ = fmt.Fprintln(stderr, err.Error())
+		return Result{ExitCode: ExitUsage, Err: err}
+	}
+	return runTest(styleOverride, stdout, stderr)
+}
+
+func runTest(styleOverride string, stdout, stderr io.Writer) Result {
+	cfg, usage := loadConfigOrUsage(stderr)
+	if usage != nil {
+		return *usage
+	}
+	if styleOverride != "" {
+		cfg.DevOutput.Style = styleOverride
+	}
+	env := buildCommandEnv(cfg)
+	start := time.Now()
 	switch cfg.Build.Language {
 	case "go":
 		cmdOut, cmdErr, runErr := runCommandCapture("go", []string{"test", "-json", "./..."}, env)
@@ -101,6 +121,26 @@ func handleTest(args []string, stdout, stderr io.Writer) Result {
 	}
 	printDevSummary(stdout, cfg, devSummary{Kind: "test", Status: "PASS", Duration: time.Since(start)})
 	return Result{ExitCode: ExitOK}
+}
+
+func parseTestArgs(args []string) (string, error) {
+	style := ""
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "--style":
+			if i+1 >= len(args) {
+				return "", errors.New("invalid invocation: --style requires one of summary or per_test")
+			}
+			style = args[i+1]
+			if style != "summary" && style != "per_test" {
+				return "", fmt.Errorf("invalid invocation: --style %q is not supported; expected summary or per_test", style)
+			}
+			i++
+		default:
+			return "", fmt.Errorf("invalid invocation: unknown argument %q", args[i])
+		}
+	}
+	return style, nil
 }
 
 func handleFormat(args []string, stdout, stderr io.Writer) Result {
@@ -162,17 +202,7 @@ func handleLint(args []string, stdout, stderr io.Writer) Result {
 	return Result{ExitCode: ExitOK}
 }
 
-func handleCov(args []string, stdout, stderr io.Writer) Result {
-	if isHelpArgs(args) {
-		_, _ = fmt.Fprintln(stdout, "Usage: gh flarebyte cov [--min percent]")
-		_, _ = fmt.Fprintln(stdout, "Compute test coverage. --min sets a failure threshold percentage (0-100).")
-		return Result{ExitCode: ExitOK}
-	}
-	min, err := parseCovArgs(args)
-	if err != nil {
-		_, _ = fmt.Fprintln(stderr, err.Error())
-		return Result{ExitCode: ExitUsage, Err: err}
-	}
+func runCov(min *float64, stdout, stderr io.Writer) Result {
 	cfg, usage := loadConfigOrUsage(stderr)
 	if usage != nil {
 		return *usage

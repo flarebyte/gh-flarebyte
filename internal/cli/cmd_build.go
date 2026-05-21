@@ -12,12 +12,7 @@ import (
 	"strings"
 )
 
-func handleBuild(args []string, stdout, stderr io.Writer) Result {
-	targetFilter, outputDirOverride, err := parseBuildArgs(args)
-	if err != nil {
-		_, _ = fmt.Fprintln(stderr, err.Error())
-		return Result{ExitCode: ExitUsage, Err: err}
-	}
+func runBuild(targetFilter, outputDirOverride string, stdout, stderr io.Writer) Result {
 	cfg, usage := loadConfigOrUsage(stderr)
 	if usage != nil {
 		return *usage

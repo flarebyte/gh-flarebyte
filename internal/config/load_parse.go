@@ -523,7 +523,7 @@ func extractTopLevelFieldNames(raw string) []string {
 			continue
 		}
 		start := j
-		if j >= len(raw) || !(unicode.IsLetter(rune(raw[j])) || raw[j] == '_') {
+		if j >= len(raw) || (!unicode.IsLetter(rune(raw[j])) && raw[j] != '_') {
 			lineStart = false
 			continue
 		}

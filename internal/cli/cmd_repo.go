@@ -11,12 +11,7 @@ import (
 	"github.com/flarebyte/gh-flarebyte/internal/config"
 )
 
-func handleRepoInit(args []string, stdout, stderr io.Writer) Result {
-	repo, overwrite, err := parseRepoInitArgs(args)
-	if err != nil {
-		_, _ = fmt.Fprintln(stderr, err.Error())
-		return Result{ExitCode: ExitUsage, Err: err}
-	}
+func runRepoInit(repo string, overwrite bool, stdout, stderr io.Writer) Result {
 	if repo == "" {
 		err := fmt.Errorf("invalid invocation: --repo owner/name is required")
 		_, _ = fmt.Fprintln(stderr, err.Error())
@@ -56,12 +51,7 @@ func handleRepoInit(args []string, stdout, stderr io.Writer) Result {
 	return Result{ExitCode: ExitOK}
 }
 
-func handleRepoAudit(args []string, stdout, stderr io.Writer) Result {
-	repo, asJSON, err := parseRepoAuditArgs(args)
-	if err != nil {
-		_, _ = fmt.Fprintln(stderr, err.Error())
-		return Result{ExitCode: ExitUsage, Err: err}
-	}
+func runRepoAudit(repo string, asJSON bool, stdout, stderr io.Writer) Result {
 	repo, cfg, remote, fail := loadRepoContext(repo, stderr)
 	if fail != nil {
 		return *fail
@@ -87,12 +77,7 @@ func handleRepoAudit(args []string, stdout, stderr io.Writer) Result {
 	return Result{ExitCode: ExitOK}
 }
 
-func handleRepoUpdate(args []string, stdout, stderr io.Writer) Result {
-	repo, confirmDeletions, acceptVisibility, err := parseRepoUpdateArgs(args)
-	if err != nil {
-		_, _ = fmt.Fprintln(stderr, err.Error())
-		return Result{ExitCode: ExitUsage, Err: err}
-	}
+func runRepoUpdate(repo string, confirmDeletions, acceptVisibility bool, stdout, stderr io.Writer) Result {
 	repo, cfg, remote, fail := loadRepoContext(repo, stderr)
 	if fail != nil {
 		return *fail
@@ -158,12 +143,7 @@ func handleRepoUpdate(args []string, stdout, stderr io.Writer) Result {
 	return Result{ExitCode: ExitOK}
 }
 
-func handleReposMine(args []string, stdout, stderr io.Writer) Result {
-	org, asJSON, err := parseReposMineArgs(args)
-	if err != nil {
-		_, _ = fmt.Fprintln(stderr, err.Error())
-		return Result{ExitCode: ExitUsage, Err: err}
-	}
+func runReposMine(org string, asJSON bool, stdout, stderr io.Writer) Result {
 	if org == "" {
 		err := fmt.Errorf("invalid invocation: --org is required")
 		_, _ = fmt.Fprintln(stderr, err.Error())

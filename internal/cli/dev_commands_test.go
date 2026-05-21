@@ -404,6 +404,9 @@ func TestDevCommandHelpHandlers(t *testing.T) {
 	if res := handleTest([]string{"-h"}, &out, &errOut); res.ExitCode != ExitOK || !strings.Contains(out.String(), "Usage: gh flarebyte test") {
 		t.Fatalf("unexpected test help output: code=%d out=%s", res.ExitCode, out.String())
 	}
+	if !strings.Contains(out.String(), "--style summary|per_test") {
+		t.Fatalf("expected style flag in test help, got: %s", out.String())
+	}
 	out.Reset()
 	if res := handleFormat([]string{"--help"}, &out, &errOut); res.ExitCode != ExitOK || !strings.Contains(out.String(), "Usage: gh flarebyte format") {
 		t.Fatalf("unexpected format help output: code=%d out=%s", res.ExitCode, out.String())
@@ -425,6 +428,37 @@ func TestDevCommandUsageErrors(t *testing.T) {
 	}
 	if res := handleLint([]string{"--bad"}, &out, &errOut); res.ExitCode != ExitUsage {
 		t.Fatalf("expected usage error for lint, got %d", res.ExitCode)
+	}
+}
+
+func TestRunTestStyleOverridePerTest(t *testing.T) {
+	_ = setupTempWorkdirWithConfig(t, testConfigCue())
+	oldRun := runCommandCapture
+	t.Cleanup(func() { runCommandCapture = oldRun })
+	runCommandCapture = func(name string, args []string, env []string) (string, string, error) {
+		return "{\"Action\":\"pass\",\"Test\":\"TestOne\"}\n", "", nil
+	}
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	res := Run([]string{"test", "--style", "per_test"}, &out, &errOut)
+	if res.ExitCode != ExitOK {
+		t.Fatalf("expected success, got %d stderr=%s", res.ExitCode, errOut.String())
+	}
+	if !strings.Contains(out.String(), "✓ TestOne") {
+		t.Fatalf("expected per-test marker output, got: %s", out.String())
+	}
+}
+
+func TestRunTestStyleOverrideRejectsInvalidValue(t *testing.T) {
+	_ = setupTempWorkdirWithConfig(t, testConfigCue())
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	res := Run([]string{"test", "--style", "bad"}, &out, &errOut)
+	if res.ExitCode != ExitUsage {
+		t.Fatalf("expected usage error, got %d", res.ExitCode)
+	}
+	if !strings.Contains(errOut.String(), "--style") {
+		t.Fatalf("expected style error, got: %s", errOut.String())
 	}
 }
 
