@@ -11,6 +11,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"unicode"
 )
 
 func ResolvePath(path string) (string, error) {
@@ -49,8 +50,83 @@ func Load(path string) (Config, error) {
 func parseCueConfig(raw string) (Config, error) {
 	var cfg Config
 	var err error
+	if err := assertOnlyAllowedFields("top-level", raw, map[string]struct{}{
+		"project":    {},
+		"sync":       {},
+		"repository": {},
+		"go":         {},
+		"dev_output": {},
+		"coverage":   {},
+		"build":      {},
+		"release":    {},
+	}); err != nil {
+		return cfg, err
+	}
+	projectBlock, err := extractObjectBlock(raw, "project")
+	if err != nil {
+		return cfg, err
+	}
+	if err := assertOnlyAllowedFields("project", projectBlock, map[string]struct{}{
+		"org":  {},
+		"repo": {},
+	}); err != nil {
+		return cfg, err
+	}
+	syncBlock, err := extractObjectBlock(raw, "sync")
+	if err != nil {
+		return cfg, err
+	}
+	if err := assertOnlyAllowedFields("sync", syncBlock, map[string]struct{}{
+		"mode": {},
+	}); err != nil {
+		return cfg, err
+	}
+	repositoryBlock, err := extractObjectBlock(raw, "repository")
+	if err != nil {
+		return cfg, err
+	}
+	if err := assertOnlyAllowedFields("repository", repositoryBlock, map[string]struct{}{
+		"description":   {},
+		"defaultBranch": {},
+		"homepage":      {},
+		"visibility":    {},
+		"template":      {},
+		"topics":        {},
+		"labels":        {},
+		"features":      {},
+	}); err != nil {
+		return cfg, err
+	}
 	buildBlock, err := extractObjectBlock(raw, "build")
 	if err != nil {
+		return cfg, err
+	}
+	if err := assertOnlyAllowedFields("build", buildBlock, map[string]struct{}{
+		"language":             {},
+		"mode":                 {},
+		"mainPackage":          {},
+		"packages":             {},
+		"runTests":             {},
+		"outputDir":            {},
+		"checksumFile":         {},
+		"targets":              {},
+		"artifactTargetSuffix": {},
+	}); err != nil {
+		return cfg, err
+	}
+	releaseBlock, err := extractObjectBlock(raw, "release")
+	if err != nil {
+		return cfg, err
+	}
+	if err := assertOnlyAllowedFields("release", releaseBlock, map[string]struct{}{
+		"versionSource":        {},
+		"tagPrefix":            {},
+		"notesMode":            {},
+		"releaseNotesFilePath": {},
+		"artifactDir":          {},
+		"includeArtifacts":     {},
+		"includeChecksums":     {},
+	}); err != nil {
 		return cfg, err
 	}
 	cfg.Project.Org, err = extractStringField(raw, "org")
@@ -70,11 +146,25 @@ func parseCueConfig(raw string) (Config, error) {
 		return cfg, err
 	}
 	if goBlock, ok := extractOptionalObjectBlock(raw, "go"); ok {
+		if err := assertOnlyAllowedFields("go", goBlock, map[string]struct{}{
+			"cache_dir":     {},
+			"mod_cache_dir": {},
+			"toolchain":     {},
+		}); err != nil {
+			return cfg, err
+		}
 		cfg.Go.CacheDir = extractOptionalStringField(goBlock, "cache_dir")
 		cfg.Go.ModCacheDir = extractOptionalStringField(goBlock, "mod_cache_dir")
 		cfg.Go.Toolchain = extractOptionalStringField(goBlock, "toolchain")
 	}
 	if devBlock, ok := extractOptionalObjectBlock(raw, "dev_output"); ok {
+		if err := assertOnlyAllowedFields("dev_output", devBlock, map[string]struct{}{
+			"color":       {},
+			"style":       {},
+			"show_passed": {},
+		}); err != nil {
+			return cfg, err
+		}
 		if colorRaw, found := extractOptionalBoolFieldRaw(devBlock, "color"); found {
 			cfg.DevOutput.Color = colorRaw
 		} else {
@@ -92,6 +182,12 @@ func parseCueConfig(raw string) (Config, error) {
 		cfg.DevOutput.Style = "summary"
 	}
 	if coverageBlock, ok := extractOptionalObjectBlock(raw, "coverage"); ok {
+		if err := assertOnlyAllowedFields("coverage", coverageBlock, map[string]struct{}{
+			"default_min_percent": {},
+			"fail_below_min":      {},
+		}); err != nil {
+			return cfg, err
+		}
 		cfg.Coverage.DefaultMinPercent = extractOptionalNumberPointerField(coverageBlock, "default_min_percent")
 		cfg.Coverage.FailBelowMin = extractOptionalBoolField(coverageBlock, "fail_below_min", true)
 	} else {
@@ -169,29 +265,28 @@ func parseCueConfig(raw string) (Config, error) {
 }
 
 func extractOptionalObjectBlock(raw, field string) (string, bool) {
-	open := strings.Index(raw, field+": {")
-	if open == -1 {
+	block, err := extractObjectBlock(raw, field)
+	if err != nil {
 		return "", false
 	}
-	start := open + len(field+": {")
-	end := strings.Index(raw[start:], "\n}")
-	if end == -1 {
-		return "", false
-	}
-	return raw[start : start+end], true
+	return block, true
 }
 
 func extractObjectBlock(raw, field string) (string, error) {
-	open := strings.Index(raw, field+": {")
+	open := strings.Index(raw, field+":")
 	if open == -1 {
 		return "", fmt.Errorf("missing required object field %s", field)
 	}
-	start := open + len(field+": {")
-	end := strings.Index(raw[start:], "\n}")
-	if end == -1 {
+	brace := strings.Index(raw[open:], "{")
+	if brace == -1 {
 		return "", fmt.Errorf("malformed object field %s", field)
 	}
-	return raw[start : start+end], nil
+	start := open + brace + 1
+	end, ok := findMatchingBrace(raw, start-1)
+	if !ok || end <= start {
+		return "", fmt.Errorf("malformed object field %s", field)
+	}
+	return raw[start:end], nil
 }
 
 func extractStringField(raw, field string) (string, error) {
@@ -323,6 +418,13 @@ func extractLabels(raw string) ([]LabelConfig, error) {
 	labels := make([]LabelConfig, 0, len(matches))
 	for _, match := range matches {
 		item := match[1]
+		if err := assertOnlyAllowedFields("repository.labels item", item, map[string]struct{}{
+			"name":        {},
+			"color":       {},
+			"description": {},
+		}); err != nil {
+			return nil, err
+		}
 		name, err := extractStringField(item, "name")
 		if err != nil {
 			return nil, fmt.Errorf("invalid repository.labels entry: %w", err)
@@ -339,4 +441,148 @@ func extractLabels(raw string) ([]LabelConfig, error) {
 		})
 	}
 	return labels, nil
+}
+
+func assertOnlyAllowedFields(scope, raw string, allowed map[string]struct{}) error {
+	for _, field := range extractTopLevelFieldNames(raw) {
+		if _, ok := allowed[field]; !ok {
+			return fmt.Errorf("unknown field %q in %s", field, scope)
+		}
+	}
+	return nil
+}
+
+func extractTopLevelFieldNames(raw string) []string {
+	var fields []string
+	seen := map[string]struct{}{}
+	inString := false
+	escaped := false
+	braceDepth := 0
+	bracketDepth := 0
+	lineStart := true
+
+	for i := 0; i < len(raw); i++ {
+		ch := raw[i]
+		if inString {
+			if escaped {
+				escaped = false
+				continue
+			}
+			if ch == '\\' {
+				escaped = true
+				continue
+			}
+			if ch == '"' {
+				inString = false
+			}
+			continue
+		}
+		if ch == '"' {
+			inString = true
+			lineStart = false
+			continue
+		}
+		if ch == '\n' {
+			lineStart = true
+			continue
+		}
+		switch ch {
+		case '{':
+			braceDepth++
+			lineStart = false
+			continue
+		case '}':
+			if braceDepth > 0 {
+				braceDepth--
+			}
+			lineStart = false
+			continue
+		case '[':
+			bracketDepth++
+			lineStart = false
+			continue
+		case ']':
+			if bracketDepth > 0 {
+				bracketDepth--
+			}
+			lineStart = false
+			continue
+		}
+		if !lineStart || braceDepth > 0 || bracketDepth > 0 {
+			if !unicode.IsSpace(rune(ch)) {
+				lineStart = false
+			}
+			continue
+		}
+		j := i
+		for j < len(raw) && (raw[j] == ' ' || raw[j] == '\t') {
+			j++
+		}
+		if j+1 < len(raw) && raw[j] == '/' && raw[j+1] == '/' {
+			lineStart = false
+			continue
+		}
+		start := j
+		if j >= len(raw) || !(unicode.IsLetter(rune(raw[j])) || raw[j] == '_') {
+			lineStart = false
+			continue
+		}
+		j++
+		for j < len(raw) && (unicode.IsLetter(rune(raw[j])) || unicode.IsDigit(rune(raw[j])) || raw[j] == '_') {
+			j++
+		}
+		name := raw[start:j]
+		for j < len(raw) && (raw[j] == ' ' || raw[j] == '\t') {
+			j++
+		}
+		if j < len(raw) && raw[j] == ':' {
+			if _, ok := seen[name]; !ok {
+				seen[name] = struct{}{}
+				fields = append(fields, name)
+			}
+		}
+		lineStart = false
+	}
+	return fields
+}
+
+func findMatchingBrace(raw string, openBraceIdx int) (int, bool) {
+	if openBraceIdx < 0 || openBraceIdx >= len(raw) || raw[openBraceIdx] != '{' {
+		return -1, false
+	}
+	inString := false
+	escaped := false
+	depth := 0
+	for i := openBraceIdx; i < len(raw); i++ {
+		ch := raw[i]
+		if inString {
+			if escaped {
+				escaped = false
+				continue
+			}
+			if ch == '\\' {
+				escaped = true
+				continue
+			}
+			if ch == '"' {
+				inString = false
+			}
+			continue
+		}
+		if ch == '"' {
+			inString = true
+			continue
+		}
+		if ch == '{' {
+			depth++
+			continue
+		}
+		if ch == '}' {
+			depth--
+			if depth == 0 {
+				return i, true
+			}
+		}
+	}
+	return -1, false
 }

@@ -190,13 +190,13 @@ build: {
 	packages: ["./..."]
 }
 
-	release: {
-		versionSource:    "main.project.yaml"
-		tagPrefix:        "v"
-		notesMode:        "generate-notes"
-		includeArtifacts: true
-		artifactDir:      "build"
-	}
+release: {
+	versionSource:    "main.project.yaml"
+	tagPrefix:        "v"
+	notesMode:        "generate-notes"
+	includeArtifacts: true
+	artifactDir:      "build"
+}
 `
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		t.Fatalf("write temp config failed: %v", err)
@@ -336,6 +336,111 @@ release: {
 		t.Fatalf("expected invalid dev_output.style error")
 	}
 	if !strings.Contains(err.Error(), "dev_output.style") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestLoadRejectsUnknownTopLevelField(t *testing.T) {
+	tmp := t.TempDir()
+	path := filepath.Join(tmp, "invalid-unknown-top-level.cue")
+	content := `package ghflarebyte
+
+project: {
+	org:  "flarebyte"
+	repo: "gh-flarebyte"
+}
+
+sync: {
+	mode: "push"
+}
+
+repository: {
+	description:   "CLI for landing your git commands right"
+	defaultBranch: "main"
+	homepage:      "https://github.com/flarebyte/gh-flarebyte"
+	visibility:    "public"
+	template:      false
+	topics: ["gh-extension"]
+	labels: [{name: "bug", color: "B60205"}]
+}
+
+build: {
+	language:     "go"
+	outputDir:    "build"
+	checksumFile: "build/checksums.txt"
+	targets: ["linux-amd64"]
+}
+
+release: {
+	versionSource:    "main.project.yaml"
+	tagPrefix:        "v"
+	notesMode:        "generate-notes"
+	artifactDir:      "build"
+	includeChecksums: true
+}
+
+extraField: "hello"
+`
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatalf("write temp config failed: %v", err)
+	}
+	_, err := Load(path)
+	if err == nil {
+		t.Fatalf("expected unknown top-level field error")
+	}
+	if !strings.Contains(err.Error(), `unknown field "extraField" in top-level`) {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestLoadRejectsUnknownBuildField(t *testing.T) {
+	tmp := t.TempDir()
+	path := filepath.Join(tmp, "invalid-unknown-build-field.cue")
+	content := `package ghflarebyte
+
+project: {
+	org:  "flarebyte"
+	repo: "gh-flarebyte"
+}
+
+sync: {
+	mode: "push"
+}
+
+repository: {
+	description:   "CLI for landing your git commands right"
+	defaultBranch: "main"
+	homepage:      "https://github.com/flarebyte/gh-flarebyte"
+	visibility:    "public"
+	template:      false
+	topics: ["gh-extension"]
+	labels: [{name: "bug", color: "B60205"}]
+}
+
+build: {
+	language:     "go"
+	outputDir:    "build"
+	checksumFile: "build/checksums.txt"
+	targets: ["linux-amd64"]
+	extraBuild:   true
+}
+
+release: {
+	versionSource:    "main.project.yaml"
+	tagPrefix:        "v"
+	notesMode:        "generate-notes"
+	artifactDir:      "build"
+	includeChecksums: true
+}
+`
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatalf("write temp config failed: %v", err)
+	}
+	_, err := Load(path)
+	if err == nil {
+		t.Fatalf("expected unknown build field error")
+	}
+	if !strings.Contains(err.Error(), `unknown field "extraBuild" in build`) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
