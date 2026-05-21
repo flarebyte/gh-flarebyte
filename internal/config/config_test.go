@@ -1,3 +1,6 @@
+// purpose: Guard config loading and validation contracts so cue-backed project/build/release behavior remains deterministic.
+// responsibilities: Check valid parsing defaults and reject invalid field combinations, enums, and required-field omissions.
+// architecture notes: Uses temp cue fixtures to exercise loader and validator together, mirroring real CLI config consumption.
 package config
 
 import (
@@ -256,5 +259,83 @@ release: {
 	}
 	if cfg.Build.MainPackage != "./cmd/flyb" {
 		t.Fatalf("expected build.mainPackage override, got %q", cfg.Build.MainPackage)
+	}
+}
+
+func TestLoadDefaultsForDevOutputAndCoverage(t *testing.T) {
+	cfg, err := Load(filepath.Join("testdata", "valid.cue"))
+	if err != nil {
+		t.Fatalf("expected valid config, got error: %v", err)
+	}
+	if cfg.DevOutput.Color != "auto" {
+		t.Fatalf("expected dev_output.color default auto, got %q", cfg.DevOutput.Color)
+	}
+	if cfg.DevOutput.Style != "summary" {
+		t.Fatalf("expected dev_output.style default summary, got %q", cfg.DevOutput.Style)
+	}
+	if !cfg.DevOutput.ShowPassed {
+		t.Fatalf("expected dev_output.show_passed default true")
+	}
+	if !cfg.Coverage.FailBelowMin {
+		t.Fatalf("expected coverage.fail_below_min default true")
+	}
+	if cfg.Coverage.DefaultMinPercent != nil {
+		t.Fatalf("expected nil default coverage.default_min_percent")
+	}
+}
+
+func TestLoadRejectsInvalidDevOutputStyle(t *testing.T) {
+	tmp := t.TempDir()
+	path := filepath.Join(tmp, "invalid-dev-output-style.cue")
+	content := `package ghflarebyte
+
+project: {
+	org:  "flarebyte"
+	repo: "gh-flarebyte"
+}
+
+sync: {
+	mode: "push"
+}
+
+repository: {
+	description:   "CLI for landing your git commands right"
+	defaultBranch: "main"
+	homepage:      "https://github.com/flarebyte/gh-flarebyte"
+	visibility:    "public"
+	template:      false
+	topics: ["gh-extension"]
+	labels: [{name: "bug", color: "B60205"}]
+}
+
+dev_output: {
+	color: "auto"
+	style: "verbose"
+}
+
+build: {
+	language:     "go"
+	outputDir:    "build"
+	checksumFile: "build/checksums.txt"
+	targets: ["linux-amd64"]
+}
+
+release: {
+	versionSource:    "main.project.yaml"
+	tagPrefix:        "v"
+	notesMode:        "generate-notes"
+	artifactDir:      "build"
+	includeChecksums: true
+}
+`
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatalf("write temp config failed: %v", err)
+	}
+	_, err := Load(path)
+	if err == nil {
+		t.Fatalf("expected invalid dev_output.style error")
+	}
+	if !strings.Contains(err.Error(), "dev_output.style") {
+		t.Fatalf("unexpected error: %v", err)
 	}
 }

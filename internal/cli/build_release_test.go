@@ -1,3 +1,6 @@
+// purpose: Ensure build and release orchestration stays reliable across target modes, packaging paths, and release policies.
+// responsibilities: Verify build artifacts/checksums, version hydration, release gating, and release artifact selection behavior.
+// architecture notes: Tests replace command-side function variables to isolate orchestration logic from external tools and network calls.
 package cli
 
 import (
@@ -28,6 +31,24 @@ func setupBuildTargetAndPackagingStubs(t *testing.T) {
 		return os.WriteFile(outputPath, []byte("binary-"+target), 0o755)
 	}
 	packageBinary = packageBinaryArchive
+}
+
+func stubReleaseCaptureArtifacts(t *testing.T, version string, includeTagExists bool, capturedArtifacts *[]string) {
+	t.Helper()
+	oldFindVersion := findVersion
+	oldTagExists := tagExists
+	oldCreateRelease := createRelease
+	t.Cleanup(func() {
+		findVersion = oldFindVersion
+		tagExists = oldTagExists
+		createRelease = oldCreateRelease
+	})
+	findVersion = func(sourcePath string) (string, error) { return version, nil }
+	tagExists = func(tag string) (bool, error) { return includeTagExists, nil }
+	createRelease = func(tag string, artifacts []string, notesMode string, notesFile string, draft bool) error {
+		*capturedArtifacts = append([]string{}, artifacts...)
+		return nil
+	}
 }
 
 func setupHydrateBuildInfoTestEnv(
@@ -285,10 +306,7 @@ func TestRunReleaseSupportsNoSuffixModeWithMultipleTargets(t *testing.T) {
 	_ = setupTempWorkdirWithConfig(t, cfg)
 	stubReleaseFlow(t, "1.2.3", false)
 	var capturedArtifacts []string
-	createRelease = func(tag string, artifacts []string, notesMode string, notesFile string, draft bool) error {
-		capturedArtifacts = append([]string{}, artifacts...)
-		return nil
-	}
+	stubReleaseCaptureArtifacts(t, "1.2.3", false, &capturedArtifacts)
 	var out bytes.Buffer
 	var errOut bytes.Buffer
 	result := Run([]string{"release"}, &out, &errOut)
@@ -426,21 +444,8 @@ func TestRunReleaseLibraryModeWithoutArtifacts(t *testing.T) {
 	oldGoBuildPackages := goBuildPackages
 	t.Cleanup(func() { goBuildPackages = oldGoBuildPackages })
 	goBuildPackages = func(goos string, goarch string, packages []string, runTests bool) error { return nil }
-	oldFindVersion := findVersion
-	oldTagExists := tagExists
-	oldCreateRelease := createRelease
-	t.Cleanup(func() {
-		findVersion = oldFindVersion
-		tagExists = oldTagExists
-		createRelease = oldCreateRelease
-	})
-	findVersion = func(sourcePath string) (string, error) { return "1.2.3", nil }
-	tagExists = func(tag string) (bool, error) { return false, nil }
 	var capturedArtifacts []string
-	createRelease = func(tag string, artifacts []string, notesMode string, notesFile string, draft bool) error {
-		capturedArtifacts = append([]string{}, artifacts...)
-		return nil
-	}
+	stubReleaseCaptureArtifacts(t, "1.2.3", false, &capturedArtifacts)
 	var out bytes.Buffer
 	var errOut bytes.Buffer
 	result := Run([]string{"release"}, &out, &errOut)

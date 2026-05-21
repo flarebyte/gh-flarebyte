@@ -1,0 +1,36 @@
+locator: internal/cli/cmd_dev.go
+meta:
+  purpose: Implement developer-oriented commands (test/format/lint/cov) with shared names across languages.
+  responsibilities: Parse command arguments; dispatch by configured build language; run toolchain commands; emit concise summaries.
+  architecture_notes: Process execution is wrapped through a function variable so tests can stub command behavior deterministically.
+  function_list:
+    - buildCommandEnv
+    - discoverGoFiles
+    - formatGoTestDetails
+    - handleCov
+    - handleFormat
+    - handleLint
+    - handleTest
+    - isHelpArgs
+    - parseCovArgs
+    - parseGoTestJSONSummary
+    - parseTotalCoverage
+    - prepareDevCommand
+    - printDevSummary
+    - requireNoArgs
+    - resolveCoverageMin
+    - unsupportedLanguageResult
+    - useColor
+  import_files_list:
+    - encoding/json
+    - fmt
+    - github.com/flarebyte/gh-flarebyte/internal/config
+    - io
+    - os
+    - os/exec
+    - path/filepath
+    - regexp
+    - strconv
+    - strings
+    - time
+  language: go

@@ -1,0 +1,12 @@
+locator: internal/cli/arg_parsers_test.go
+meta:
+  purpose: Validate strict CLI argument parsing so malformed or ambiguous invocations fail with predictable errors.
+  responsibilities: Assert parse outcomes and error branches for repo, release, build, and config parser helpers.
+  architecture_notes: Tests target pure parser functions directly to provide fast coverage of contract-level CLI behavior.
+  function_list:
+    - TestParseReleaseBuildAndConfigArgs
+    - TestParseRepoArgsAndHelpers
+  import_files_list:
+    - path/filepath
+    - testing
+  language: go

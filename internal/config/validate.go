@@ -40,6 +40,21 @@ func Validate(cfg Config) error {
 	if cfg.Sync.Mode != "push" {
 		return fmt.Errorf("invalid sync.mode %q: expected push", cfg.Sync.Mode)
 	}
+	switch cfg.DevOutput.Color {
+	case "auto", "true", "false":
+	default:
+		return fmt.Errorf("invalid dev_output.color %q: expected true, false, or auto", cfg.DevOutput.Color)
+	}
+	switch cfg.DevOutput.Style {
+	case "one_line", "summary", "list":
+	default:
+		return fmt.Errorf("invalid dev_output.style %q: expected one_line, summary, or list", cfg.DevOutput.Style)
+	}
+	if cfg.Coverage.DefaultMinPercent != nil {
+		if *cfg.Coverage.DefaultMinPercent < 0 || *cfg.Coverage.DefaultMinPercent > 100 {
+			return fmt.Errorf("invalid coverage.default_min_percent %.2f: expected between 0 and 100", *cfg.Coverage.DefaultMinPercent)
+		}
+	}
 	switch cfg.Build.Language {
 	case "go", "dart":
 	default:

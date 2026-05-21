@@ -1,5 +1,8 @@
 locator: internal/cli/build_release_test.go
 meta:
+  purpose: Ensure build and release orchestration stays reliable across target modes, packaging paths, and release policies.
+  responsibilities: Verify build artifacts/checksums, version hydration, release gating, and release artifact selection behavior.
+  architecture_notes: Tests replace command-side function variables to isolate orchestration logic from external tools and network calls.
   function_list:
     - TestHydrateBuildInfoKeepsExistingWhenVersionAndGitUnavailable
     - TestHydrateBuildInfoPopulatesAllFields
@@ -18,6 +21,7 @@ meta:
     - TestRunReleaseSupportsNoSuffixModeWithMultipleTargets
     - setupBuildTargetAndPackagingStubs
     - setupHydrateBuildInfoTestEnv
+    - stubReleaseCaptureArtifacts
   import_files_list:
     - archive/tar
     - archive/zip
