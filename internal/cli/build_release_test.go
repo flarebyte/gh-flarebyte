@@ -1,3 +1,6 @@
+// purpose: Ensure build and release orchestration stays reliable across target modes, packaging paths, and release policies.
+// responsibilities: Verify build artifacts/checksums, version hydration, release gating, and release artifact selection behavior.
+// architecture notes: Tests replace command-side function variables to isolate orchestration logic from external tools and network calls.
 package cli
 
 import (

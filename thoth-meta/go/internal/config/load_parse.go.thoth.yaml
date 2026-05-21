@@ -8,7 +8,9 @@ meta:
     - extractLabels
     - extractObjectBlock
     - extractOptionalBoolField
+    - extractOptionalBoolFieldRaw
     - extractOptionalBoolFieldWithPresence
+    - extractOptionalNumberPointerField
     - extractOptionalObjectBlock
     - extractOptionalStringField
     - extractOptionalStringListBlock
@@ -21,6 +23,7 @@ meta:
     - os
     - path/filepath
     - regexp
+    - strconv
     - strings
   language: go
   purpose: Load `.gh-flarebyte.cue` files and parse required config fields into strongly typed runtime structures.

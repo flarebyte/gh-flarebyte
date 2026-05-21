@@ -1,3 +1,6 @@
+// purpose: Validate strict CLI argument parsing so malformed or ambiguous invocations fail with predictable errors.
+// responsibilities: Assert parse outcomes and error branches for repo, release, build, and config parser helpers.
+// architecture notes: Tests target pure parser functions directly to provide fast coverage of contract-level CLI behavior.
 package cli
 
 import (

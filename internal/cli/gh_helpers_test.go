@@ -1,3 +1,6 @@
+// purpose: Protect GitHub helper adaptation logic so metadata decoding and fake-mode shortcuts stay stable for automation.
+// responsibilities: Test topic/label extraction, fake readonly/release behaviors, and selected helper edge branches.
+// architecture notes: Uses environment-driven fake modes to avoid external `gh` calls while still validating integration helpers.
 package cli
 
 import (

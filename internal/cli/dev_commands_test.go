@@ -1,3 +1,6 @@
+// purpose: Verify developer command behavior so agents can safely change test/format/lint/cov flows without regressions.
+// responsibilities: Exercise command help/usage, language routing, output formatting, thresholds, and failure paths via stubs.
+// architecture notes: Tests stub `runCommandCapture` and rely on temp configs to keep assertions deterministic without external toolchain/GitHub dependencies.
 package cli
 
 import (

@@ -1,0 +1,41 @@
+locator: internal/cli/dev_commands_test.go
+meta:
+  purpose: Verify developer command behavior so agents can safely change test/format/lint/cov flows without regressions.
+  responsibilities: Exercise command help/usage, language routing, output formatting, thresholds, and failure paths via stubs.
+  architecture_notes: Tests stub `runCommandCapture` and rely on temp configs to keep assertions deterministic without external toolchain/GitHub dependencies.
+  function_list:
+    - TestDevCommandHelpHandlers
+    - TestDevCommandUsageErrors
+    - TestDiscoverGoFilesSkipsExcludedDirs
+    - TestParseCovArgs
+    - TestParseGoTestJSONSummaryIgnoresPackageLevelEvents
+    - TestPrintDevSummaryListStyle
+    - TestRunCovBelowMinAllowedWhenFailBelowDisabled
+    - TestRunCovFailsBelowThreshold
+    - TestRunCovFailurePaths
+    - TestRunCovHelpIncludesMinGuidance
+    - TestRunCovMinFlagOverridesConfigThreshold
+    - TestRunCovRejectsInvalidMin
+    - TestRunCovUsesUniqueProfileTempPath
+    - TestRunDartFailurePaths
+    - TestRunDartRoutingForFormatAndTest
+    - TestRunDartRoutingForLint
+    - TestRunFormatAndLintFailures
+    - TestRunGoTestFailureIncludesSummaryDetails
+    - TestRunHelpIncludesDevCommands
+    - TestRunTestGoUsesConfiguredCaches
+    - TestRunTestHidePassedOutput
+    - TestRunTestOneLineStyleOutput
+    - TestUseColorModes
+    - setupCoverageConfig
+    - stubGoCoverTotal
+  import_files_list:
+    - bytes
+    - fmt
+    - github.com/flarebyte/gh-flarebyte/internal/config
+    - os
+    - path/filepath
+    - strconv
+    - strings
+    - testing
+  language: go

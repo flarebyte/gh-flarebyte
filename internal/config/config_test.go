@@ -1,3 +1,6 @@
+// purpose: Guard config loading and validation contracts so cue-backed project/build/release behavior remains deterministic.
+// responsibilities: Check valid parsing defaults and reject invalid field combinations, enums, and required-field omissions.
+// architecture notes: Uses temp cue fixtures to exercise loader and validator together, mirroring real CLI config consumption.
 package config
 
 import (
