@@ -26,8 +26,24 @@ type devSummary struct {
 }
 
 type goTestEvent struct {
-	Action string `json:"Action"`
-	Test   string `json:"Test"`
+	Action  string `json:"Action"`
+	Test    string `json:"Test"`
+	Output  string `json:"Output"`
+	Package string `json:"Package"`
+}
+
+type goFailure struct {
+	Test    string
+	At      string
+	Snippet string
+}
+
+type goTestReport struct {
+	Tests    int
+	Failed   int
+	Skipped  int
+	Events   []goTestEvent
+	Failures []goFailure
 }
 
 var runCommandCapture = func(name string, args []string, env []string) (string, string, error) {
@@ -51,20 +67,28 @@ func handleTest(args []string, stdout, stderr io.Writer) Result {
 	switch cfg.Build.Language {
 	case "go":
 		cmdOut, cmdErr, runErr := runCommandCapture("go", []string{"test", "-json", "./..."}, env)
+		report := parseGoTestReport(cmdOut)
+		if cfg.DevOutput.Style == "per_test" {
+			printPerTestEvents(stdout, cfg, report.Events)
+		}
 		if runErr != nil {
-			tests, failed, skipped := parseGoTestJSONSummary(cmdOut)
-			details := formatGoTestDetails(tests, failed, skipped, "FAIL")
+			details := formatGoTestDetails(report.Tests, report.Failed, report.Skipped, "FAIL")
+			if failureDetails := formatFailureDetails(report.Failures); failureDetails != "" {
+				if details != "" {
+					details += "\n"
+				}
+				details += failureDetails
+			}
 			if strings.TrimSpace(cmdErr) != "" {
 				if details != "" {
-					details += " "
+					details += "\n"
 				}
 				details += strings.TrimSpace(cmdErr)
 			}
 			printDevSummary(stderr, cfg, devSummary{Kind: "test", Status: "FAIL", Duration: time.Since(start), Details: details})
 			return Result{ExitCode: ExitFailure, Err: commandError(runErr, cmdErr)}
 		}
-		tests, failed, skipped := parseGoTestJSONSummary(cmdOut)
-		printDevSummary(stdout, cfg, devSummary{Kind: "test", Status: "PASS", Duration: time.Since(start), Details: formatGoTestDetails(tests, failed, skipped, "PASS")})
+		printDevSummary(stdout, cfg, devSummary{Kind: "test", Status: "PASS", Duration: time.Since(start), Details: formatGoTestDetails(report.Tests, report.Failed, report.Skipped, "PASS")})
 		return Result{ExitCode: ExitOK}
 	case "dart":
 		_, cmdErr, runErr := runCommandCapture("dart", []string{"test"}, env)
@@ -326,16 +350,11 @@ func printDevSummary(w io.Writer, cfg config.Config, s devSummary) {
 	}
 	d := s.Duration.Round(time.Millisecond)
 	switch cfg.DevOutput.Style {
-	case "one_line":
+	case "summary", "per_test":
 		if s.Details != "" {
-			_, _ = fmt.Fprintf(w, "%s kind=%s %s duration=%s\n", status, s.Kind, s.Details, d)
+			_, _ = fmt.Fprintf(w, "%s %s duration=%s %s\n", strings.ToUpper(s.Kind), status, d, s.Details)
 		} else {
-			_, _ = fmt.Fprintf(w, "%s kind=%s duration=%s\n", status, s.Kind, d)
-		}
-	case "list":
-		_, _ = fmt.Fprintf(w, "- kind: %s\n- status: %s\n- duration: %s\n", s.Kind, status, d)
-		if s.Details != "" {
-			_, _ = fmt.Fprintf(w, "- details: %s\n", s.Details)
+			_, _ = fmt.Fprintf(w, "%s %s duration=%s\n", strings.ToUpper(s.Kind), status, d)
 		}
 	default:
 		if s.Details != "" {
@@ -344,12 +363,18 @@ func printDevSummary(w io.Writer, cfg config.Config, s devSummary) {
 			_, _ = fmt.Fprintf(w, "%s %s duration=%s\n", strings.ToUpper(s.Kind), status, d)
 		}
 	}
-	if s.Status == "FAIL" && s.Details != "" && cfg.DevOutput.Style != "list" {
-		_, _ = fmt.Fprintln(w, s.Details)
-	}
 }
 
 func parseGoTestJSONSummary(out string) (tests int, failed int, skipped int) {
+	report := parseGoTestReport(out)
+	return report.Tests, report.Failed, report.Skipped
+}
+
+func parseGoTestReport(out string) goTestReport {
+	report := goTestReport{}
+	lastOutput := map[string]string{}
+	lastLocation := map[string]string{}
+
 	for _, line := range strings.Split(out, "\n") {
 		line = strings.TrimSpace(line)
 		if line == "" {
@@ -359,22 +384,39 @@ func parseGoTestJSONSummary(out string) (tests int, failed int, skipped int) {
 		if err := json.Unmarshal([]byte(line), &ev); err != nil {
 			continue
 		}
+		report.Events = append(report.Events, ev)
 		// Count only concrete test-case events and ignore package-level pass/fail lines.
 		switch ev.Action {
 		case "pass", "fail", "skip":
 			if ev.Test == "" {
 				continue
 			}
-			tests++
+			report.Tests++
 		}
 		if ev.Action == "fail" {
-			failed++
+			if ev.Test != "" {
+				report.Failed++
+				report.Failures = append(report.Failures, goFailure{
+					Test:    ev.Test,
+					At:      lastLocation[ev.Test],
+					Snippet: lastOutput[ev.Test],
+				})
+			}
 		}
 		if ev.Action == "skip" {
-			skipped++
+			report.Skipped++
+		}
+		if ev.Test != "" && ev.Output != "" {
+			output := strings.TrimSpace(ev.Output)
+			if output != "" {
+				lastOutput[ev.Test] = output
+				if loc := extractFailureLocation(output); loc != "" {
+					lastLocation[ev.Test] = loc
+				}
+			}
 		}
 	}
-	return tests, failed, skipped
+	return report
 }
 
 func formatGoTestDetails(tests int, failed int, skipped int, status string) string {
@@ -399,6 +441,50 @@ func useColor(mode string) bool {
 	default:
 		return os.Getenv("TERM") != "" && os.Getenv("TERM") != "dumb"
 	}
+}
+
+func printPerTestEvents(w io.Writer, cfg config.Config, events []goTestEvent) {
+	for _, ev := range events {
+		if ev.Test == "" {
+			continue
+		}
+		switch ev.Action {
+		case "pass":
+			if cfg.DevOutput.ShowPassed {
+				_, _ = fmt.Fprintf(w, "✓ %s\n", ev.Test)
+			}
+		case "skip":
+			_, _ = fmt.Fprintf(w, "↷ %s\n", ev.Test)
+		case "fail":
+			_, _ = fmt.Fprintf(w, "✗ %s\n", ev.Test)
+		}
+	}
+}
+
+func formatFailureDetails(failures []goFailure) string {
+	if len(failures) == 0 {
+		return ""
+	}
+	lines := []string{"FAILED:"}
+	for _, f := range failures {
+		lines = append(lines, "- "+f.Test)
+		if f.At != "" {
+			lines = append(lines, "  at "+f.At)
+		}
+		if f.Snippet != "" {
+			lines = append(lines, "  snippet: "+f.Snippet)
+		}
+	}
+	return strings.Join(lines, "\n")
+}
+
+func extractFailureLocation(output string) string {
+	re := regexp.MustCompile(`([A-Za-z0-9_./\\-]+_test\.go:\d+)`)
+	m := re.FindStringSubmatch(output)
+	if len(m) < 2 {
+		return ""
+	}
+	return m[1]
 }
 
 func isHelpArgs(args []string) bool {

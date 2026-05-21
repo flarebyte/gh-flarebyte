@@ -103,6 +103,12 @@ build: {
 	]
 }
 
+dev_output: {
+	color:       "auto"
+	style:       "summary"
+	show_passed: true
+}
+
 release: {
 	versionSource:    "main.project.yaml"
 	tagPrefix:        "v"

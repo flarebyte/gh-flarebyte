@@ -190,12 +190,12 @@ func TestDiscoverGoFilesSkipsExcludedDirs(t *testing.T) {
 	}
 }
 
-func TestRunTestOneLineStyleOutput(t *testing.T) {
+func TestRunTestPerTestStyleOutput(t *testing.T) {
 	cfg := testConfigCue() + `
 
 dev_output: {
 	color: "false"
-	style: "one_line"
+	style: "per_test"
 }
 `
 	_ = setupTempWorkdirWithConfig(t, cfg)
@@ -210,8 +210,8 @@ dev_output: {
 	if res.ExitCode != ExitOK {
 		t.Fatalf("expected exit code %d, got %d", ExitOK, res.ExitCode)
 	}
-	if !strings.Contains(out.String(), "PASS kind=test") || !strings.Contains(out.String(), "tests=2 failed=0 skipped=1") {
-		t.Fatalf("expected one_line output, got: %s", out.String())
+	if !strings.Contains(out.String(), "✓ TestOne") || !strings.Contains(out.String(), "↷ TestTwo") || !strings.Contains(out.String(), "TEST PASS") {
+		t.Fatalf("expected per_test output, got: %s", out.String())
 	}
 }
 
@@ -350,13 +350,13 @@ func TestUseColorModes(t *testing.T) {
 	}
 }
 
-func TestPrintDevSummaryListStyle(t *testing.T) {
+func TestPrintDevSummaryPerTestStyleUsesSummaryLine(t *testing.T) {
 	var b bytes.Buffer
-	cfg := config.Config{DevOutput: config.DevOutputConfig{Color: "false", Style: "list", ShowPassed: true}}
+	cfg := config.Config{DevOutput: config.DevOutputConfig{Color: "false", Style: "per_test", ShowPassed: true}}
 	printDevSummary(&b, cfg, devSummary{Kind: "lint", Status: "PASS", Duration: 1500 * 1e6, Details: "ok=1"})
 	out := b.String()
-	if !strings.Contains(out, "- kind: lint") || !strings.Contains(out, "- details: ok=1") {
-		t.Fatalf("unexpected list output: %s", out)
+	if !strings.Contains(out, "LINT PASS duration=") || !strings.Contains(out, "ok=1") {
+		t.Fatalf("unexpected per_test summary output: %s", out)
 	}
 }
 
@@ -556,7 +556,7 @@ func TestRunGoTestFailureIncludesSummaryDetails(t *testing.T) {
 	t.Cleanup(func() { runCommandCapture = oldRun })
 	runCommandCapture = func(name string, args []string, env []string) (string, string, error) {
 		if name == "go" && len(args) >= 2 && args[0] == "test" && args[1] == "-json" {
-			out := "{\"Action\":\"pass\",\"Test\":\"TestOne\"}\n{\"Action\":\"fail\",\"Test\":\"TestTwo\"}\n"
+			out := "{\"Action\":\"pass\",\"Test\":\"TestOne\"}\n{\"Action\":\"output\",\"Test\":\"TestTwo\",\"Output\":\"internal/config/parse_test.go:87: expected version\"}\n{\"Action\":\"fail\",\"Test\":\"TestTwo\"}\n"
 			return out, "stderr detail", fmt.Errorf("boom")
 		}
 		return "", "", nil
@@ -569,6 +569,9 @@ func TestRunGoTestFailureIncludesSummaryDetails(t *testing.T) {
 	}
 	if !strings.Contains(errOut.String(), "tests=2 failed=1 skipped=0") {
 		t.Fatalf("expected summarized failure counts, got: %s", errOut.String())
+	}
+	if !strings.Contains(errOut.String(), "FAILED:") || !strings.Contains(errOut.String(), "snippet: internal/config/parse_test.go:87: expected version") {
+		t.Fatalf("expected failure snippets, got: %s", errOut.String())
 	}
 }
 

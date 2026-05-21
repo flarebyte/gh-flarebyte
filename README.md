@@ -151,4 +151,4 @@ release: {
 - In `library` mode, `--target` applies `GOOS/GOARCH` cross-compile checks and does not force artifact generation.
 - `release.includeArtifacts` defaults to `true`. Set it to `false` to publish tag and notes without uploading binaries or checksums.
 - `gh flarebyte cov --min 90` overrides config coverage threshold for that invocation.
-- `dev_output.style` supports `one_line`, `summary`, and `list`.
+- `dev_output.style` supports `summary` and `per_test`.
