@@ -27,6 +27,7 @@ type devSummary struct {
 
 type goTestEvent struct {
 	Action string `json:"Action"`
+	Test   string `json:"Test"`
 }
 
 var runCommandCapture = func(name string, args []string, env []string) (string, string, error) {
@@ -43,6 +44,11 @@ var runCommandCapture = func(name string, args []string, env []string) (string, 
 }
 
 func handleTest(args []string, stdout, stderr io.Writer) Result {
+	if isHelpArgs(args) {
+		_, _ = fmt.Fprintln(stdout, "Usage: gh flarebyte test")
+		_, _ = fmt.Fprintln(stdout, "Run unit tests for the configured build language.")
+		return Result{ExitCode: ExitOK}
+	}
 	if len(args) != 0 {
 		err := fmt.Errorf("invalid invocation: unknown argument %q", args[0])
 		_, _ = fmt.Fprintln(stderr, err.Error())
@@ -88,6 +94,11 @@ func handleTest(args []string, stdout, stderr io.Writer) Result {
 }
 
 func handleFormat(args []string, stdout, stderr io.Writer) Result {
+	if isHelpArgs(args) {
+		_, _ = fmt.Fprintln(stdout, "Usage: gh flarebyte format")
+		_, _ = fmt.Fprintln(stdout, "Format source files for the configured build language.")
+		return Result{ExitCode: ExitOK}
+	}
 	if len(args) != 0 {
 		err := fmt.Errorf("invalid invocation: unknown argument %q", args[0])
 		_, _ = fmt.Fprintln(stderr, err.Error())
@@ -131,6 +142,11 @@ func handleFormat(args []string, stdout, stderr io.Writer) Result {
 }
 
 func handleLint(args []string, stdout, stderr io.Writer) Result {
+	if isHelpArgs(args) {
+		_, _ = fmt.Fprintln(stdout, "Usage: gh flarebyte lint")
+		_, _ = fmt.Fprintln(stdout, "Run lint/static checks for the configured build language.")
+		return Result{ExitCode: ExitOK}
+	}
 	if len(args) != 0 {
 		err := fmt.Errorf("invalid invocation: unknown argument %q", args[0])
 		_, _ = fmt.Fprintln(stderr, err.Error())
@@ -165,6 +181,11 @@ func handleLint(args []string, stdout, stderr io.Writer) Result {
 }
 
 func handleCov(args []string, stdout, stderr io.Writer) Result {
+	if isHelpArgs(args) {
+		_, _ = fmt.Fprintln(stdout, "Usage: gh flarebyte cov [--min percent]")
+		_, _ = fmt.Fprintln(stdout, "Compute test coverage. --min sets a failure threshold percentage (0-100).")
+		return Result{ExitCode: ExitOK}
+	}
 	min, err := parseCovArgs(args)
 	if err != nil {
 		_, _ = fmt.Fprintln(stderr, err.Error())
@@ -178,7 +199,13 @@ func handleCov(args []string, stdout, stderr io.Writer) Result {
 	start := time.Now()
 	switch cfg.Build.Language {
 	case "go":
-		profilePath := filepath.Join(os.TempDir(), "gh-flarebyte.coverprofile")
+		profileDir, mkErr := os.MkdirTemp("", "gh-flarebyte-cov-")
+		if mkErr != nil {
+			_, _ = fmt.Fprintln(stderr, mkErr.Error())
+			return Result{ExitCode: ExitFailure, Err: mkErr}
+		}
+		defer func() { _ = os.RemoveAll(profileDir) }()
+		profilePath := filepath.Join(profileDir, "cover.out")
 		_, cmdErr, runErr := runCommandCapture("go", []string{"test", "-coverprofile=" + profilePath, "./..."}, env)
 		if runErr != nil {
 			_, _ = fmt.Fprintln(stderr, strings.TrimSpace(cmdErr))
@@ -343,8 +370,12 @@ func parseGoTestJSONSummary(out string) (tests int, failed int, skipped int) {
 		if err := json.Unmarshal([]byte(line), &ev); err != nil {
 			continue
 		}
+		// Count only concrete test-case events and ignore package-level pass/fail lines.
 		switch ev.Action {
 		case "pass", "fail", "skip":
+			if ev.Test == "" {
+				continue
+			}
 			tests++
 		}
 		if ev.Action == "fail" {
@@ -379,4 +410,8 @@ func useColor(mode string) bool {
 	default:
 		return os.Getenv("TERM") != "" && os.Getenv("TERM") != "dumb"
 	}
+}
+
+func isHelpArgs(args []string) bool {
+	return len(args) == 1 && (args[0] == "--help" || args[0] == "-h")
 }

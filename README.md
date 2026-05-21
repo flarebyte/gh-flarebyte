@@ -26,6 +26,12 @@ Use `gh flarebyte` to keep a GitHub repository aligned with the config checked i
 - `gh flarebyte build [--target <os-arch>] [--output-dir <path>]` builds the project using the language and mode defined in `.gh-flarebyte.cue`.
 - `gh flarebyte release [--draft] [--notes-file <path>]` builds first, then publishes a GitHub release from the configured release policy.
 
+### Dev commands
+- `gh flarebyte test` runs tests for the configured build language.
+- `gh flarebyte format` formats source files for the configured build language.
+- `gh flarebyte lint` runs lint/static checks for the configured build language.
+- `gh flarebyte cov [--min <percent>]` computes coverage and can fail below a threshold.
+
 ### Runtime info
 - `gh flarebyte --version` prints the CLI version metadata, including version, commit id, build date, OS/arch, and Go runtime version.
 - `gh flarebyte --version --json` prints the same version metadata in a machine-readable JSON shape.
@@ -40,6 +46,9 @@ The repo config lives in `.gh-flarebyte.cue` and is the source of truth for:
 - labels
 - repository feature flags currently enforced by sync/audit: `repository.features.mergeCommit`, `repository.features.rebaseMerge`, `repository.features.squashMerge`, `repository.features.deleteBranchOnMerge`
 - build language, mode, and artifact policy
+- go command execution env for dev flows (`go.cache_dir`, `go.mod_cache_dir`, `go.toolchain`)
+- dev command output controls (`dev_output.color`, `dev_output.style`, `dev_output.show_passed`)
+- coverage threshold policy (`coverage.default_min_percent`, `coverage.fail_below_min`)
 - release settings
 - additional repository feature fields may exist in config but are not yet enforced by `repo update` / `repo audit`
 
@@ -71,6 +80,23 @@ build: {
   checksumFile: "build/checksums.txt"
   artifactTargetSuffix: true
   targets: ["linux-amd64", "darwin-arm64"]
+}
+
+go: {
+  cache_dir: "./.gocache"
+  mod_cache_dir: "./.gomodcache"
+  toolchain: "local"
+}
+
+dev_output: {
+  color: "auto"
+  style: "summary"
+  show_passed: true
+}
+
+coverage: {
+  default_min_percent: 80
+  fail_below_min: true
 }
 
 release: {
@@ -107,6 +133,7 @@ release: {
 3. Run `gh flarebyte repo update` to sync the repo.
 4. Run `gh flarebyte repo audit` to check for drift.
 5. Run `gh flarebyte build` and `gh flarebyte release` when you are ready to ship.
+6. Run `gh flarebyte test`, `format`, `lint`, and `cov` for local quality checks.
 
 ## Makefile shortcuts
 - `make build-go` builds the local CLI binary at `.e2e-bin/gh-flarebyte`.
@@ -123,3 +150,5 @@ release: {
   - when `false` with multiple targets, artifacts are written under per-target subdirectories to avoid filename collisions.
 - In `library` mode, `--target` applies `GOOS/GOARCH` cross-compile checks and does not force artifact generation.
 - `release.includeArtifacts` defaults to `true`. Set it to `false` to publish tag and notes without uploading binaries or checksums.
+- `gh flarebyte cov --min 90` overrides config coverage threshold for that invocation.
+- `dev_output.style` supports `one_line`, `summary`, and `list`.

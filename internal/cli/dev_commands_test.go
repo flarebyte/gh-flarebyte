@@ -5,8 +5,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/flarebyte/gh-flarebyte/internal/config"
 )
 
 func TestRunHelpIncludesDevCommands(t *testing.T) {
@@ -21,6 +24,21 @@ func TestRunHelpIncludesDevCommands(t *testing.T) {
 		if !strings.Contains(text, cmd) {
 			t.Fatalf("expected help to include %q, got: %s", cmd, text)
 		}
+	}
+}
+
+func TestRunCovHelpIncludesMinGuidance(t *testing.T) {
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	res := Run([]string{"cov", "-h"}, &out, &errOut)
+	if res.ExitCode != ExitOK {
+		t.Fatalf("expected exit code %d, got %d", ExitOK, res.ExitCode)
+	}
+	if !strings.Contains(out.String(), "--min") || !strings.Contains(out.String(), "threshold") {
+		t.Fatalf("expected cov help guidance, got: %s", out.String())
+	}
+	if errOut.Len() != 0 {
+		t.Fatalf("expected empty stderr, got: %s", errOut.String())
 	}
 }
 
@@ -74,6 +92,10 @@ coverage: {
 	default_min_percent: 90
 	fail_below_min: true
 }
+
+dev_output: {
+	color: "false"
+}
 `
 	_ = setupTempWorkdirWithConfig(t, cfg)
 	oldRun := runCommandCapture
@@ -101,6 +123,10 @@ func TestRunCovMinFlagOverridesConfigThreshold(t *testing.T) {
 coverage: {
 	default_min_percent: 90
 	fail_below_min: true
+}
+
+dev_output: {
+	color: "false"
 }
 `
 	_ = setupTempWorkdirWithConfig(t, cfg)
@@ -181,7 +207,7 @@ dev_output: {
 	oldRun := runCommandCapture
 	t.Cleanup(func() { runCommandCapture = oldRun })
 	runCommandCapture = func(name string, args []string, env []string) (string, string, error) {
-		return "{\"Action\":\"pass\"}\n{\"Action\":\"skip\"}\n", "", nil
+		return "{\"Action\":\"pass\",\"Test\":\"TestOne\"}\n{\"Action\":\"skip\",\"Test\":\"TestTwo\"}\n", "", nil
 	}
 	var out bytes.Buffer
 	var errOut bytes.Buffer
@@ -217,5 +243,361 @@ dev_output: {
 	}
 	if strings.TrimSpace(out.String()) != "" {
 		t.Fatalf("expected no pass output when show_passed=false, got: %s", out.String())
+	}
+}
+
+func TestParseGoTestJSONSummaryIgnoresPackageLevelEvents(t *testing.T) {
+	input := strings.Join([]string{
+		`{"Action":"run","Package":"x/y","Test":"TestA"}`,
+		`{"Action":"pass","Package":"x/y","Test":"TestA"}`,
+		`{"Action":"pass","Package":"x/y"}`,
+		"",
+	}, "\n")
+	tests, failed, skipped := parseGoTestJSONSummary(input)
+	if tests != 1 || failed != 0 || skipped != 0 {
+		t.Fatalf("unexpected summary tests=%d failed=%d skipped=%d", tests, failed, skipped)
+	}
+}
+
+func TestRunCovUsesUniqueProfileTempPath(t *testing.T) {
+	_ = setupTempWorkdirWithConfig(t, testConfigCue())
+	oldRun := runCommandCapture
+	t.Cleanup(func() { runCommandCapture = oldRun })
+	var coverFuncArgs []string
+	runCommandCapture = func(name string, args []string, env []string) (string, string, error) {
+		if name == "go" && len(args) >= 2 && args[0] == "tool" && args[1] == "cover" {
+			coverFuncArgs = append([]string{}, args...)
+			return "total: (statements) 80.0%\n", "", nil
+		}
+		return "", "", nil
+	}
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	res := Run([]string{"cov", "--min", "70"}, &out, &errOut)
+	if res.ExitCode != ExitOK {
+		t.Fatalf("expected exit code %d, got %d stderr=%s", ExitOK, res.ExitCode, errOut.String())
+	}
+	if len(coverFuncArgs) < 3 || !strings.Contains(coverFuncArgs[2], "-func=") {
+		t.Fatalf("unexpected go tool cover args: %v", coverFuncArgs)
+	}
+	if strings.Contains(coverFuncArgs[2], "gh-flarebyte.coverprofile") {
+		t.Fatalf("expected unique temp profile path, got fixed path arg: %s", coverFuncArgs[2])
+	}
+}
+
+func TestParseCovArgs(t *testing.T) {
+	tests := []struct {
+		name    string
+		args    []string
+		wantNil bool
+		wantErr bool
+		wantVal float64
+	}{
+		{name: "none", args: nil, wantNil: true},
+		{name: "valid", args: []string{"--min", "80.5"}, wantVal: 80.5},
+		{name: "missing value", args: []string{"--min"}, wantErr: true},
+		{name: "invalid value", args: []string{"--min", "bad"}, wantErr: true},
+		{name: "out of range", args: []string{"--min", "120"}, wantErr: true},
+		{name: "unknown arg", args: []string{"--wat"}, wantErr: true},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := parseCovArgs(tc.args)
+			if tc.wantErr {
+				if err == nil {
+					t.Fatalf("expected error")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if tc.wantNil {
+				if got != nil {
+					t.Fatalf("expected nil, got %v", *got)
+				}
+				return
+			}
+			if got == nil || strconv.FormatFloat(*got, 'f', -1, 64) != strconv.FormatFloat(tc.wantVal, 'f', -1, 64) {
+				t.Fatalf("expected %.2f, got %v", tc.wantVal, got)
+			}
+		})
+	}
+}
+
+func TestUseColorModes(t *testing.T) {
+	oldNoColor, hadNoColor := os.LookupEnv("NO_COLOR")
+	oldTerm, hadTerm := os.LookupEnv("TERM")
+	t.Cleanup(func() {
+		if hadNoColor {
+			_ = os.Setenv("NO_COLOR", oldNoColor)
+		} else {
+			_ = os.Unsetenv("NO_COLOR")
+		}
+		if hadTerm {
+			_ = os.Setenv("TERM", oldTerm)
+		} else {
+			_ = os.Unsetenv("TERM")
+		}
+	})
+
+	_ = os.Unsetenv("NO_COLOR")
+	_ = os.Setenv("TERM", "xterm-256color")
+	if !useColor("auto") || !useColor("true") {
+		t.Fatalf("expected color enabled for auto/true")
+	}
+	if useColor("false") {
+		t.Fatalf("expected color disabled for false")
+	}
+	_ = os.Setenv("NO_COLOR", "1")
+	if useColor("true") {
+		t.Fatalf("expected NO_COLOR to disable color")
+	}
+}
+
+func TestPrintDevSummaryListStyle(t *testing.T) {
+	var b bytes.Buffer
+	cfg := config.Config{DevOutput: config.DevOutputConfig{Color: "false", Style: "list", ShowPassed: true}}
+	printDevSummary(&b, cfg, devSummary{Kind: "lint", Status: "PASS", Duration: 1500 * 1e6, Details: "ok=1"})
+	out := b.String()
+	if !strings.Contains(out, "- kind: lint") || !strings.Contains(out, "- details: ok=1") {
+		t.Fatalf("unexpected list output: %s", out)
+	}
+}
+
+func TestRunFormatAndLintFailures(t *testing.T) {
+	tmp := setupTempWorkdirWithConfig(t, testConfigCue())
+	if err := os.MkdirAll(filepath.Join(tmp, "pkg"), 0o755); err != nil {
+		t.Fatalf("mkdir failed: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(tmp, "pkg", "x.go"), []byte("package pkg\n"), 0o644); err != nil {
+		t.Fatalf("write failed: %v", err)
+	}
+	oldRun := runCommandCapture
+	t.Cleanup(func() { runCommandCapture = oldRun })
+
+	runCommandCapture = func(name string, args []string, env []string) (string, string, error) {
+		if name == "gofmt" {
+			return "", "format failed", fmt.Errorf("boom")
+		}
+		return "", "", nil
+	}
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	res := Run([]string{"format"}, &out, &errOut)
+	if res.ExitCode != ExitFailure {
+		t.Fatalf("expected format failure, got %d", res.ExitCode)
+	}
+
+	runCommandCapture = func(name string, args []string, env []string) (string, string, error) {
+		if name == "go" && len(args) >= 1 && args[0] == "vet" {
+			return "", "lint failed", fmt.Errorf("boom")
+		}
+		return "", "", nil
+	}
+	out.Reset()
+	errOut.Reset()
+	res = Run([]string{"lint"}, &out, &errOut)
+	if res.ExitCode != ExitFailure {
+		t.Fatalf("expected lint failure, got %d", res.ExitCode)
+	}
+}
+
+func TestDevCommandHelpHandlers(t *testing.T) {
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	if res := handleTest([]string{"-h"}, &out, &errOut); res.ExitCode != ExitOK || !strings.Contains(out.String(), "Usage: gh flarebyte test") {
+		t.Fatalf("unexpected test help output: code=%d out=%s", res.ExitCode, out.String())
+	}
+	out.Reset()
+	if res := handleFormat([]string{"--help"}, &out, &errOut); res.ExitCode != ExitOK || !strings.Contains(out.String(), "Usage: gh flarebyte format") {
+		t.Fatalf("unexpected format help output: code=%d out=%s", res.ExitCode, out.String())
+	}
+	out.Reset()
+	if res := handleLint([]string{"-h"}, &out, &errOut); res.ExitCode != ExitOK || !strings.Contains(out.String(), "Usage: gh flarebyte lint") {
+		t.Fatalf("unexpected lint help output: code=%d out=%s", res.ExitCode, out.String())
+	}
+}
+
+func TestDevCommandUsageErrors(t *testing.T) {
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	if res := handleTest([]string{"--bad"}, &out, &errOut); res.ExitCode != ExitUsage {
+		t.Fatalf("expected usage error for test, got %d", res.ExitCode)
+	}
+	if res := handleFormat([]string{"--bad"}, &out, &errOut); res.ExitCode != ExitUsage {
+		t.Fatalf("expected usage error for format, got %d", res.ExitCode)
+	}
+	if res := handleLint([]string{"--bad"}, &out, &errOut); res.ExitCode != ExitUsage {
+		t.Fatalf("expected usage error for lint, got %d", res.ExitCode)
+	}
+}
+
+func TestRunDartRoutingForFormatAndTest(t *testing.T) {
+	cfg := strings.Replace(testConfigCue(), `language:     "go"`, `language:     "dart"`, 1)
+	_ = setupTempWorkdirWithConfig(t, cfg)
+	oldRun := runCommandCapture
+	t.Cleanup(func() { runCommandCapture = oldRun })
+	invocations := make([]string, 0)
+	runCommandCapture = func(name string, args []string, env []string) (string, string, error) {
+		invocations = append(invocations, fmt.Sprintf("%s %s", name, strings.Join(args, " ")))
+		return "", "", nil
+	}
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	if res := Run([]string{"format"}, &out, &errOut); res.ExitCode != ExitOK {
+		t.Fatalf("expected format success, got %d", res.ExitCode)
+	}
+	out.Reset()
+	if res := Run([]string{"test"}, &out, &errOut); res.ExitCode != ExitOK {
+		t.Fatalf("expected test success, got %d", res.ExitCode)
+	}
+	joined := strings.Join(invocations, "\n")
+	if !strings.Contains(joined, "dart format .") || !strings.Contains(joined, "dart test") {
+		t.Fatalf("unexpected invocations: %s", joined)
+	}
+}
+
+func TestRunCovFailurePaths(t *testing.T) {
+	_ = setupTempWorkdirWithConfig(t, testConfigCue())
+	oldRun := runCommandCapture
+	t.Cleanup(func() { runCommandCapture = oldRun })
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+
+	runCommandCapture = func(name string, args []string, env []string) (string, string, error) {
+		if name == "go" && len(args) > 0 && strings.HasPrefix(args[0], "test") {
+			return "", "go test failed", fmt.Errorf("boom")
+		}
+		return "", "", nil
+	}
+	if res := Run([]string{"cov"}, &out, &errOut); res.ExitCode != ExitFailure {
+		t.Fatalf("expected cov test-step failure, got %d", res.ExitCode)
+	}
+
+	runCommandCapture = func(name string, args []string, env []string) (string, string, error) {
+		if name == "go" && len(args) >= 2 && args[0] == "tool" && args[1] == "cover" {
+			return "", "cover failed", fmt.Errorf("boom")
+		}
+		return "", "", nil
+	}
+	out.Reset()
+	errOut.Reset()
+	if res := Run([]string{"cov"}, &out, &errOut); res.ExitCode != ExitFailure {
+		t.Fatalf("expected cov cover-step failure, got %d", res.ExitCode)
+	}
+
+	runCommandCapture = func(name string, args []string, env []string) (string, string, error) {
+		if name == "go" && len(args) >= 2 && args[0] == "tool" && args[1] == "cover" {
+			return "nonsense", "", nil
+		}
+		return "", "", nil
+	}
+	out.Reset()
+	errOut.Reset()
+	if res := Run([]string{"cov"}, &out, &errOut); res.ExitCode != ExitFailure {
+		t.Fatalf("expected cov parse failure, got %d", res.ExitCode)
+	}
+}
+
+func TestRunDartFailurePaths(t *testing.T) {
+	cfg := strings.Replace(testConfigCue(), `language:     "go"`, `language:     "dart"`, 1)
+	_ = setupTempWorkdirWithConfig(t, cfg)
+	oldRun := runCommandCapture
+	t.Cleanup(func() { runCommandCapture = oldRun })
+
+	runCommandCapture = func(name string, args []string, env []string) (string, string, error) {
+		if name == "dart" && len(args) > 0 && args[0] == "format" {
+			return "", "format failed", fmt.Errorf("boom")
+		}
+		return "", "", nil
+	}
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	if res := Run([]string{"format"}, &out, &errOut); res.ExitCode != ExitFailure {
+		t.Fatalf("expected dart format failure, got %d", res.ExitCode)
+	}
+
+	runCommandCapture = func(name string, args []string, env []string) (string, string, error) {
+		if name == "dart" && len(args) > 0 && args[0] == "analyze" {
+			return "", "lint failed", fmt.Errorf("boom")
+		}
+		return "", "", nil
+	}
+	out.Reset()
+	errOut.Reset()
+	if res := Run([]string{"lint"}, &out, &errOut); res.ExitCode != ExitFailure {
+		t.Fatalf("expected dart lint failure, got %d", res.ExitCode)
+	}
+
+	runCommandCapture = func(name string, args []string, env []string) (string, string, error) {
+		if name == "dart" && len(args) > 0 && args[0] == "test" {
+			return "", "test failed", fmt.Errorf("boom")
+		}
+		return "", "", nil
+	}
+	out.Reset()
+	errOut.Reset()
+	if res := Run([]string{"test"}, &out, &errOut); res.ExitCode != ExitFailure {
+		t.Fatalf("expected dart test failure, got %d", res.ExitCode)
+	}
+
+	runCommandCapture = func(name string, args []string, env []string) (string, string, error) {
+		if name == "dart" && len(args) >= 2 && args[0] == "test" && args[1] == "--coverage" {
+			return "", "cov failed", fmt.Errorf("boom")
+		}
+		return "", "", nil
+	}
+	out.Reset()
+	errOut.Reset()
+	if res := Run([]string{"cov"}, &out, &errOut); res.ExitCode != ExitFailure {
+		t.Fatalf("expected dart cov failure, got %d", res.ExitCode)
+	}
+}
+
+func TestRunGoTestFailureIncludesSummaryDetails(t *testing.T) {
+	_ = setupTempWorkdirWithConfig(t, testConfigCue())
+	oldRun := runCommandCapture
+	t.Cleanup(func() { runCommandCapture = oldRun })
+	runCommandCapture = func(name string, args []string, env []string) (string, string, error) {
+		if name == "go" && len(args) >= 2 && args[0] == "test" && args[1] == "-json" {
+			out := "{\"Action\":\"pass\",\"Test\":\"TestOne\"}\n{\"Action\":\"fail\",\"Test\":\"TestTwo\"}\n"
+			return out, "stderr detail", fmt.Errorf("boom")
+		}
+		return "", "", nil
+	}
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	res := Run([]string{"test"}, &out, &errOut)
+	if res.ExitCode != ExitFailure {
+		t.Fatalf("expected go test failure, got %d", res.ExitCode)
+	}
+	if !strings.Contains(errOut.String(), "tests=2 failed=1 skipped=0") {
+		t.Fatalf("expected summarized failure counts, got: %s", errOut.String())
+	}
+}
+
+func TestRunCovBelowMinAllowedWhenFailBelowDisabled(t *testing.T) {
+	cfg := testConfigCue() + `
+
+coverage: {
+	default_min_percent: 90
+	fail_below_min: false
+}
+`
+	_ = setupTempWorkdirWithConfig(t, cfg)
+	oldRun := runCommandCapture
+	t.Cleanup(func() { runCommandCapture = oldRun })
+	runCommandCapture = func(name string, args []string, env []string) (string, string, error) {
+		if name == "go" && len(args) >= 2 && args[0] == "tool" && args[1] == "cover" {
+			return "total: (statements) 10.0%\n", "", nil
+		}
+		return "", "", nil
+	}
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	res := Run([]string{"cov"}, &out, &errOut)
+	if res.ExitCode != ExitOK {
+		t.Fatalf("expected success when fail_below_min=false, got %d stderr=%s", res.ExitCode, errOut.String())
 	}
 }
