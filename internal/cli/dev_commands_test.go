@@ -12,6 +12,32 @@ import (
 	"github.com/flarebyte/gh-flarebyte/internal/config"
 )
 
+func setupCoverageConfig() string {
+	return testConfigCue() + `
+
+coverage: {
+	default_min_percent: 90
+	fail_below_min: true
+}
+
+dev_output: {
+	color: "false"
+}
+`
+}
+
+func stubGoCoverTotal(t *testing.T, total string) {
+	t.Helper()
+	oldRun := runCommandCapture
+	t.Cleanup(func() { runCommandCapture = oldRun })
+	runCommandCapture = func(name string, args []string, env []string) (string, string, error) {
+		if name == "go" && len(args) >= 2 && args[0] == "tool" && args[1] == "cover" {
+			return total, "", nil
+		}
+		return "", "", nil
+	}
+}
+
 func TestRunHelpIncludesDevCommands(t *testing.T) {
 	var out bytes.Buffer
 	var errOut bytes.Buffer
@@ -86,26 +112,9 @@ go: {
 }
 
 func TestRunCovFailsBelowThreshold(t *testing.T) {
-	cfg := testConfigCue() + `
-
-coverage: {
-	default_min_percent: 90
-	fail_below_min: true
-}
-
-dev_output: {
-	color: "false"
-}
-`
+	cfg := setupCoverageConfig()
 	_ = setupTempWorkdirWithConfig(t, cfg)
-	oldRun := runCommandCapture
-	t.Cleanup(func() { runCommandCapture = oldRun })
-	runCommandCapture = func(name string, args []string, env []string) (string, string, error) {
-		if name == "go" && len(args) >= 2 && args[0] == "tool" && args[1] == "cover" {
-			return "total: (statements) 75.0%\n", "", nil
-		}
-		return "", "", nil
-	}
+	stubGoCoverTotal(t, "total: (statements) 75.0%\n")
 	var out bytes.Buffer
 	var errOut bytes.Buffer
 	res := Run([]string{"cov"}, &out, &errOut)
@@ -118,26 +127,9 @@ dev_output: {
 }
 
 func TestRunCovMinFlagOverridesConfigThreshold(t *testing.T) {
-	cfg := testConfigCue() + `
-
-coverage: {
-	default_min_percent: 90
-	fail_below_min: true
-}
-
-dev_output: {
-	color: "false"
-}
-`
+	cfg := setupCoverageConfig()
 	_ = setupTempWorkdirWithConfig(t, cfg)
-	oldRun := runCommandCapture
-	t.Cleanup(func() { runCommandCapture = oldRun })
-	runCommandCapture = func(name string, args []string, env []string) (string, string, error) {
-		if name == "go" && len(args) >= 2 && args[0] == "tool" && args[1] == "cover" {
-			return "total: (statements) 75.0%\n", "", nil
-		}
-		return "", "", nil
-	}
+	stubGoCoverTotal(t, "total: (statements) 75.0%\n")
 	var out bytes.Buffer
 	var errOut bytes.Buffer
 	res := Run([]string{"cov", "--min", "70"}, &out, &errOut)

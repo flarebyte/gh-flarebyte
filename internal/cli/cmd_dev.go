@@ -44,22 +44,10 @@ var runCommandCapture = func(name string, args []string, env []string) (string, 
 }
 
 func handleTest(args []string, stdout, stderr io.Writer) Result {
-	if isHelpArgs(args) {
-		_, _ = fmt.Fprintln(stdout, "Usage: gh flarebyte test")
-		_, _ = fmt.Fprintln(stdout, "Run unit tests for the configured build language.")
-		return Result{ExitCode: ExitOK}
+	cfg, env, start, res := prepareDevCommand(args, stdout, stderr, "test", "Run unit tests for the configured build language.")
+	if res != nil {
+		return *res
 	}
-	if len(args) != 0 {
-		err := fmt.Errorf("invalid invocation: unknown argument %q", args[0])
-		_, _ = fmt.Fprintln(stderr, err.Error())
-		return Result{ExitCode: ExitUsage, Err: err}
-	}
-	cfg, usage := loadConfigOrUsage(stderr)
-	if usage != nil {
-		return *usage
-	}
-	env := buildCommandEnv(cfg)
-	start := time.Now()
 	switch cfg.Build.Language {
 	case "go":
 		cmdOut, cmdErr, runErr := runCommandCapture("go", []string{"test", "-json", "./..."}, env)
@@ -85,31 +73,17 @@ func handleTest(args []string, stdout, stderr io.Writer) Result {
 			return Result{ExitCode: ExitFailure, Err: commandError(runErr, cmdErr)}
 		}
 	default:
-		err := fmt.Errorf("build.language %q is not supported. Supported values: go, dart", cfg.Build.Language)
-		_, _ = fmt.Fprintln(stderr, err.Error())
-		return Result{ExitCode: ExitUsage, Err: err}
+		return unsupportedLanguageResult(cfg.Build.Language, stderr)
 	}
 	printDevSummary(stdout, cfg, devSummary{Kind: "test", Status: "PASS", Duration: time.Since(start)})
 	return Result{ExitCode: ExitOK}
 }
 
 func handleFormat(args []string, stdout, stderr io.Writer) Result {
-	if isHelpArgs(args) {
-		_, _ = fmt.Fprintln(stdout, "Usage: gh flarebyte format")
-		_, _ = fmt.Fprintln(stdout, "Format source files for the configured build language.")
-		return Result{ExitCode: ExitOK}
+	cfg, env, start, res := prepareDevCommand(args, stdout, stderr, "format", "Format source files for the configured build language.")
+	if res != nil {
+		return *res
 	}
-	if len(args) != 0 {
-		err := fmt.Errorf("invalid invocation: unknown argument %q", args[0])
-		_, _ = fmt.Fprintln(stderr, err.Error())
-		return Result{ExitCode: ExitUsage, Err: err}
-	}
-	cfg, usage := loadConfigOrUsage(stderr)
-	if usage != nil {
-		return *usage
-	}
-	env := buildCommandEnv(cfg)
-	start := time.Now()
 	switch cfg.Build.Language {
 	case "go":
 		files, err := discoverGoFiles(".")
@@ -135,29 +109,15 @@ func handleFormat(args []string, stdout, stderr io.Writer) Result {
 		printDevSummary(stdout, cfg, devSummary{Kind: "format", Status: "PASS", Duration: time.Since(start)})
 		return Result{ExitCode: ExitOK}
 	default:
-		err := fmt.Errorf("build.language %q is not supported. Supported values: go, dart", cfg.Build.Language)
-		_, _ = fmt.Fprintln(stderr, err.Error())
-		return Result{ExitCode: ExitUsage, Err: err}
+		return unsupportedLanguageResult(cfg.Build.Language, stderr)
 	}
 }
 
 func handleLint(args []string, stdout, stderr io.Writer) Result {
-	if isHelpArgs(args) {
-		_, _ = fmt.Fprintln(stdout, "Usage: gh flarebyte lint")
-		_, _ = fmt.Fprintln(stdout, "Run lint/static checks for the configured build language.")
-		return Result{ExitCode: ExitOK}
+	cfg, env, start, res := prepareDevCommand(args, stdout, stderr, "lint", "Run lint/static checks for the configured build language.")
+	if res != nil {
+		return *res
 	}
-	if len(args) != 0 {
-		err := fmt.Errorf("invalid invocation: unknown argument %q", args[0])
-		_, _ = fmt.Fprintln(stderr, err.Error())
-		return Result{ExitCode: ExitUsage, Err: err}
-	}
-	cfg, usage := loadConfigOrUsage(stderr)
-	if usage != nil {
-		return *usage
-	}
-	env := buildCommandEnv(cfg)
-	start := time.Now()
 	switch cfg.Build.Language {
 	case "go":
 		_, cmdErr, runErr := runCommandCapture("go", []string{"vet", "./..."}, env)
@@ -172,9 +132,7 @@ func handleLint(args []string, stdout, stderr io.Writer) Result {
 			return Result{ExitCode: ExitFailure, Err: commandError(runErr, cmdErr)}
 		}
 	default:
-		err := fmt.Errorf("build.language %q is not supported. Supported values: go, dart", cfg.Build.Language)
-		_, _ = fmt.Fprintln(stderr, err.Error())
-		return Result{ExitCode: ExitUsage, Err: err}
+		return unsupportedLanguageResult(cfg.Build.Language, stderr)
 	}
 	printDevSummary(stdout, cfg, devSummary{Kind: "lint", Status: "PASS", Duration: time.Since(start)})
 	return Result{ExitCode: ExitOK}
@@ -241,10 +199,41 @@ func handleCov(args []string, stdout, stderr io.Writer) Result {
 		printDevSummary(stdout, cfg, devSummary{Kind: "cov", Status: "PASS", Duration: time.Since(start)})
 		return Result{ExitCode: ExitOK}
 	default:
-		err := fmt.Errorf("build.language %q is not supported. Supported values: go, dart", cfg.Build.Language)
-		_, _ = fmt.Fprintln(stderr, err.Error())
-		return Result{ExitCode: ExitUsage, Err: err}
+		return unsupportedLanguageResult(cfg.Build.Language, stderr)
 	}
+}
+
+func requireNoArgs(args []string, stderr io.Writer) *Result {
+	if len(args) == 0 {
+		return nil
+	}
+	err := fmt.Errorf("invalid invocation: unknown argument %q", args[0])
+	_, _ = fmt.Fprintln(stderr, err.Error())
+	res := Result{ExitCode: ExitUsage, Err: err}
+	return &res
+}
+
+func unsupportedLanguageResult(language string, stderr io.Writer) Result {
+	err := fmt.Errorf("build.language %q is not supported. Supported values: go, dart", language)
+	_, _ = fmt.Fprintln(stderr, err.Error())
+	return Result{ExitCode: ExitUsage, Err: err}
+}
+
+func prepareDevCommand(args []string, stdout io.Writer, stderr io.Writer, command string, helpText string) (config.Config, []string, time.Time, *Result) {
+	if isHelpArgs(args) {
+		_, _ = fmt.Fprintf(stdout, "Usage: gh flarebyte %s\n", command)
+		_, _ = fmt.Fprintln(stdout, helpText)
+		res := Result{ExitCode: ExitOK}
+		return config.Config{}, nil, time.Time{}, &res
+	}
+	if res := requireNoArgs(args, stderr); res != nil {
+		return config.Config{}, nil, time.Time{}, res
+	}
+	cfg, usage := loadConfigOrUsage(stderr)
+	if usage != nil {
+		return config.Config{}, nil, time.Time{}, usage
+	}
+	return cfg, buildCommandEnv(cfg), time.Now(), nil
 }
 
 func parseCovArgs(args []string) (*float64, error) {
