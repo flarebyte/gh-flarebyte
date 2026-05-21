@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 )
 
@@ -67,6 +68,34 @@ func parseCueConfig(raw string) (Config, error) {
 	cfg.Build.Language, err = extractStringField(raw, "language")
 	if err != nil {
 		return cfg, err
+	}
+	if goBlock, ok := extractOptionalObjectBlock(raw, "go"); ok {
+		cfg.Go.CacheDir = extractOptionalStringField(goBlock, "cache_dir")
+		cfg.Go.ModCacheDir = extractOptionalStringField(goBlock, "mod_cache_dir")
+		cfg.Go.Toolchain = extractOptionalStringField(goBlock, "toolchain")
+	}
+	if devBlock, ok := extractOptionalObjectBlock(raw, "dev_output"); ok {
+		if colorRaw, found := extractOptionalBoolFieldRaw(devBlock, "color"); found {
+			cfg.DevOutput.Color = colorRaw
+		} else {
+			cfg.DevOutput.Color = extractOptionalStringField(devBlock, "color")
+		}
+		cfg.DevOutput.Style = extractOptionalStringField(devBlock, "style")
+		cfg.DevOutput.ShowPassed = extractOptionalBoolField(devBlock, "show_passed", true)
+	} else {
+		cfg.DevOutput.ShowPassed = true
+	}
+	if cfg.DevOutput.Color == "" {
+		cfg.DevOutput.Color = "auto"
+	}
+	if cfg.DevOutput.Style == "" {
+		cfg.DevOutput.Style = "summary"
+	}
+	if coverageBlock, ok := extractOptionalObjectBlock(raw, "coverage"); ok {
+		cfg.Coverage.DefaultMinPercent = extractOptionalNumberPointerField(coverageBlock, "default_min_percent")
+		cfg.Coverage.FailBelowMin = extractOptionalBoolField(coverageBlock, "fail_below_min", true)
+	} else {
+		cfg.Coverage.FailBelowMin = true
 	}
 	cfg.Build.Mode = extractOptionalStringField(buildBlock, "mode")
 	if cfg.Build.Mode == "" {
@@ -199,6 +228,28 @@ func extractOptionalBoolField(raw, field string, fallback bool) bool {
 		return fallback
 	}
 	return m[1] == "true"
+}
+
+func extractOptionalBoolFieldRaw(raw, field string) (string, bool) {
+	pattern := regexp.MustCompile(fmt.Sprintf(`(?m)\b%s:\s*(true|false)\b`, regexp.QuoteMeta(field)))
+	m := pattern.FindStringSubmatch(raw)
+	if len(m) < 2 {
+		return "", false
+	}
+	return m[1], true
+}
+
+func extractOptionalNumberPointerField(raw, field string) *float64 {
+	pattern := regexp.MustCompile(fmt.Sprintf(`(?m)\b%s:\s*([0-9]+(?:\.[0-9]+)?)\b`, regexp.QuoteMeta(field)))
+	m := pattern.FindStringSubmatch(raw)
+	if len(m) < 2 {
+		return nil
+	}
+	v, err := strconv.ParseFloat(m[1], 64)
+	if err != nil {
+		return nil
+	}
+	return &v
 }
 
 func extractOptionalBoolFieldWithPresence(raw, field string) (bool, bool) {

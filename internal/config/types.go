@@ -11,8 +11,28 @@ type Config struct {
 	Project    ProjectConfig    `json:"project"`
 	Sync       SyncConfig       `json:"sync"`
 	Repository RepositoryConfig `json:"repository"`
+	Go         GoConfig         `json:"go"`
+	DevOutput  DevOutputConfig  `json:"devOutput"`
+	Coverage   CoverageConfig   `json:"coverage"`
 	Build      BuildConfig      `json:"build"`
 	Release    ReleaseConfigRaw `json:"release"`
+}
+
+type GoConfig struct {
+	CacheDir    string `json:"cacheDir"`
+	ModCacheDir string `json:"modCacheDir"`
+	Toolchain   string `json:"toolchain"`
+}
+
+type DevOutputConfig struct {
+	Color      string `json:"color"`
+	Style      string `json:"style"`
+	ShowPassed bool   `json:"showPassed"`
+}
+
+type CoverageConfig struct {
+	DefaultMinPercent *float64 `json:"defaultMinPercent"`
+	FailBelowMin      bool     `json:"failBelowMin"`
 }
 
 type ProjectConfig struct {

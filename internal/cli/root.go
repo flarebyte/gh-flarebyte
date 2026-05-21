@@ -150,6 +150,18 @@ func Run(args []string, stdout, stderr io.Writer) Result {
 	if len(args) >= 1 && args[0] == "build" {
 		return handleBuild(args[1:], stdout, stderr)
 	}
+	if len(args) >= 1 && args[0] == "test" {
+		return handleTest(args[1:], stdout, stderr)
+	}
+	if len(args) >= 1 && args[0] == "format" {
+		return handleFormat(args[1:], stdout, stderr)
+	}
+	if len(args) >= 1 && args[0] == "lint" {
+		return handleLint(args[1:], stdout, stderr)
+	}
+	if len(args) >= 1 && args[0] == "cov" {
+		return handleCov(args[1:], stdout, stderr)
+	}
 	if len(args) >= 1 && args[0] == "release" {
 		return handleRelease(args[1:], stdout, stderr)
 	}
@@ -205,6 +217,10 @@ Usage:
   gh flarebyte --help
   gh flarebyte --version [--json]
   gh flarebyte build [--target os-arch] [--output-dir path]
+  gh flarebyte test
+  gh flarebyte format
+  gh flarebyte lint
+  gh flarebyte cov [--min percent]
   gh flarebyte release [--draft] [--notes-file path]
   gh flarebyte repo init --repo owner/name [--overwrite]
   gh flarebyte repo update [--repo owner/name] [--confirm-deletions] [--accept-visibility-change-consequences]
