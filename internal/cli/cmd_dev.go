@@ -47,6 +47,11 @@ type goTestReport struct {
 	Failures []goFailure
 }
 
+type coverageDetail struct {
+	Label   string
+	Percent float64
+}
+
 var runCommandCapture = func(name string, args []string, env []string) (string, string, error) {
 	cmd := exec.Command(name, args...)
 	if len(env) > 0 {
@@ -234,6 +239,9 @@ func runCov(min *float64, stdout, stderr io.Writer) Result {
 			return Result{ExitCode: ExitFailure, Err: parseErr}
 		}
 		effectiveMin := resolveCoverageMin(min, cfg)
+		if cfg.DevOutput.Style == "per_test" {
+			printCoverageDetails(stdout, parseCoverageDetails(coverOut), effectiveMin)
+		}
 		if effectiveMin != nil && cfg.Coverage.FailBelowMin && coverage < *effectiveMin {
 			printDevSummary(stderr, cfg, devSummary{Kind: "cov", Status: "FAIL", Duration: time.Since(start), Details: fmt.Sprintf("total=%.2f%% min=%.2f%%", coverage, *effectiveMin)})
 			return Result{ExitCode: ExitFailure, Err: fmt.Errorf("coverage %.2f below minimum %.2f", coverage, *effectiveMin)}
@@ -366,6 +374,31 @@ func parseTotalCoverage(out string) (float64, error) {
 	return v, nil
 }
 
+func parseCoverageDetails(out string) []coverageDetail {
+	lines := strings.Split(out, "\n")
+	details := make([]coverageDetail, 0, len(lines))
+	re := regexp.MustCompile(`^(.*)\s+([0-9]+(?:\.[0-9]+)?)%$`)
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "total:") {
+			continue
+		}
+		m := re.FindStringSubmatch(line)
+		if len(m) < 3 {
+			continue
+		}
+		pct, err := strconv.ParseFloat(m[2], 64)
+		if err != nil {
+			continue
+		}
+		details = append(details, coverageDetail{
+			Label:   strings.TrimSpace(m[1]),
+			Percent: pct,
+		})
+	}
+	return details
+}
+
 func printDevSummary(w io.Writer, cfg config.Config, s devSummary) {
 	if s.Status == "PASS" && !cfg.DevOutput.ShowPassed {
 		return
@@ -488,6 +521,20 @@ func printPerTestEvents(w io.Writer, cfg config.Config, events []goTestEvent) {
 		case "fail":
 			_, _ = fmt.Fprintf(w, "✗ %s\n", ev.Test)
 		}
+	}
+}
+
+func printCoverageDetails(w io.Writer, details []coverageDetail, min *float64) {
+	for _, d := range details {
+		mark := "✓"
+		if min != nil {
+			if d.Percent < *min {
+				mark = "✗"
+			}
+		} else if d.Percent == 0 {
+			mark = "✗"
+		}
+		_, _ = fmt.Fprintf(w, "%s %s %.1f%%\n", mark, d.Label, d.Percent)
 	}
 }
 

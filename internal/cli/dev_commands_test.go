@@ -633,3 +633,42 @@ coverage: {
 		t.Fatalf("expected success when fail_below_min=false, got %d stderr=%s", res.ExitCode, errOut.String())
 	}
 }
+
+func TestRunCovPerTestStyleOutput(t *testing.T) {
+	cfg := testConfigCue() + `
+
+dev_output: {
+	color: "false"
+	style: "per_test"
+}
+`
+	_ = setupTempWorkdirWithConfig(t, cfg)
+	oldRun := runCommandCapture
+	t.Cleanup(func() { runCommandCapture = oldRun })
+	runCommandCapture = func(name string, args []string, env []string) (string, string, error) {
+		if name == "go" && len(args) >= 2 && args[0] == "tool" && args[1] == "cover" {
+			return strings.Join([]string{
+				"pkg/a.go:10:\tFuncA\t100.0%",
+				"pkg/a.go:20:\tFuncB\t0.0%",
+				"total: (statements) 80.0%",
+				"",
+			}, "\n"), "", nil
+		}
+		return "", "", nil
+	}
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	res := Run([]string{"cov"}, &out, &errOut)
+	if res.ExitCode != ExitOK {
+		t.Fatalf("expected success, got %d stderr=%s", res.ExitCode, errOut.String())
+	}
+	if !strings.Contains(out.String(), "✓ pkg/a.go:10:\tFuncA 100.0%") {
+		t.Fatalf("expected per-function pass line, got: %s", out.String())
+	}
+	if !strings.Contains(out.String(), "✗ pkg/a.go:20:\tFuncB 0.0%") {
+		t.Fatalf("expected per-function fail line, got: %s", out.String())
+	}
+	if !strings.Contains(out.String(), "COV PASS duration=") {
+		t.Fatalf("expected summary line, got: %s", out.String())
+	}
+}
