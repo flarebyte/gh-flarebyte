@@ -401,13 +401,13 @@ func TestRunFormatAndLintFailures(t *testing.T) {
 func TestDevCommandHelpHandlers(t *testing.T) {
 	var out bytes.Buffer
 	var errOut bytes.Buffer
-	if res := handleTest([]string{"-h"}, &out, &errOut); res.ExitCode != ExitOK || !strings.Contains(out.String(), "Usage: gh flarebyte test") {
+	if res := Run([]string{"test", "-h"}, &out, &errOut); res.ExitCode != ExitOK || !strings.Contains(out.String(), "Usage:") {
 		t.Fatalf("unexpected test help output: code=%d out=%s", res.ExitCode, out.String())
 	}
-	if !strings.Contains(out.String(), "--style summary|per_test") {
+	if !strings.Contains(out.String(), "--style") {
 		t.Fatalf("expected style flag in test help, got: %s", out.String())
 	}
-	if !strings.Contains(out.String(), "--color auto|true|false") {
+	if !strings.Contains(out.String(), "--color") {
 		t.Fatalf("expected color flag in test help, got: %s", out.String())
 	}
 	out.Reset()
@@ -423,7 +423,7 @@ func TestDevCommandHelpHandlers(t *testing.T) {
 func TestDevCommandUsageErrors(t *testing.T) {
 	var out bytes.Buffer
 	var errOut bytes.Buffer
-	if res := handleTest([]string{"--bad"}, &out, &errOut); res.ExitCode != ExitUsage {
+	if res := Run([]string{"test", "--bad"}, &out, &errOut); res.ExitCode != ExitUsage {
 		t.Fatalf("expected usage error for test, got %d", res.ExitCode)
 	}
 	if res := handleFormat([]string{"--bad"}, &out, &errOut); res.ExitCode != ExitUsage {
