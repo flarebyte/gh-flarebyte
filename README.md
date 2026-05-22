@@ -27,10 +27,10 @@ Use `gh flarebyte` to keep a GitHub repository aligned with the config checked i
 - `gh flarebyte release [--draft] [--notes-file <path>]` builds first, then publishes a GitHub release from the configured release policy.
 
 ### Dev commands
-- `gh flarebyte test [--style summary|per_test]` runs tests for the configured build language, with optional per-invocation style override.
+- `gh flarebyte test [--style summary|per_test] [--color auto|true|false] [--failed-only]` runs tests for the configured build language, with optional per-invocation output overrides.
 - `gh flarebyte format` formats source files for the configured build language.
-- `gh flarebyte lint` runs lint/static checks for the configured build language.
-- `gh flarebyte cov [--min <percent>]` computes coverage and can fail below a threshold.
+- `gh flarebyte lint [--color auto|true|false] [--failed-only]` runs lint/static checks for the configured build language.
+- `gh flarebyte cov [--min <percent>] [--color auto|true|false] [--failed-only]` computes coverage and can fail below a threshold.
 
 ### Runtime info
 - `gh flarebyte --version` prints the CLI version metadata, including version, commit id, build date, OS/arch, and Go runtime version.
@@ -152,3 +152,6 @@ release: {
 - `release.includeArtifacts` defaults to `true`. Set it to `false` to publish tag and notes without uploading binaries or checksums.
 - `gh flarebyte cov --min 90` overrides config coverage threshold for that invocation.
 - `devOutput.style` supports `summary` and `per_test`.
+- `--color` overrides `devOutput.color` for `test`, `lint`, and `cov`.
+- `--failed-only` suppresses PASS summary output for `test`, `lint`, and `cov`.
+- In `per_test` style, `test` prints `✓/↷/✗` per test and `cov` prints `✓/✗` per coverage entry; with `--failed-only`, only failing entries are shown.
