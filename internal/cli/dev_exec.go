@@ -12,10 +12,10 @@ import (
 )
 
 var runCommandCapture = func(name string, args []string, env []string) (string, string, error) {
-	if !isAllowedDevCommand(name) {
-		return "", "", fmt.Errorf("unsupported command: %s", name)
+	cmd, err := newAllowedDevCommand(name, args)
+	if err != nil {
+		return "", "", err
 	}
-	cmd := exec.Command(name, args...)
 	if len(env) > 0 {
 		cmd.Env = env
 	}
@@ -23,16 +23,20 @@ var runCommandCapture = func(name string, args []string, env []string) (string, 
 	var stderr strings.Builder
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
-	err := cmd.Run()
+	err = cmd.Run()
 	return stdout.String(), stderr.String(), err
 }
 
-func isAllowedDevCommand(name string) bool {
+func newAllowedDevCommand(name string, args []string) (*exec.Cmd, error) {
 	switch name {
-	case "go", "gofmt", "dart":
-		return true
+	case "go":
+		return exec.Command("go", args...), nil
+	case "gofmt":
+		return exec.Command("gofmt", args...), nil
+	case "dart":
+		return exec.Command("dart", args...), nil
 	default:
-		return false
+		return nil, fmt.Errorf("unsupported command: %s", name)
 	}
 }
 
