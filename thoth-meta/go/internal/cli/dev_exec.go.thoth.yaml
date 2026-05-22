@@ -1,0 +1,18 @@
+locator: internal/cli/dev_exec.go
+meta:
+  function_list:
+    - buildCommandEnv
+    - discoverGoFiles
+    - newAllowedDevCommand
+    - prepareDevCommand
+    - resolveCoverageMin
+    - unsupportedLanguageResult
+  import_files_list:
+    - fmt
+    - github.com/flarebyte/gh-flarebyte/internal/config
+    - io
+    - os
+    - os/exec
+    - path/filepath
+    - strings
+  language: go

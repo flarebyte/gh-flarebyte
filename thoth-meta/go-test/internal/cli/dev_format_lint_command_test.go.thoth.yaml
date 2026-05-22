@@ -1,0 +1,17 @@
+locator: internal/cli/dev_format_lint_command_test.go
+meta:
+  function_list:
+    - TestDevFormatLintCommandHelpAndUsage
+    - TestRunDartFailurePaths
+    - TestRunDartRoutingForFormatAndTest
+    - TestRunDartRoutingForLint
+    - TestRunFormatAndLintFailures
+    - TestRunLintFailedOnlyHidesPassOutput
+  import_files_list:
+    - bytes
+    - fmt
+    - os
+    - path/filepath
+    - strings
+    - testing
+  language: go

@@ -1,0 +1,19 @@
+locator: internal/cli/dev_output.go
+meta:
+  function_list:
+    - extractFailureLocation
+    - formatFailureDetails
+    - formatGoTestDetails
+    - printCoverageDetails
+    - printDevSummary
+    - printPerTestEvents
+    - useColor
+  import_files_list:
+    - fmt
+    - github.com/flarebyte/gh-flarebyte/internal/config
+    - io
+    - os
+    - regexp
+    - strings
+    - time
+  language: go

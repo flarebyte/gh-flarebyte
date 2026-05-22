@@ -1,0 +1,14 @@
+locator: internal/cli/dev_parse.go
+meta:
+  function_list:
+    - parseCoverageDetails
+    - parseGoTestJSONSummary
+    - parseGoTestReport
+    - parseTotalCoverage
+  import_files_list:
+    - encoding/json
+    - fmt
+    - regexp
+    - strconv
+    - strings
+  language: go

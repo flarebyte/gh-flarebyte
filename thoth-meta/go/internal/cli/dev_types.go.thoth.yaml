@@ -1,0 +1,6 @@
+locator: internal/cli/dev_types.go
+meta:
+  function_list: []
+  import_files_list:
+    - time
+  language: go

@@ -1,0 +1,22 @@
+locator: internal/config/load_extract.go
+meta:
+  function_list:
+    - extractBoolField
+    - extractLabels
+    - extractObjectBlock
+    - extractOptionalBoolField
+    - extractOptionalBoolFieldRaw
+    - extractOptionalBoolFieldWithPresence
+    - extractOptionalNumberPointerField
+    - extractOptionalObjectBlock
+    - extractOptionalStringField
+    - extractOptionalStringListBlock
+    - extractStringField
+    - extractStringListBlock
+  import_files_list:
+    - errors
+    - fmt
+    - regexp
+    - strconv
+    - strings
+  language: go

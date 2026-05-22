@@ -7,7 +7,6 @@ meta:
     - ghTagExists
     - isSemver
     - listReleaseArtifacts
-    - parseReleaseArgs
     - resolveVersionFromSource
     - ternary
   import_files_list:

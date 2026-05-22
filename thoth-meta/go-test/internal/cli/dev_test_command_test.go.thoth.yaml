@@ -1,0 +1,18 @@
+locator: internal/cli/dev_test_command_test.go
+meta:
+  function_list:
+    - TestDevTestCommandHelpAndUsage
+    - TestRunGoTestFailureIncludesSummaryDetails
+    - TestRunTestColorOverrideRejectsInvalidValue
+    - TestRunTestFailedOnlyFiltersPassedAndSkipped
+    - TestRunTestGoUsesConfiguredCaches
+    - TestRunTestHidePassedOutput
+    - TestRunTestPerTestStyleOutput
+    - TestRunTestStyleOverridePerTest
+    - TestRunTestStyleOverrideRejectsInvalidValue
+  import_files_list:
+    - bytes
+    - fmt
+    - strings
+    - testing
+  language: go

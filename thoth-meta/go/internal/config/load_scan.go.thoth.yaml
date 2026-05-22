@@ -1,0 +1,11 @@
+locator: internal/config/load_scan.go
+meta:
+  function_list:
+    - advanceStringState
+    - assertOnlyAllowedFields
+    - extractTopLevelFieldNames
+    - findMatchingBrace
+  import_files_list:
+    - fmt
+    - unicode
+  language: go

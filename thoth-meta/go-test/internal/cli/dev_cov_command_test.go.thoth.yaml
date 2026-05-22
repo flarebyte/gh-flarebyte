@@ -1,0 +1,20 @@
+locator: internal/cli/dev_cov_command_test.go
+meta:
+  function_list:
+    - TestRunCovBelowMinAllowedWhenFailBelowDisabled
+    - TestRunCovFailedOnlyHidesPassOutput
+    - TestRunCovFailsBelowThreshold
+    - TestRunCovFailurePaths
+    - TestRunCovHelpIncludesMinGuidance
+    - TestRunCovMinFlagOverridesConfigThreshold
+    - TestRunCovPerTestStyleOutput
+    - TestRunCovRejectsInvalidMin
+    - TestRunCovUsesUniqueProfileTempPath
+    - setupCoverageConfig
+    - stubGoCoverTotal
+  import_files_list:
+    - bytes
+    - fmt
+    - strings
+    - testing
+  language: go

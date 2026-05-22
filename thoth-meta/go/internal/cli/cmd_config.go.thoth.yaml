@@ -2,10 +2,8 @@ locator: internal/cli/cmd_config.go
 meta:
   architecture_notes: Validation delegates entirely to internal/config to keep command behavior aligned with the same rules used by build/repo/release flows.
   function_list:
-    - handleConfigValidate
-    - parseConfigPath
+    - runConfigValidate
   import_files_list:
-    - errors
     - fmt
     - github.com/flarebyte/gh-flarebyte/internal/config
     - io

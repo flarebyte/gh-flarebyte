@@ -1,0 +1,30 @@
+locator: internal/cli/cobra_dev.go
+meta:
+  function_list:
+    - newBuildCobraCommand
+    - newCobraRoot
+    - newConfigCommand
+    - newConfigValidateCobraCommand
+    - newCovCobraCommand
+    - newFormatCobraCommand
+    - newLintCobraCommand
+    - newReleaseCobraCommand
+    - newRepoAuditCobraCommand
+    - newRepoCommand
+    - newRepoInitCobraCommand
+    - newRepoUpdateCobraCommand
+    - newReposCommand
+    - newReposMineCobraCommand
+    - newTestCobraCommand
+    - noExtraArgs
+    - resultToError
+    - runWithCobra
+    - shouldPrintRootHelp
+    - validateColorFlag
+  import_files_list:
+    - encoding/json
+    - errors
+    - fmt
+    - github.com/spf13/cobra
+    - io
+  language: go

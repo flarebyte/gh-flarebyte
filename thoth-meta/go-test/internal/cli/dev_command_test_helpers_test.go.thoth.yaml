@@ -1,0 +1,6 @@
+locator: internal/cli/dev_command_test_helpers_test.go
+meta:
+  function_list:
+    - perTestStyleConfig
+  import_files_list: []
+  language: go
