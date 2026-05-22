@@ -12,6 +12,9 @@ import (
 )
 
 var runCommandCapture = func(name string, args []string, env []string) (string, string, error) {
+	if !isAllowedDevCommand(name) {
+		return "", "", fmt.Errorf("unsupported command: %s", name)
+	}
 	cmd := exec.Command(name, args...)
 	if len(env) > 0 {
 		cmd.Env = env
@@ -22,6 +25,15 @@ var runCommandCapture = func(name string, args []string, env []string) (string, 
 	cmd.Stderr = &stderr
 	err := cmd.Run()
 	return stdout.String(), stderr.String(), err
+}
+
+func isAllowedDevCommand(name string) bool {
+	switch name {
+	case "go", "gofmt", "dart":
+		return true
+	default:
+		return false
+	}
 }
 
 func unsupportedLanguageResult(language string, stderr io.Writer) Result {
