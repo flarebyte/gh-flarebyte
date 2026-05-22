@@ -4,13 +4,9 @@
 package config
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
-	"strconv"
-	"strings"
 )
 
 func ResolvePath(path string) (string, error) {
@@ -49,8 +45,83 @@ func Load(path string) (Config, error) {
 func parseCueConfig(raw string) (Config, error) {
 	var cfg Config
 	var err error
+	if err := assertOnlyAllowedFields("top-level", raw, map[string]struct{}{
+		"project":    {},
+		"sync":       {},
+		"repository": {},
+		"go":         {},
+		"devOutput":  {},
+		"coverage":   {},
+		"build":      {},
+		"release":    {},
+	}); err != nil {
+		return cfg, err
+	}
+	projectBlock, err := extractObjectBlock(raw, "project")
+	if err != nil {
+		return cfg, err
+	}
+	if err := assertOnlyAllowedFields("project", projectBlock, map[string]struct{}{
+		"org":  {},
+		"repo": {},
+	}); err != nil {
+		return cfg, err
+	}
+	syncBlock, err := extractObjectBlock(raw, "sync")
+	if err != nil {
+		return cfg, err
+	}
+	if err := assertOnlyAllowedFields("sync", syncBlock, map[string]struct{}{
+		"mode": {},
+	}); err != nil {
+		return cfg, err
+	}
+	repositoryBlock, err := extractObjectBlock(raw, "repository")
+	if err != nil {
+		return cfg, err
+	}
+	if err := assertOnlyAllowedFields("repository", repositoryBlock, map[string]struct{}{
+		"description":   {},
+		"defaultBranch": {},
+		"homepage":      {},
+		"visibility":    {},
+		"template":      {},
+		"topics":        {},
+		"labels":        {},
+		"features":      {},
+	}); err != nil {
+		return cfg, err
+	}
 	buildBlock, err := extractObjectBlock(raw, "build")
 	if err != nil {
+		return cfg, err
+	}
+	if err := assertOnlyAllowedFields("build", buildBlock, map[string]struct{}{
+		"language":             {},
+		"mode":                 {},
+		"mainPackage":          {},
+		"packages":             {},
+		"runTests":             {},
+		"outputDir":            {},
+		"checksumFile":         {},
+		"targets":              {},
+		"artifactTargetSuffix": {},
+	}); err != nil {
+		return cfg, err
+	}
+	releaseBlock, err := extractObjectBlock(raw, "release")
+	if err != nil {
+		return cfg, err
+	}
+	if err := assertOnlyAllowedFields("release", releaseBlock, map[string]struct{}{
+		"versionSource":        {},
+		"tagPrefix":            {},
+		"notesMode":            {},
+		"releaseNotesFilePath": {},
+		"artifactDir":          {},
+		"includeArtifacts":     {},
+		"includeChecksums":     {},
+	}); err != nil {
 		return cfg, err
 	}
 	cfg.Project.Org, err = extractStringField(raw, "org")
@@ -70,18 +141,32 @@ func parseCueConfig(raw string) (Config, error) {
 		return cfg, err
 	}
 	if goBlock, ok := extractOptionalObjectBlock(raw, "go"); ok {
+		if err := assertOnlyAllowedFields("go", goBlock, map[string]struct{}{
+			"cache_dir":     {},
+			"mod_cache_dir": {},
+			"toolchain":     {},
+		}); err != nil {
+			return cfg, err
+		}
 		cfg.Go.CacheDir = extractOptionalStringField(goBlock, "cache_dir")
 		cfg.Go.ModCacheDir = extractOptionalStringField(goBlock, "mod_cache_dir")
 		cfg.Go.Toolchain = extractOptionalStringField(goBlock, "toolchain")
 	}
-	if devBlock, ok := extractOptionalObjectBlock(raw, "dev_output"); ok {
+	if devBlock, ok := extractOptionalObjectBlock(raw, "devOutput"); ok {
+		if err := assertOnlyAllowedFields("devOutput", devBlock, map[string]struct{}{
+			"color":      {},
+			"style":      {},
+			"showPassed": {},
+		}); err != nil {
+			return cfg, err
+		}
 		if colorRaw, found := extractOptionalBoolFieldRaw(devBlock, "color"); found {
 			cfg.DevOutput.Color = colorRaw
 		} else {
 			cfg.DevOutput.Color = extractOptionalStringField(devBlock, "color")
 		}
 		cfg.DevOutput.Style = extractOptionalStringField(devBlock, "style")
-		cfg.DevOutput.ShowPassed = extractOptionalBoolField(devBlock, "show_passed", true)
+		cfg.DevOutput.ShowPassed = extractOptionalBoolField(devBlock, "showPassed", true)
 	} else {
 		cfg.DevOutput.ShowPassed = true
 	}
@@ -92,6 +177,12 @@ func parseCueConfig(raw string) (Config, error) {
 		cfg.DevOutput.Style = "summary"
 	}
 	if coverageBlock, ok := extractOptionalObjectBlock(raw, "coverage"); ok {
+		if err := assertOnlyAllowedFields("coverage", coverageBlock, map[string]struct{}{
+			"default_min_percent": {},
+			"fail_below_min":      {},
+		}); err != nil {
+			return cfg, err
+		}
 		cfg.Coverage.DefaultMinPercent = extractOptionalNumberPointerField(coverageBlock, "default_min_percent")
 		cfg.Coverage.FailBelowMin = extractOptionalBoolField(coverageBlock, "fail_below_min", true)
 	} else {
@@ -166,177 +257,4 @@ func parseCueConfig(raw string) (Config, error) {
 	cfg.Release.IncludeArtifacts = extractOptionalBoolField(raw, "includeArtifacts", true)
 	cfg.Release.IncludeChecksums = extractOptionalBoolField(raw, "includeChecksums", true)
 	return cfg, nil
-}
-
-func extractOptionalObjectBlock(raw, field string) (string, bool) {
-	open := strings.Index(raw, field+": {")
-	if open == -1 {
-		return "", false
-	}
-	start := open + len(field+": {")
-	end := strings.Index(raw[start:], "\n}")
-	if end == -1 {
-		return "", false
-	}
-	return raw[start : start+end], true
-}
-
-func extractObjectBlock(raw, field string) (string, error) {
-	open := strings.Index(raw, field+": {")
-	if open == -1 {
-		return "", fmt.Errorf("missing required object field %s", field)
-	}
-	start := open + len(field+": {")
-	end := strings.Index(raw[start:], "\n}")
-	if end == -1 {
-		return "", fmt.Errorf("malformed object field %s", field)
-	}
-	return raw[start : start+end], nil
-}
-
-func extractStringField(raw, field string) (string, error) {
-	pattern := regexp.MustCompile(fmt.Sprintf(`(?m)\b%s:\s*"([^"]+)"`, regexp.QuoteMeta(field)))
-	m := pattern.FindStringSubmatch(raw)
-	if len(m) < 2 {
-		return "", fmt.Errorf("missing required string field %s", field)
-	}
-	return m[1], nil
-}
-
-func extractOptionalStringField(raw, field string) string {
-	pattern := regexp.MustCompile(fmt.Sprintf(`(?m)\b%s:\s*"([^"]+)"`, regexp.QuoteMeta(field)))
-	m := pattern.FindStringSubmatch(raw)
-	if len(m) < 2 {
-		return ""
-	}
-	return m[1]
-}
-
-func extractBoolField(raw, field string) (bool, error) {
-	pattern := regexp.MustCompile(fmt.Sprintf(`(?m)\b%s:\s*(true|false)\b`, regexp.QuoteMeta(field)))
-	m := pattern.FindStringSubmatch(raw)
-	if len(m) < 2 {
-		return false, fmt.Errorf("missing required bool field %s", field)
-	}
-	return m[1] == "true", nil
-}
-
-func extractOptionalBoolField(raw, field string, fallback bool) bool {
-	pattern := regexp.MustCompile(fmt.Sprintf(`(?m)\b%s:\s*(true|false)\b`, regexp.QuoteMeta(field)))
-	m := pattern.FindStringSubmatch(raw)
-	if len(m) < 2 {
-		return fallback
-	}
-	return m[1] == "true"
-}
-
-func extractOptionalBoolFieldRaw(raw, field string) (string, bool) {
-	pattern := regexp.MustCompile(fmt.Sprintf(`(?m)\b%s:\s*(true|false)\b`, regexp.QuoteMeta(field)))
-	m := pattern.FindStringSubmatch(raw)
-	if len(m) < 2 {
-		return "", false
-	}
-	return m[1], true
-}
-
-func extractOptionalNumberPointerField(raw, field string) *float64 {
-	pattern := regexp.MustCompile(fmt.Sprintf(`(?m)\b%s:\s*([0-9]+(?:\.[0-9]+)?)\b`, regexp.QuoteMeta(field)))
-	m := pattern.FindStringSubmatch(raw)
-	if len(m) < 2 {
-		return nil
-	}
-	v, err := strconv.ParseFloat(m[1], 64)
-	if err != nil {
-		return nil
-	}
-	return &v
-}
-
-func extractOptionalBoolFieldWithPresence(raw, field string) (bool, bool) {
-	pattern := regexp.MustCompile(fmt.Sprintf(`(?m)\b%s:\s*(true|false)\b`, regexp.QuoteMeta(field)))
-	m := pattern.FindStringSubmatch(raw)
-	if len(m) < 2 {
-		return false, false
-	}
-	return m[1] == "true", true
-}
-
-func extractStringListBlock(raw, field string) ([]string, error) {
-	open := strings.Index(raw, field+": [")
-	if open == -1 {
-		return nil, fmt.Errorf("missing required list field %s", field)
-	}
-	start := open + len(field+": [")
-	end := strings.Index(raw[start:], "]")
-	if end == -1 {
-		return nil, fmt.Errorf("malformed list field %s", field)
-	}
-	block := raw[start : start+end]
-	matches := quotedStringPattern.FindAllStringSubmatch(block, -1)
-	if len(matches) == 0 {
-		return nil, fmt.Errorf("list field %s has no entries", field)
-	}
-	values := make([]string, 0, len(matches))
-	for _, match := range matches {
-		values = append(values, match[1])
-	}
-	return values, nil
-}
-
-func extractOptionalStringListBlock(raw, field string) []string {
-	open := strings.Index(raw, field+": [")
-	if open == -1 {
-		return nil
-	}
-	start := open + len(field+": [")
-	end := strings.Index(raw[start:], "]")
-	if end == -1 {
-		return nil
-	}
-	block := raw[start : start+end]
-	matches := quotedStringPattern.FindAllStringSubmatch(block, -1)
-	if len(matches) == 0 {
-		return nil
-	}
-	values := make([]string, 0, len(matches))
-	for _, match := range matches {
-		values = append(values, match[1])
-	}
-	return values
-}
-
-func extractLabels(raw string) ([]LabelConfig, error) {
-	open := strings.Index(raw, "labels: [")
-	if open == -1 {
-		return nil, errors.New("missing required list field labels")
-	}
-	start := open + len("labels: [")
-	end := strings.Index(raw[start:], "]")
-	if end == -1 {
-		return nil, errors.New("malformed list field labels")
-	}
-	block := raw[start : start+end]
-	matches := labelObjectPattern.FindAllStringSubmatch(block, -1)
-	if len(matches) == 0 {
-		return nil, errors.New("list field labels has no entries")
-	}
-	labels := make([]LabelConfig, 0, len(matches))
-	for _, match := range matches {
-		item := match[1]
-		name, err := extractStringField(item, "name")
-		if err != nil {
-			return nil, fmt.Errorf("invalid repository.labels entry: %w", err)
-		}
-		color, err := extractStringField(item, "color")
-		if err != nil {
-			return nil, fmt.Errorf("invalid repository.labels entry: %w", err)
-		}
-		description := extractOptionalStringField(item, "description")
-		labels = append(labels, LabelConfig{
-			Name:        name,
-			Color:       color,
-			Description: description,
-		})
-	}
-	return labels, nil
 }

@@ -4,67 +4,52 @@
 package cli
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"regexp"
-	"strconv"
 	"strings"
 	"time"
-
-	"github.com/flarebyte/gh-flarebyte/internal/config"
 )
 
-type devSummary struct {
-	Kind     string
-	Status   string
-	Duration time.Duration
-	Details  string
-}
-
-type goTestEvent struct {
-	Action string `json:"Action"`
-	Test   string `json:"Test"`
-}
-
-var runCommandCapture = func(name string, args []string, env []string) (string, string, error) {
-	cmd := exec.Command(name, args...)
-	if len(env) > 0 {
-		cmd.Env = env
+func runTest(styleOverride, colorOverride string, failedOnly bool, stdout, stderr io.Writer) Result {
+	cfg, usage := loadConfigOrUsage(stderr)
+	if usage != nil {
+		return *usage
 	}
-	var stdout strings.Builder
-	var stderr strings.Builder
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-	err := cmd.Run()
-	return stdout.String(), stderr.String(), err
-}
-
-func handleTest(args []string, stdout, stderr io.Writer) Result {
-	cfg, env, start, res := prepareDevCommand(args, stdout, stderr, "test", "Run unit tests for the configured build language.")
-	if res != nil {
-		return *res
+	if styleOverride != "" {
+		cfg.DevOutput.Style = styleOverride
 	}
+	if colorOverride != "" {
+		cfg.DevOutput.Color = colorOverride
+	}
+	env := buildCommandEnv(cfg)
+	start := time.Now()
 	switch cfg.Build.Language {
 	case "go":
 		cmdOut, cmdErr, runErr := runCommandCapture("go", []string{"test", "-json", "./..."}, env)
+		report := parseGoTestReport(cmdOut)
+		if cfg.DevOutput.Style == "per_test" {
+			printPerTestEvents(stdout, cfg, report.Events, failedOnly)
+		}
 		if runErr != nil {
-			tests, failed, skipped := parseGoTestJSONSummary(cmdOut)
-			details := formatGoTestDetails(tests, failed, skipped, "FAIL")
+			details := formatGoTestDetails(report.Tests, report.Failed, report.Skipped, "FAIL")
+			if failureDetails := formatFailureDetails(report.Failures); failureDetails != "" {
+				if details != "" {
+					details += "\n"
+				}
+				details += failureDetails
+			}
 			if strings.TrimSpace(cmdErr) != "" {
 				if details != "" {
-					details += " "
+					details += "\n"
 				}
 				details += strings.TrimSpace(cmdErr)
 			}
 			printDevSummary(stderr, cfg, devSummary{Kind: "test", Status: "FAIL", Duration: time.Since(start), Details: details})
 			return Result{ExitCode: ExitFailure, Err: commandError(runErr, cmdErr)}
 		}
-		tests, failed, skipped := parseGoTestJSONSummary(cmdOut)
-		printDevSummary(stdout, cfg, devSummary{Kind: "test", Status: "PASS", Duration: time.Since(start), Details: formatGoTestDetails(tests, failed, skipped, "PASS")})
+		printDevSummary(stdout, cfg, devSummary{Kind: "test", Status: "PASS", Duration: time.Since(start), Details: formatGoTestDetails(report.Tests, report.Failed, report.Skipped, "PASS")})
 		return Result{ExitCode: ExitOK}
 	case "dart":
 		_, cmdErr, runErr := runCommandCapture("dart", []string{"test"}, env)
@@ -79,11 +64,13 @@ func handleTest(args []string, stdout, stderr io.Writer) Result {
 	return Result{ExitCode: ExitOK}
 }
 
-func handleFormat(args []string, stdout, stderr io.Writer) Result {
-	cfg, env, start, res := prepareDevCommand(args, stdout, stderr, "format", "Format source files for the configured build language.")
-	if res != nil {
-		return *res
+func runFormat(stdout, stderr io.Writer) Result {
+	cfg, usage := loadConfigOrUsage(stderr)
+	if usage != nil {
+		return *usage
 	}
+	env := buildCommandEnv(cfg)
+	start := time.Now()
 	switch cfg.Build.Language {
 	case "go":
 		files, err := discoverGoFiles(".")
@@ -113,11 +100,12 @@ func handleFormat(args []string, stdout, stderr io.Writer) Result {
 	}
 }
 
-func handleLint(args []string, stdout, stderr io.Writer) Result {
-	cfg, env, start, res := prepareDevCommand(args, stdout, stderr, "lint", "Run lint/static checks for the configured build language.")
-	if res != nil {
-		return *res
+func runLint(colorOverride string, failedOnly bool, stdout, stderr io.Writer) Result {
+	cfg, env, usage := prepareDevCommand(colorOverride, stderr)
+	if usage != nil {
+		return *usage
 	}
+	start := time.Now()
 	switch cfg.Build.Language {
 	case "go":
 		_, cmdErr, runErr := runCommandCapture("go", []string{"vet", "./..."}, env)
@@ -134,26 +122,17 @@ func handleLint(args []string, stdout, stderr io.Writer) Result {
 	default:
 		return unsupportedLanguageResult(cfg.Build.Language, stderr)
 	}
-	printDevSummary(stdout, cfg, devSummary{Kind: "lint", Status: "PASS", Duration: time.Since(start)})
+	if !failedOnly {
+		printDevSummary(stdout, cfg, devSummary{Kind: "lint", Status: "PASS", Duration: time.Since(start)})
+	}
 	return Result{ExitCode: ExitOK}
 }
 
-func handleCov(args []string, stdout, stderr io.Writer) Result {
-	if isHelpArgs(args) {
-		_, _ = fmt.Fprintln(stdout, "Usage: gh flarebyte cov [--min percent]")
-		_, _ = fmt.Fprintln(stdout, "Compute test coverage. --min sets a failure threshold percentage (0-100).")
-		return Result{ExitCode: ExitOK}
-	}
-	min, err := parseCovArgs(args)
-	if err != nil {
-		_, _ = fmt.Fprintln(stderr, err.Error())
-		return Result{ExitCode: ExitUsage, Err: err}
-	}
-	cfg, usage := loadConfigOrUsage(stderr)
+func runCov(min *float64, colorOverride string, failedOnly bool, stdout, stderr io.Writer) Result {
+	cfg, env, usage := prepareDevCommand(colorOverride, stderr)
 	if usage != nil {
 		return *usage
 	}
-	env := buildCommandEnv(cfg)
 	start := time.Now()
 	switch cfg.Build.Language {
 	case "go":
@@ -180,14 +159,19 @@ func handleCov(args []string, stdout, stderr io.Writer) Result {
 			return Result{ExitCode: ExitFailure, Err: parseErr}
 		}
 		effectiveMin := resolveCoverageMin(min, cfg)
+		if cfg.DevOutput.Style == "per_test" {
+			printCoverageDetails(stdout, parseCoverageDetails(coverOut), effectiveMin, failedOnly)
+		}
 		if effectiveMin != nil && cfg.Coverage.FailBelowMin && coverage < *effectiveMin {
 			printDevSummary(stderr, cfg, devSummary{Kind: "cov", Status: "FAIL", Duration: time.Since(start), Details: fmt.Sprintf("total=%.2f%% min=%.2f%%", coverage, *effectiveMin)})
 			return Result{ExitCode: ExitFailure, Err: fmt.Errorf("coverage %.2f below minimum %.2f", coverage, *effectiveMin)}
 		}
-		if effectiveMin != nil {
-			printDevSummary(stdout, cfg, devSummary{Kind: "cov", Status: "PASS", Duration: time.Since(start), Details: fmt.Sprintf("total=%.2f%% min=%.2f%%", coverage, *effectiveMin)})
-		} else {
-			printDevSummary(stdout, cfg, devSummary{Kind: "cov", Status: "PASS", Duration: time.Since(start), Details: fmt.Sprintf("total=%.2f%%", coverage)})
+		if !failedOnly {
+			if effectiveMin != nil {
+				printDevSummary(stdout, cfg, devSummary{Kind: "cov", Status: "PASS", Duration: time.Since(start), Details: fmt.Sprintf("total=%.2f%% min=%.2f%%", coverage, *effectiveMin)})
+			} else {
+				printDevSummary(stdout, cfg, devSummary{Kind: "cov", Status: "PASS", Duration: time.Since(start), Details: fmt.Sprintf("total=%.2f%%", coverage)})
+			}
 		}
 		return Result{ExitCode: ExitOK}
 	case "dart":
@@ -196,211 +180,11 @@ func handleCov(args []string, stdout, stderr io.Writer) Result {
 			_, _ = fmt.Fprintln(stderr, strings.TrimSpace(cmdErr))
 			return Result{ExitCode: ExitFailure, Err: commandError(runErr, cmdErr)}
 		}
-		printDevSummary(stdout, cfg, devSummary{Kind: "cov", Status: "PASS", Duration: time.Since(start)})
+		if !failedOnly {
+			printDevSummary(stdout, cfg, devSummary{Kind: "cov", Status: "PASS", Duration: time.Since(start)})
+		}
 		return Result{ExitCode: ExitOK}
 	default:
 		return unsupportedLanguageResult(cfg.Build.Language, stderr)
 	}
-}
-
-func requireNoArgs(args []string, stderr io.Writer) *Result {
-	if len(args) == 0 {
-		return nil
-	}
-	err := fmt.Errorf("invalid invocation: unknown argument %q", args[0])
-	_, _ = fmt.Fprintln(stderr, err.Error())
-	res := Result{ExitCode: ExitUsage, Err: err}
-	return &res
-}
-
-func unsupportedLanguageResult(language string, stderr io.Writer) Result {
-	err := fmt.Errorf("build.language %q is not supported. Supported values: go, dart", language)
-	_, _ = fmt.Fprintln(stderr, err.Error())
-	return Result{ExitCode: ExitUsage, Err: err}
-}
-
-func prepareDevCommand(args []string, stdout io.Writer, stderr io.Writer, command string, helpText string) (config.Config, []string, time.Time, *Result) {
-	if isHelpArgs(args) {
-		_, _ = fmt.Fprintf(stdout, "Usage: gh flarebyte %s\n", command)
-		_, _ = fmt.Fprintln(stdout, helpText)
-		res := Result{ExitCode: ExitOK}
-		return config.Config{}, nil, time.Time{}, &res
-	}
-	if res := requireNoArgs(args, stderr); res != nil {
-		return config.Config{}, nil, time.Time{}, res
-	}
-	cfg, usage := loadConfigOrUsage(stderr)
-	if usage != nil {
-		return config.Config{}, nil, time.Time{}, usage
-	}
-	return cfg, buildCommandEnv(cfg), time.Now(), nil
-}
-
-func parseCovArgs(args []string) (*float64, error) {
-	var min *float64
-	for i := 0; i < len(args); i++ {
-		switch args[i] {
-		case "--min":
-			if i+1 >= len(args) {
-				return nil, fmt.Errorf("invalid invocation: --min requires a numeric percentage")
-			}
-			v, err := strconv.ParseFloat(args[i+1], 64)
-			if err != nil || v < 0 || v > 100 {
-				return nil, fmt.Errorf("invalid invocation: --min must be a number between 0 and 100")
-			}
-			min = &v
-			i++
-		default:
-			return nil, fmt.Errorf("invalid invocation: unknown argument %q", args[i])
-		}
-	}
-	return min, nil
-}
-
-func resolveCoverageMin(cliMin *float64, cfg config.Config) *float64 {
-	if cliMin != nil {
-		return cliMin
-	}
-	return cfg.Coverage.DefaultMinPercent
-}
-
-func buildCommandEnv(cfg config.Config) []string {
-	env := os.Environ()
-	if cfg.Go.CacheDir != "" {
-		env = append(env, "GOCACHE="+cfg.Go.CacheDir)
-	}
-	if cfg.Go.ModCacheDir != "" {
-		env = append(env, "GOMODCACHE="+cfg.Go.ModCacheDir)
-	}
-	if cfg.Go.Toolchain != "" {
-		env = append(env, "GOTOOLCHAIN="+cfg.Go.Toolchain)
-	}
-	return env
-}
-
-func discoverGoFiles(root string) ([]string, error) {
-	files := make([]string, 0)
-	err := filepath.WalkDir(root, func(path string, d os.DirEntry, walkErr error) error {
-		if walkErr != nil {
-			return walkErr
-		}
-		if d.IsDir() {
-			name := d.Name()
-			if name == ".git" || name == "vendor" || name == "build" || name == ".gocache" || name == ".gomodcache" {
-				return filepath.SkipDir
-			}
-			return nil
-		}
-		if strings.HasSuffix(path, ".go") {
-			files = append(files, path)
-		}
-		return nil
-	})
-	return files, err
-}
-
-func parseTotalCoverage(out string) (float64, error) {
-	re := regexp.MustCompile(`(?m)^total:\s+\(statements\)\s+([0-9]+(?:\.[0-9]+)?)%$`)
-	m := re.FindStringSubmatch(out)
-	if len(m) < 2 {
-		return 0, fmt.Errorf("unable to parse total coverage from go tool cover output")
-	}
-	v, err := strconv.ParseFloat(m[1], 64)
-	if err != nil {
-		return 0, fmt.Errorf("unable to parse total coverage value: %w", err)
-	}
-	return v, nil
-}
-
-func printDevSummary(w io.Writer, cfg config.Config, s devSummary) {
-	if s.Status == "PASS" && !cfg.DevOutput.ShowPassed {
-		return
-	}
-	status := s.Status
-	if useColor(cfg.DevOutput.Color) {
-		if s.Status == "PASS" {
-			status = "\x1b[32mPASS\x1b[0m"
-		} else {
-			status = "\x1b[31mFAIL\x1b[0m"
-		}
-	}
-	d := s.Duration.Round(time.Millisecond)
-	switch cfg.DevOutput.Style {
-	case "one_line":
-		if s.Details != "" {
-			_, _ = fmt.Fprintf(w, "%s kind=%s %s duration=%s\n", status, s.Kind, s.Details, d)
-		} else {
-			_, _ = fmt.Fprintf(w, "%s kind=%s duration=%s\n", status, s.Kind, d)
-		}
-	case "list":
-		_, _ = fmt.Fprintf(w, "- kind: %s\n- status: %s\n- duration: %s\n", s.Kind, status, d)
-		if s.Details != "" {
-			_, _ = fmt.Fprintf(w, "- details: %s\n", s.Details)
-		}
-	default:
-		if s.Details != "" {
-			_, _ = fmt.Fprintf(w, "%s %s duration=%s %s\n", strings.ToUpper(s.Kind), status, d, s.Details)
-		} else {
-			_, _ = fmt.Fprintf(w, "%s %s duration=%s\n", strings.ToUpper(s.Kind), status, d)
-		}
-	}
-	if s.Status == "FAIL" && s.Details != "" && cfg.DevOutput.Style != "list" {
-		_, _ = fmt.Fprintln(w, s.Details)
-	}
-}
-
-func parseGoTestJSONSummary(out string) (tests int, failed int, skipped int) {
-	for _, line := range strings.Split(out, "\n") {
-		line = strings.TrimSpace(line)
-		if line == "" {
-			continue
-		}
-		var ev goTestEvent
-		if err := json.Unmarshal([]byte(line), &ev); err != nil {
-			continue
-		}
-		// Count only concrete test-case events and ignore package-level pass/fail lines.
-		switch ev.Action {
-		case "pass", "fail", "skip":
-			if ev.Test == "" {
-				continue
-			}
-			tests++
-		}
-		if ev.Action == "fail" {
-			failed++
-		}
-		if ev.Action == "skip" {
-			skipped++
-		}
-	}
-	return tests, failed, skipped
-}
-
-func formatGoTestDetails(tests int, failed int, skipped int, status string) string {
-	if tests == 0 {
-		return ""
-	}
-	if status == "PASS" {
-		return fmt.Sprintf("tests=%d failed=0 skipped=%d", tests, skipped)
-	}
-	return fmt.Sprintf("tests=%d failed=%d skipped=%d", tests, failed, skipped)
-}
-
-func useColor(mode string) bool {
-	if os.Getenv("NO_COLOR") != "" {
-		return false
-	}
-	switch mode {
-	case "true":
-		return true
-	case "false":
-		return false
-	default:
-		return os.Getenv("TERM") != "" && os.Getenv("TERM") != "dumb"
-	}
-}
-
-func isHelpArgs(args []string) bool {
-	return len(args) == 1 && (args[0] == "--help" || args[0] == "-h")
 }

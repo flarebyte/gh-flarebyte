@@ -1,0 +1,21 @@
+locator: internal/cli/dev_exec.go
+meta:
+  purpose: Provide shared command-execution and environment helpers for dev workflows.
+  responsibilities: Execute allowed toolchain commands; build process env; discover Go files; prepare config/env for dev commands.
+  architecture_notes: Command names are statically allowlisted and constructed via fixed exec branches to satisfy security analysis and reduce injection risk.
+  function_list:
+    - buildCommandEnv
+    - discoverGoFiles
+    - newAllowedDevCommand
+    - prepareDevCommand
+    - resolveCoverageMin
+    - unsupportedLanguageResult
+  import_files_list:
+    - fmt
+    - github.com/flarebyte/gh-flarebyte/internal/config
+    - io
+    - os
+    - os/exec
+    - path/filepath
+    - strings
+  language: go

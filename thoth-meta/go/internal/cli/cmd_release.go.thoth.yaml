@@ -2,7 +2,7 @@ locator: internal/cli/cmd_release.go
 meta:
   architecture_notes: Release always shells through the build command first so artifact shape and checksum behavior stay consistent with standalone build execution.
   function_list:
-    - handleRelease
+    - runRelease
   import_files_list:
     - fmt
     - io

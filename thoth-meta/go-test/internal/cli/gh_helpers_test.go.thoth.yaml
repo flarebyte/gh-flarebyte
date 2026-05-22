@@ -1,7 +1,5 @@
 locator: internal/cli/gh_helpers_test.go
 meta:
-  purpose: Protect GitHub helper adaptation logic so metadata decoding and fake-mode shortcuts stay stable for automation.
-  responsibilities: Test topic/label extraction, fake readonly/release behaviors, and selected helper edge branches.
   architecture_notes: Uses environment-driven fake modes to avoid external `gh` calls while still validating integration helpers.
   function_list:
     - TestBuildHelperDirectBranches
@@ -14,3 +12,5 @@ meta:
     - os
     - testing
   language: go
+  purpose: Protect GitHub helper adaptation logic so metadata decoding and fake-mode shortcuts stay stable for automation.
+  responsibilities: Test topic/label extraction, fake readonly/release behaviors, and selected helper edge branches.

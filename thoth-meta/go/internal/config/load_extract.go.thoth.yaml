@@ -1,0 +1,25 @@
+locator: internal/config/load_extract.go
+meta:
+  purpose: Provide low-level value extraction helpers for the CUE-like config parser.
+  responsibilities: Read object/string/bool/number/list fields and repository labels from raw config text.
+  architecture_notes: Helpers intentionally use deterministic string/regex parsing to avoid a heavy parser dependency.
+  function_list:
+    - extractBoolField
+    - extractLabels
+    - extractObjectBlock
+    - extractOptionalBoolField
+    - extractOptionalBoolFieldRaw
+    - extractOptionalBoolFieldWithPresence
+    - extractOptionalNumberPointerField
+    - extractOptionalObjectBlock
+    - extractOptionalStringField
+    - extractOptionalStringListBlock
+    - extractStringField
+    - extractStringListBlock
+  import_files_list:
+    - errors
+    - fmt
+    - regexp
+    - strconv
+    - strings
+  language: go

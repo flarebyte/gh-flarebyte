@@ -17,25 +17,6 @@ import (
 	"strings"
 )
 
-func parseReleaseArgs(args []string) (draft bool, notesFile string, err error) {
-	for i := 0; i < len(args); i++ {
-		arg := args[i]
-		switch arg {
-		case "--draft":
-			draft = true
-		case "--notes-file":
-			if i+1 >= len(args) {
-				return false, "", errors.New("invalid invocation: --notes-file requires a path")
-			}
-			notesFile = args[i+1]
-			i++
-		default:
-			return false, "", fmt.Errorf("invalid invocation: unknown argument %q", arg)
-		}
-	}
-	return draft, notesFile, nil
-}
-
 func resolveVersionFromSource(sourcePath string) (string, error) {
 	data, err := os.ReadFile(sourcePath)
 	if err != nil {

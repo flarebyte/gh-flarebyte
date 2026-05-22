@@ -2,10 +2,10 @@ locator: internal/cli/cmd_repo.go
 meta:
   architecture_notes: Update applies settings/topics/labels sequentially and intentionally avoids rollback, surfacing partial-progress failures for deterministic reruns.
   function_list:
-    - handleRepoAudit
-    - handleRepoInit
-    - handleRepoUpdate
-    - handleReposMine
+    - runRepoAudit
+    - runRepoInit
+    - runRepoUpdate
+    - runReposMine
   import_files_list:
     - encoding/json
     - fmt

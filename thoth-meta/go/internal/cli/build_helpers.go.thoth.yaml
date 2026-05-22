@@ -8,7 +8,6 @@ meta:
     - packageBinaryArchive
     - packageTarGz
     - packageZip
-    - parseBuildArgs
     - resolveChecksumPath
     - runGoBuildPackages
     - sha256File
@@ -20,7 +19,6 @@ meta:
     - bytes
     - compress/gzip
     - crypto/sha256
-    - errors
     - fmt
     - github.com/flarebyte/gh-flarebyte/internal/buildinfo
     - io

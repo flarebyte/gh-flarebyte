@@ -1,7 +1,5 @@
 locator: internal/config/config_test.go
 meta:
-  purpose: Guard config loading and validation contracts so cue-backed project/build/release behavior remains deterministic.
-  responsibilities: Check valid parsing defaults and reject invalid field combinations, enums, and required-field omissions.
   architecture_notes: Uses temp cue fixtures to exercise loader and validator together, mirroring real CLI config consumption.
   function_list:
     - TestLoadBuildArtifactTargetSuffixFalseWithMultipleTargets
@@ -12,6 +10,8 @@ meta:
     - TestLoadLibraryModeConfig
     - TestLoadRejectsInvalidDevOutputStyle
     - TestLoadRejectsLibraryModeWithArtifactsEnabled
+    - TestLoadRejectsUnknownBuildField
+    - TestLoadRejectsUnknownTopLevelField
     - TestLoadValidConfig
   import_files_list:
     - os
@@ -19,3 +19,5 @@ meta:
     - strings
     - testing
   language: go
+  purpose: Guard config loading and validation contracts so cue-backed project/build/release behavior remains deterministic.
+  responsibilities: Check valid parsing defaults and reject invalid field combinations, enums, and required-field omissions.

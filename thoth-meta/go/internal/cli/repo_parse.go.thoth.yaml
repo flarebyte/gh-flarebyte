@@ -3,14 +3,9 @@ meta:
   architecture_notes: Parsers are strict (unknown-arg rejection) to keep automation behavior deterministic and avoid silently ignored flags.
   function_list:
     - mustAbs
-    - parseRepoAuditArgs
-    - parseRepoInitArgs
-    - parseRepoUpdateArgs
-    - parseReposMineArgs
     - splitRepo
   import_files_list:
     - errors
-    - fmt
     - path/filepath
     - strings
   language: go

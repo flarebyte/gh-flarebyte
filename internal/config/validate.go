@@ -43,12 +43,12 @@ func Validate(cfg Config) error {
 	switch cfg.DevOutput.Color {
 	case "auto", "true", "false":
 	default:
-		return fmt.Errorf("invalid dev_output.color %q: expected true, false, or auto", cfg.DevOutput.Color)
+		return fmt.Errorf("invalid devOutput.color %q: expected true, false, or auto", cfg.DevOutput.Color)
 	}
 	switch cfg.DevOutput.Style {
-	case "one_line", "summary", "list":
+	case "summary", "per_test":
 	default:
-		return fmt.Errorf("invalid dev_output.style %q: expected one_line, summary, or list", cfg.DevOutput.Style)
+		return fmt.Errorf("invalid devOutput.style %q: expected summary or per_test", cfg.DevOutput.Style)
 	}
 	if cfg.Coverage.DefaultMinPercent != nil {
 		if *cfg.Coverage.DefaultMinPercent < 0 || *cfg.Coverage.DefaultMinPercent > 100 {

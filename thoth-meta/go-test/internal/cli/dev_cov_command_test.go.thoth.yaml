@@ -1,0 +1,23 @@
+locator: internal/cli/dev_cov_command_test.go
+meta:
+  purpose: Validate coverage command behavior including thresholds, output styles, and failure handling.
+  responsibilities: Exercise cov flag parsing, coverage threshold enforcement, per_test rendering, and error paths via stubs.
+  architecture_notes: Tests stub command execution to isolate CLI behavior from real toolchain output variability.
+  function_list:
+    - TestRunCovBelowMinAllowedWhenFailBelowDisabled
+    - TestRunCovFailedOnlyHidesPassOutput
+    - TestRunCovFailsBelowThreshold
+    - TestRunCovFailurePaths
+    - TestRunCovHelpIncludesMinGuidance
+    - TestRunCovMinFlagOverridesConfigThreshold
+    - TestRunCovPerTestStyleOutput
+    - TestRunCovRejectsInvalidMin
+    - TestRunCovUsesUniqueProfileTempPath
+    - setupCoverageConfig
+    - stubGoCoverTotal
+  import_files_list:
+    - bytes
+    - fmt
+    - strings
+    - testing
+  language: go

@@ -9,7 +9,6 @@ import (
 	"bytes"
 	"compress/gzip"
 	"crypto/sha256"
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -63,29 +62,6 @@ func runGoBuildPackages(goos string, goarch string, packages []string, runTests 
 		return commandError(err, testStderr.String())
 	}
 	return nil
-}
-
-func parseBuildArgs(args []string) (target string, outputDir string, err error) {
-	for i := 0; i < len(args); i++ {
-		arg := args[i]
-		switch arg {
-		case "--target":
-			if i+1 >= len(args) {
-				return "", "", errors.New("invalid invocation: --target requires os-arch")
-			}
-			target = args[i+1]
-			i++
-		case "--output-dir":
-			if i+1 >= len(args) {
-				return "", "", errors.New("invalid invocation: --output-dir requires a path")
-			}
-			outputDir = args[i+1]
-			i++
-		default:
-			return "", "", fmt.Errorf("invalid invocation: unknown argument %q", arg)
-		}
-	}
-	return target, outputDir, nil
 }
 
 func goBuildTargetBinary(target string, outputPath string, mainPackage string) error {
