@@ -152,10 +152,13 @@ func runFormat(stdout, stderr io.Writer) Result {
 	}
 }
 
-func runLint(stdout, stderr io.Writer) Result {
+func runLint(colorOverride string, stdout, stderr io.Writer) Result {
 	cfg, usage := loadConfigOrUsage(stderr)
 	if usage != nil {
 		return *usage
+	}
+	if colorOverride != "" {
+		cfg.DevOutput.Color = colorOverride
 	}
 	env := buildCommandEnv(cfg)
 	start := time.Now()
@@ -179,10 +182,13 @@ func runLint(stdout, stderr io.Writer) Result {
 	return Result{ExitCode: ExitOK}
 }
 
-func runCov(min *float64, stdout, stderr io.Writer) Result {
+func runCov(min *float64, colorOverride string, stdout, stderr io.Writer) Result {
 	cfg, usage := loadConfigOrUsage(stderr)
 	if usage != nil {
 		return *usage
+	}
+	if colorOverride != "" {
+		cfg.DevOutput.Color = colorOverride
 	}
 	env := buildCommandEnv(cfg)
 	start := time.Now()

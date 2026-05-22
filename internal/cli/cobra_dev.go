@@ -147,20 +147,27 @@ func newFormatCobraCommand(stdout, stderr io.Writer) *cobra.Command {
 }
 
 func newLintCobraCommand(stdout, stderr io.Writer) *cobra.Command {
+	var color string
 	cmd := &cobra.Command{
 		Use:           "lint",
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		Args:          noExtraArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return resultToError(runLint(stdout, stderr))
+			if color != "" && color != "auto" && color != "true" && color != "false" {
+				_, _ = fmt.Fprintf(stderr, "invalid invocation: --color %q is not supported; expected auto, true, or false\n", color)
+				return exitCodeError{code: ExitUsage, err: fmt.Errorf("invalid invocation: --color %q is not supported; expected auto, true, or false", color)}
+			}
+			return resultToError(runLint(color, stdout, stderr))
 		},
 	}
+	cmd.Flags().StringVar(&color, "color", "", "Override color mode: auto, true, or false")
 	return cmd
 }
 
 func newCovCobraCommand(stdout, stderr io.Writer) *cobra.Command {
 	var min float64
+	var color string
 	cmd := &cobra.Command{
 		Use:           "cov",
 		Short:         "Compute test coverage. --min sets a failure threshold percentage (0-100).",
@@ -181,11 +188,16 @@ func newCovCobraCommand(stdout, stderr io.Writer) *cobra.Command {
 				}
 				minPtr = &min
 			}
-			res := runCov(minPtr, stdout, stderr)
+			if color != "" && color != "auto" && color != "true" && color != "false" {
+				_, _ = fmt.Fprintf(stderr, "invalid invocation: --color %q is not supported; expected auto, true, or false\n", color)
+				return exitCodeError{code: ExitUsage, err: fmt.Errorf("invalid invocation: --color %q is not supported; expected auto, true, or false", color)}
+			}
+			res := runCov(minPtr, color, stdout, stderr)
 			return resultToError(res)
 		},
 	}
 	cmd.Flags().Float64Var(&min, "min", 0, "Coverage threshold percentage (0-100)")
+	cmd.Flags().StringVar(&color, "color", "", "Override color mode: auto, true, or false")
 	return cmd
 }
 

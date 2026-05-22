@@ -391,6 +391,16 @@ func TestDevCommandUsageErrors(t *testing.T) {
 	if res := Run([]string{"lint", "--bad"}, &out, &errOut); res.ExitCode != ExitUsage {
 		t.Fatalf("expected usage error for lint, got %d", res.ExitCode)
 	}
+	out.Reset()
+	errOut.Reset()
+	if res := Run([]string{"lint", "--color", "bad"}, &out, &errOut); res.ExitCode != ExitUsage || !strings.Contains(errOut.String(), "--color") {
+		t.Fatalf("expected lint color usage error, got code=%d stderr=%s", res.ExitCode, errOut.String())
+	}
+	out.Reset()
+	errOut.Reset()
+	if res := Run([]string{"cov", "--color", "bad"}, &out, &errOut); res.ExitCode != ExitUsage || !strings.Contains(errOut.String(), "--color") {
+		t.Fatalf("expected cov color usage error, got code=%d stderr=%s", res.ExitCode, errOut.String())
+	}
 }
 
 func TestRunTestStyleOverridePerTest(t *testing.T) {
