@@ -64,7 +64,7 @@ var runCommandCapture = func(name string, args []string, env []string) (string, 
 	return stdout.String(), stderr.String(), err
 }
 
-func runTest(styleOverride, colorOverride string, stdout, stderr io.Writer) Result {
+func runTest(styleOverride, colorOverride string, failedOnly bool, stdout, stderr io.Writer) Result {
 	cfg, usage := loadConfigOrUsage(stderr)
 	if usage != nil {
 		return *usage
@@ -82,7 +82,7 @@ func runTest(styleOverride, colorOverride string, stdout, stderr io.Writer) Resu
 		cmdOut, cmdErr, runErr := runCommandCapture("go", []string{"test", "-json", "./..."}, env)
 		report := parseGoTestReport(cmdOut)
 		if cfg.DevOutput.Style == "per_test" {
-			printPerTestEvents(stdout, cfg, report.Events)
+			printPerTestEvents(stdout, cfg, report.Events, failedOnly)
 		}
 		if runErr != nil {
 			details := formatGoTestDetails(report.Tests, report.Failed, report.Skipped, "FAIL")
@@ -152,7 +152,7 @@ func runFormat(stdout, stderr io.Writer) Result {
 	}
 }
 
-func runLint(colorOverride string, stdout, stderr io.Writer) Result {
+func runLint(colorOverride string, failedOnly bool, stdout, stderr io.Writer) Result {
 	cfg, usage := loadConfigOrUsage(stderr)
 	if usage != nil {
 		return *usage
@@ -178,11 +178,13 @@ func runLint(colorOverride string, stdout, stderr io.Writer) Result {
 	default:
 		return unsupportedLanguageResult(cfg.Build.Language, stderr)
 	}
-	printDevSummary(stdout, cfg, devSummary{Kind: "lint", Status: "PASS", Duration: time.Since(start)})
+	if !failedOnly {
+		printDevSummary(stdout, cfg, devSummary{Kind: "lint", Status: "PASS", Duration: time.Since(start)})
+	}
 	return Result{ExitCode: ExitOK}
 }
 
-func runCov(min *float64, colorOverride string, stdout, stderr io.Writer) Result {
+func runCov(min *float64, colorOverride string, failedOnly bool, stdout, stderr io.Writer) Result {
 	cfg, usage := loadConfigOrUsage(stderr)
 	if usage != nil {
 		return *usage
@@ -218,16 +220,18 @@ func runCov(min *float64, colorOverride string, stdout, stderr io.Writer) Result
 		}
 		effectiveMin := resolveCoverageMin(min, cfg)
 		if cfg.DevOutput.Style == "per_test" {
-			printCoverageDetails(stdout, parseCoverageDetails(coverOut), effectiveMin)
+			printCoverageDetails(stdout, parseCoverageDetails(coverOut), effectiveMin, failedOnly)
 		}
 		if effectiveMin != nil && cfg.Coverage.FailBelowMin && coverage < *effectiveMin {
 			printDevSummary(stderr, cfg, devSummary{Kind: "cov", Status: "FAIL", Duration: time.Since(start), Details: fmt.Sprintf("total=%.2f%% min=%.2f%%", coverage, *effectiveMin)})
 			return Result{ExitCode: ExitFailure, Err: fmt.Errorf("coverage %.2f below minimum %.2f", coverage, *effectiveMin)}
 		}
-		if effectiveMin != nil {
-			printDevSummary(stdout, cfg, devSummary{Kind: "cov", Status: "PASS", Duration: time.Since(start), Details: fmt.Sprintf("total=%.2f%% min=%.2f%%", coverage, *effectiveMin)})
-		} else {
-			printDevSummary(stdout, cfg, devSummary{Kind: "cov", Status: "PASS", Duration: time.Since(start), Details: fmt.Sprintf("total=%.2f%%", coverage)})
+		if !failedOnly {
+			if effectiveMin != nil {
+				printDevSummary(stdout, cfg, devSummary{Kind: "cov", Status: "PASS", Duration: time.Since(start), Details: fmt.Sprintf("total=%.2f%% min=%.2f%%", coverage, *effectiveMin)})
+			} else {
+				printDevSummary(stdout, cfg, devSummary{Kind: "cov", Status: "PASS", Duration: time.Since(start), Details: fmt.Sprintf("total=%.2f%%", coverage)})
+			}
 		}
 		return Result{ExitCode: ExitOK}
 	case "dart":
@@ -236,7 +240,9 @@ func runCov(min *float64, colorOverride string, stdout, stderr io.Writer) Result
 			_, _ = fmt.Fprintln(stderr, strings.TrimSpace(cmdErr))
 			return Result{ExitCode: ExitFailure, Err: commandError(runErr, cmdErr)}
 		}
-		printDevSummary(stdout, cfg, devSummary{Kind: "cov", Status: "PASS", Duration: time.Since(start)})
+		if !failedOnly {
+			printDevSummary(stdout, cfg, devSummary{Kind: "cov", Status: "PASS", Duration: time.Since(start)})
+		}
 		return Result{ExitCode: ExitOK}
 	default:
 		return unsupportedLanguageResult(cfg.Build.Language, stderr)
@@ -436,33 +442,41 @@ func useColor(mode string) bool {
 	}
 }
 
-func printPerTestEvents(w io.Writer, cfg config.Config, events []goTestEvent) {
+func printPerTestEvents(w io.Writer, cfg config.Config, events []goTestEvent, failedOnly bool) {
 	for _, ev := range events {
 		if ev.Test == "" {
 			continue
 		}
 		switch ev.Action {
 		case "pass":
-			if cfg.DevOutput.ShowPassed {
+			if !failedOnly && cfg.DevOutput.ShowPassed {
 				_, _ = fmt.Fprintf(w, "✓ %s\n", ev.Test)
 			}
 		case "skip":
-			_, _ = fmt.Fprintf(w, "↷ %s\n", ev.Test)
+			if !failedOnly {
+				_, _ = fmt.Fprintf(w, "↷ %s\n", ev.Test)
+			}
 		case "fail":
 			_, _ = fmt.Fprintf(w, "✗ %s\n", ev.Test)
 		}
 	}
 }
 
-func printCoverageDetails(w io.Writer, details []coverageDetail, min *float64) {
+func printCoverageDetails(w io.Writer, details []coverageDetail, min *float64, failedOnly bool) {
 	for _, d := range details {
 		mark := "✓"
+		isFail := false
 		if min != nil {
 			if d.Percent < *min {
 				mark = "✗"
+				isFail = true
 			}
 		} else if d.Percent == 0 {
 			mark = "✗"
+			isFail = true
+		}
+		if failedOnly && !isFail {
+			continue
 		}
 		_, _ = fmt.Fprintf(w, "%s %s %.1f%%\n", mark, d.Label, d.Percent)
 	}

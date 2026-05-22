@@ -421,6 +421,36 @@ func TestRunTestStyleOverridePerTest(t *testing.T) {
 	}
 }
 
+func TestRunTestFailedOnlyFiltersPassedAndSkipped(t *testing.T) {
+	_ = setupTempWorkdirWithConfig(t, testConfigCue())
+	oldRun := runCommandCapture
+	t.Cleanup(func() { runCommandCapture = oldRun })
+	runCommandCapture = func(name string, args []string, env []string) (string, string, error) {
+		return strings.Join([]string{
+			`{"Action":"pass","Test":"TestOne"}`,
+			`{"Action":"skip","Test":"TestTwo"}`,
+			`{"Action":"output","Test":"TestThree","Output":"pkg/x_test.go:10: expected 1, got 2"}`,
+			`{"Action":"fail","Test":"TestThree"}`,
+			"",
+		}, "\n"), "stderr detail", fmt.Errorf("boom")
+	}
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	res := Run([]string{"test", "--style", "per_test", "--failed-only"}, &out, &errOut)
+	if res.ExitCode != ExitFailure {
+		t.Fatalf("expected failure, got %d", res.ExitCode)
+	}
+	if strings.Contains(out.String(), "✓ TestOne") || strings.Contains(out.String(), "↷ TestTwo") {
+		t.Fatalf("expected passed/skipped tests hidden, got: %s", out.String())
+	}
+	if !strings.Contains(out.String(), "✗ TestThree") {
+		t.Fatalf("expected failed test line, got: %s", out.String())
+	}
+	if !strings.Contains(errOut.String(), "FAILED:") {
+		t.Fatalf("expected failed details, got: %s", errOut.String())
+	}
+}
+
 func TestRunTestStyleOverrideRejectsInvalidValue(t *testing.T) {
 	_ = setupTempWorkdirWithConfig(t, testConfigCue())
 	var out bytes.Buffer
@@ -625,6 +655,45 @@ func TestRunCovPerTestStyleOutput(t *testing.T) {
 devOutput: {
 	color: "false"
 	style: "per_test"
+}
+
+func TestRunCovFailedOnlyHidesPassOutput(t *testing.T) {
+	_ = setupTempWorkdirWithConfig(t, testConfigCue())
+	oldRun := runCommandCapture
+	t.Cleanup(func() { runCommandCapture = oldRun })
+	runCommandCapture = func(name string, args []string, env []string) (string, string, error) {
+		if name == "go" && len(args) >= 2 && args[0] == "tool" && args[1] == "cover" {
+			return "total: (statements) 80.0%\n", "", nil
+		}
+		return "", "", nil
+	}
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	res := Run([]string{"cov", "--failed-only"}, &out, &errOut)
+	if res.ExitCode != ExitOK {
+		t.Fatalf("expected success, got %d stderr=%s", res.ExitCode, errOut.String())
+	}
+	if strings.TrimSpace(out.String()) != "" {
+		t.Fatalf("expected no pass output, got: %s", out.String())
+	}
+}
+
+func TestRunLintFailedOnlyHidesPassOutput(t *testing.T) {
+	_ = setupTempWorkdirWithConfig(t, testConfigCue())
+	oldRun := runCommandCapture
+	t.Cleanup(func() { runCommandCapture = oldRun })
+	runCommandCapture = func(name string, args []string, env []string) (string, string, error) {
+		return "", "", nil
+	}
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	res := Run([]string{"lint", "--failed-only"}, &out, &errOut)
+	if res.ExitCode != ExitOK {
+		t.Fatalf("expected success, got %d stderr=%s", res.ExitCode, errOut.String())
+	}
+	if strings.TrimSpace(out.String()) != "" {
+		t.Fatalf("expected no pass output, got: %s", out.String())
+	}
 }
 `
 	_ = setupTempWorkdirWithConfig(t, cfg)
