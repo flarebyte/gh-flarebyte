@@ -23,7 +23,7 @@ coverage: {
 	fail_below_min: true
 }
 
-dev_output: {
+devOutput: {
 	color: "false"
 }
 `
@@ -193,7 +193,7 @@ func TestDiscoverGoFilesSkipsExcludedDirs(t *testing.T) {
 func TestRunTestPerTestStyleOutput(t *testing.T) {
 	cfg := testConfigCue() + `
 
-dev_output: {
+devOutput: {
 	color: "false"
 	style: "per_test"
 }
@@ -218,10 +218,10 @@ dev_output: {
 func TestRunTestHidePassedOutput(t *testing.T) {
 	cfg := testConfigCue() + `
 
-dev_output: {
+devOutput: {
 	color: "false"
 	style: "summary"
-	show_passed: false
+	showPassed: false
 }
 `
 	_ = setupTempWorkdirWithConfig(t, cfg)
@@ -237,7 +237,7 @@ dev_output: {
 		t.Fatalf("expected exit code %d, got %d", ExitOK, res.ExitCode)
 	}
 	if strings.TrimSpace(out.String()) != "" {
-		t.Fatalf("expected no pass output when show_passed=false, got: %s", out.String())
+		t.Fatalf("expected no pass output when showPassed=false, got: %s", out.String())
 	}
 }
 
@@ -637,7 +637,7 @@ coverage: {
 func TestRunCovPerTestStyleOutput(t *testing.T) {
 	cfg := testConfigCue() + `
 
-dev_output: {
+devOutput: {
 	color: "false"
 	style: "per_test"
 }

@@ -103,10 +103,10 @@ build: {
 	]
 }
 
-dev_output: {
+devOutput: {
 	color:       "auto"
 	style:       "summary"
-	show_passed: true
+	showPassed: true
 }
 
 release: {

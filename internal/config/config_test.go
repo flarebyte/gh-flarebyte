@@ -268,13 +268,13 @@ func TestLoadDefaultsForDevOutputAndCoverage(t *testing.T) {
 		t.Fatalf("expected valid config, got error: %v", err)
 	}
 	if cfg.DevOutput.Color != "auto" {
-		t.Fatalf("expected dev_output.color default auto, got %q", cfg.DevOutput.Color)
+		t.Fatalf("expected devOutput.color default auto, got %q", cfg.DevOutput.Color)
 	}
 	if cfg.DevOutput.Style != "summary" {
-		t.Fatalf("expected dev_output.style default summary, got %q", cfg.DevOutput.Style)
+		t.Fatalf("expected devOutput.style default summary, got %q", cfg.DevOutput.Style)
 	}
 	if !cfg.DevOutput.ShowPassed {
-		t.Fatalf("expected dev_output.show_passed default true")
+		t.Fatalf("expected devOutput.showPassed default true")
 	}
 	if !cfg.Coverage.FailBelowMin {
 		t.Fatalf("expected coverage.fail_below_min default true")
@@ -308,7 +308,7 @@ repository: {
 	labels: [{name: "bug", color: "B60205"}]
 }
 
-dev_output: {
+devOutput: {
 	color: "auto"
 	style: "verbose"
 }
@@ -333,9 +333,9 @@ release: {
 	}
 	_, err := Load(path)
 	if err == nil {
-		t.Fatalf("expected invalid dev_output.style error")
+		t.Fatalf("expected invalid devOutput.style error")
 	}
-	if !strings.Contains(err.Error(), "dev_output.style") {
+	if !strings.Contains(err.Error(), "devOutput.style") {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }

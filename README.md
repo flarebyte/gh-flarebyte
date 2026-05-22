@@ -47,7 +47,7 @@ The repo config lives in `.gh-flarebyte.cue` and is the source of truth for:
 - repository feature flags currently enforced by sync/audit: `repository.features.mergeCommit`, `repository.features.rebaseMerge`, `repository.features.squashMerge`, `repository.features.deleteBranchOnMerge`
 - build language, mode, and artifact policy
 - go command execution env for dev flows (`go.cache_dir`, `go.mod_cache_dir`, `go.toolchain`)
-- dev command output controls (`dev_output.color`, `dev_output.style`, `dev_output.show_passed`)
+- dev command output controls (`devOutput.color`, `devOutput.style`, `devOutput.showPassed`)
 - coverage threshold policy (`coverage.default_min_percent`, `coverage.fail_below_min`)
 - release settings
 - additional repository feature fields may exist in config but are not yet enforced by `repo update` / `repo audit`
@@ -88,10 +88,10 @@ go: {
   toolchain: "local"
 }
 
-dev_output: {
+devOutput: {
   color: "auto"
   style: "summary"
-  show_passed: true
+  showPassed: true
 }
 
 coverage: {
@@ -151,4 +151,4 @@ release: {
 - In `library` mode, `--target` applies `GOOS/GOARCH` cross-compile checks and does not force artifact generation.
 - `release.includeArtifacts` defaults to `true`. Set it to `false` to publish tag and notes without uploading binaries or checksums.
 - `gh flarebyte cov --min 90` overrides config coverage threshold for that invocation.
-- `dev_output.style` supports `summary` and `per_test`.
+- `devOutput.style` supports `summary` and `per_test`.

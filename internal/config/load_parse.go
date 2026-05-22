@@ -55,7 +55,7 @@ func parseCueConfig(raw string) (Config, error) {
 		"sync":       {},
 		"repository": {},
 		"go":         {},
-		"dev_output": {},
+		"devOutput":  {},
 		"coverage":   {},
 		"build":      {},
 		"release":    {},
@@ -157,11 +157,11 @@ func parseCueConfig(raw string) (Config, error) {
 		cfg.Go.ModCacheDir = extractOptionalStringField(goBlock, "mod_cache_dir")
 		cfg.Go.Toolchain = extractOptionalStringField(goBlock, "toolchain")
 	}
-	if devBlock, ok := extractOptionalObjectBlock(raw, "dev_output"); ok {
-		if err := assertOnlyAllowedFields("dev_output", devBlock, map[string]struct{}{
-			"color":       {},
-			"style":       {},
-			"show_passed": {},
+	if devBlock, ok := extractOptionalObjectBlock(raw, "devOutput"); ok {
+		if err := assertOnlyAllowedFields("devOutput", devBlock, map[string]struct{}{
+			"color":      {},
+			"style":      {},
+			"showPassed": {},
 		}); err != nil {
 			return cfg, err
 		}
@@ -171,7 +171,7 @@ func parseCueConfig(raw string) (Config, error) {
 			cfg.DevOutput.Color = extractOptionalStringField(devBlock, "color")
 		}
 		cfg.DevOutput.Style = extractOptionalStringField(devBlock, "style")
-		cfg.DevOutput.ShowPassed = extractOptionalBoolField(devBlock, "show_passed", true)
+		cfg.DevOutput.ShowPassed = extractOptionalBoolField(devBlock, "showPassed", true)
 	} else {
 		cfg.DevOutput.ShowPassed = true
 	}
