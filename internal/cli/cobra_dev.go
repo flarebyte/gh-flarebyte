@@ -91,8 +91,8 @@ func newCobraRoot(stdout, stderr io.Writer) *cobra.Command {
 	root.AddCommand(
 		newBuildCobraCommand(stdout, stderr),
 		newTestCobraCommand(stdout, stderr),
-		newDevSubCommand("format", handleFormat, stdout, stderr),
-		newDevSubCommand("lint", handleLint, stdout, stderr),
+		newFormatCobraCommand(stdout, stderr),
+		newLintCobraCommand(stdout, stderr),
 		newCovCobraCommand(stdout, stderr),
 		newReleaseCobraCommand(stdout, stderr),
 		newRepoCommand(stdout, stderr),
@@ -100,10 +100,6 @@ func newCobraRoot(stdout, stderr io.Writer) *cobra.Command {
 		newConfigCommand(stdout, stderr),
 	)
 	return root
-}
-
-func newDevSubCommand(name string, handler func([]string, io.Writer, io.Writer) Result, stdout, stderr io.Writer) *cobra.Command {
-	return newSubCommand(name, handler, stdout, stderr)
 }
 
 func newTestCobraCommand(stdout, stderr io.Writer) *cobra.Command {
@@ -134,6 +130,32 @@ func newTestCobraCommand(stdout, stderr io.Writer) *cobra.Command {
 	}
 	cmd.Flags().StringVar(&style, "style", "", "Override output style: summary or per_test")
 	cmd.Flags().StringVar(&color, "color", "", "Override color mode: auto, true, or false")
+	return cmd
+}
+
+func newFormatCobraCommand(stdout, stderr io.Writer) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:           "format",
+		SilenceUsage:  true,
+		SilenceErrors: true,
+		Args:          noExtraArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return resultToError(runFormat(stdout, stderr))
+		},
+	}
+	return cmd
+}
+
+func newLintCobraCommand(stdout, stderr io.Writer) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:           "lint",
+		SilenceUsage:  true,
+		SilenceErrors: true,
+		Args:          noExtraArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return resultToError(runLint(stdout, stderr))
+		},
+	}
 	return cmd
 }
 
@@ -309,20 +331,6 @@ func noExtraArgs(cmd *cobra.Command, args []string) error {
 		return exitCodeError{code: ExitUsage, err: fmt.Errorf("invalid invocation: unknown argument %q", args[0])}
 	}
 	return nil
-}
-
-func newSubCommand(name string, handler func([]string, io.Writer, io.Writer) Result, stdout, stderr io.Writer) *cobra.Command {
-	return &cobra.Command{
-		Use:                name,
-		DisableFlagParsing: true,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			res := handler(args, stdout, stderr)
-			if res.ExitCode != ExitOK || res.Err != nil {
-				return exitCodeError{code: res.ExitCode, err: res.Err}
-			}
-			return nil
-		},
-	}
 }
 
 func resultToError(res Result) error {

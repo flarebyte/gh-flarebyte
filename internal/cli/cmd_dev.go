@@ -116,11 +116,13 @@ func runTest(styleOverride, colorOverride string, stdout, stderr io.Writer) Resu
 	return Result{ExitCode: ExitOK}
 }
 
-func handleFormat(args []string, stdout, stderr io.Writer) Result {
-	cfg, env, start, res := prepareDevCommand(args, stdout, stderr, "format", "Format source files for the configured build language.")
-	if res != nil {
-		return *res
+func runFormat(stdout, stderr io.Writer) Result {
+	cfg, usage := loadConfigOrUsage(stderr)
+	if usage != nil {
+		return *usage
 	}
+	env := buildCommandEnv(cfg)
+	start := time.Now()
 	switch cfg.Build.Language {
 	case "go":
 		files, err := discoverGoFiles(".")
@@ -150,11 +152,13 @@ func handleFormat(args []string, stdout, stderr io.Writer) Result {
 	}
 }
 
-func handleLint(args []string, stdout, stderr io.Writer) Result {
-	cfg, env, start, res := prepareDevCommand(args, stdout, stderr, "lint", "Run lint/static checks for the configured build language.")
-	if res != nil {
-		return *res
+func runLint(stdout, stderr io.Writer) Result {
+	cfg, usage := loadConfigOrUsage(stderr)
+	if usage != nil {
+		return *usage
 	}
+	env := buildCommandEnv(cfg)
+	start := time.Now()
 	switch cfg.Build.Language {
 	case "go":
 		_, cmdErr, runErr := runCommandCapture("go", []string{"vet", "./..."}, env)
@@ -233,58 +237,10 @@ func runCov(min *float64, stdout, stderr io.Writer) Result {
 	}
 }
 
-func requireNoArgs(args []string, stderr io.Writer) *Result {
-	if len(args) == 0 {
-		return nil
-	}
-	err := fmt.Errorf("invalid invocation: unknown argument %q", args[0])
-	_, _ = fmt.Fprintln(stderr, err.Error())
-	res := Result{ExitCode: ExitUsage, Err: err}
-	return &res
-}
-
 func unsupportedLanguageResult(language string, stderr io.Writer) Result {
 	err := fmt.Errorf("build.language %q is not supported. Supported values: go, dart", language)
 	_, _ = fmt.Fprintln(stderr, err.Error())
 	return Result{ExitCode: ExitUsage, Err: err}
-}
-
-func prepareDevCommand(args []string, stdout io.Writer, stderr io.Writer, command string, helpText string) (config.Config, []string, time.Time, *Result) {
-	if isHelpArgs(args) {
-		_, _ = fmt.Fprintf(stdout, "Usage: gh flarebyte %s\n", command)
-		_, _ = fmt.Fprintln(stdout, helpText)
-		res := Result{ExitCode: ExitOK}
-		return config.Config{}, nil, time.Time{}, &res
-	}
-	if res := requireNoArgs(args, stderr); res != nil {
-		return config.Config{}, nil, time.Time{}, res
-	}
-	cfg, usage := loadConfigOrUsage(stderr)
-	if usage != nil {
-		return config.Config{}, nil, time.Time{}, usage
-	}
-	return cfg, buildCommandEnv(cfg), time.Now(), nil
-}
-
-func parseCovArgs(args []string) (*float64, error) {
-	var min *float64
-	for i := 0; i < len(args); i++ {
-		switch args[i] {
-		case "--min":
-			if i+1 >= len(args) {
-				return nil, fmt.Errorf("invalid invocation: --min requires a numeric percentage")
-			}
-			v, err := strconv.ParseFloat(args[i+1], 64)
-			if err != nil || v < 0 || v > 100 {
-				return nil, fmt.Errorf("invalid invocation: --min must be a number between 0 and 100")
-			}
-			min = &v
-			i++
-		default:
-			return nil, fmt.Errorf("invalid invocation: unknown argument %q", args[i])
-		}
-	}
-	return min, nil
 }
 
 func resolveCoverageMin(cliMin *float64, cfg config.Config) *float64 {
@@ -530,8 +486,4 @@ func extractFailureLocation(output string) string {
 		return ""
 	}
 	return m[1]
-}
-
-func isHelpArgs(args []string) bool {
-	return len(args) == 1 && (args[0] == "--help" || args[0] == "-h")
 }

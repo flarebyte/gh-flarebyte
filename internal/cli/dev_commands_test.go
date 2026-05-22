@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"testing"
 
@@ -280,46 +279,6 @@ func TestRunCovUsesUniqueProfileTempPath(t *testing.T) {
 	}
 }
 
-func TestParseCovArgs(t *testing.T) {
-	tests := []struct {
-		name    string
-		args    []string
-		wantNil bool
-		wantErr bool
-		wantVal float64
-	}{
-		{name: "none", args: nil, wantNil: true},
-		{name: "valid", args: []string{"--min", "80.5"}, wantVal: 80.5},
-		{name: "missing value", args: []string{"--min"}, wantErr: true},
-		{name: "invalid value", args: []string{"--min", "bad"}, wantErr: true},
-		{name: "out of range", args: []string{"--min", "120"}, wantErr: true},
-		{name: "unknown arg", args: []string{"--wat"}, wantErr: true},
-	}
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			got, err := parseCovArgs(tc.args)
-			if tc.wantErr {
-				if err == nil {
-					t.Fatalf("expected error")
-				}
-				return
-			}
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
-			if tc.wantNil {
-				if got != nil {
-					t.Fatalf("expected nil, got %v", *got)
-				}
-				return
-			}
-			if got == nil || strconv.FormatFloat(*got, 'f', -1, 64) != strconv.FormatFloat(tc.wantVal, 'f', -1, 64) {
-				t.Fatalf("expected %.2f, got %v", tc.wantVal, got)
-			}
-		})
-	}
-}
-
 func TestUseColorModes(t *testing.T) {
 	oldNoColor, hadNoColor := os.LookupEnv("NO_COLOR")
 	oldTerm, hadTerm := os.LookupEnv("TERM")
@@ -411,11 +370,11 @@ func TestDevCommandHelpHandlers(t *testing.T) {
 		t.Fatalf("expected color flag in test help, got: %s", out.String())
 	}
 	out.Reset()
-	if res := handleFormat([]string{"--help"}, &out, &errOut); res.ExitCode != ExitOK || !strings.Contains(out.String(), "Usage: gh flarebyte format") {
+	if res := Run([]string{"format", "--help"}, &out, &errOut); res.ExitCode != ExitOK || !strings.Contains(out.String(), "Usage:") {
 		t.Fatalf("unexpected format help output: code=%d out=%s", res.ExitCode, out.String())
 	}
 	out.Reset()
-	if res := handleLint([]string{"-h"}, &out, &errOut); res.ExitCode != ExitOK || !strings.Contains(out.String(), "Usage: gh flarebyte lint") {
+	if res := Run([]string{"lint", "-h"}, &out, &errOut); res.ExitCode != ExitOK || !strings.Contains(out.String(), "Usage:") {
 		t.Fatalf("unexpected lint help output: code=%d out=%s", res.ExitCode, out.String())
 	}
 }
@@ -426,10 +385,10 @@ func TestDevCommandUsageErrors(t *testing.T) {
 	if res := Run([]string{"test", "--bad"}, &out, &errOut); res.ExitCode != ExitUsage {
 		t.Fatalf("expected usage error for test, got %d", res.ExitCode)
 	}
-	if res := handleFormat([]string{"--bad"}, &out, &errOut); res.ExitCode != ExitUsage {
+	if res := Run([]string{"format", "--bad"}, &out, &errOut); res.ExitCode != ExitUsage {
 		t.Fatalf("expected usage error for format, got %d", res.ExitCode)
 	}
-	if res := handleLint([]string{"--bad"}, &out, &errOut); res.ExitCode != ExitUsage {
+	if res := Run([]string{"lint", "--bad"}, &out, &errOut); res.ExitCode != ExitUsage {
 		t.Fatalf("expected usage error for lint, got %d", res.ExitCode)
 	}
 }
