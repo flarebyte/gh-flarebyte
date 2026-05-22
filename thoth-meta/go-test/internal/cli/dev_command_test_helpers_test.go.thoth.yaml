@@ -1,5 +1,8 @@
 locator: internal/cli/dev_command_test_helpers_test.go
 meta:
+  purpose: Provide shared test fixtures for dev command test suites to avoid repeated inline config blocks.
+  responsibilities: Build reusable config snippets used by multiple dev command tests.
+  architecture_notes: Helpers stay minimal and deterministic so tests remain explicit while reducing duplication noise.
   function_list:
     - perTestStyleConfig
   import_files_list: []

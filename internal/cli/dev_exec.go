@@ -1,3 +1,6 @@
+// purpose: Provide shared command-execution and environment helpers for dev workflows.
+// responsibilities: Execute allowed toolchain commands; build process env; discover Go files; prepare config/env for dev commands.
+// architecture notes: Command names are statically allowlisted and constructed via fixed exec branches to satisfy security analysis and reduce injection risk.
 package cli
 
 import (

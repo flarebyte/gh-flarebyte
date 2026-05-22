@@ -1,3 +1,6 @@
+// purpose: Validate test command behavior for style/color overrides, filtering, and failure reporting.
+// responsibilities: Cover arg validation, env wiring, per_test rendering, showPassed behavior, and failure snippet propagation.
+// architecture notes: Tests use captured command output stubs so assertions stay stable independent of real `go test` execution.
 package cli
 
 import (

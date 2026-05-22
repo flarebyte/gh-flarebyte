@@ -1,4 +1,6 @@
 // purpose: Verify shared developer-command helper behavior.
+// responsibilities: Exercise helper-level parsing, formatting, color policy, and filesystem discovery behavior.
+// architecture notes: Focuses on pure/helper functions to catch regressions early without end-to-end command setup overhead.
 package cli
 
 import (

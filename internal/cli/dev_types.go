@@ -1,3 +1,6 @@
+// purpose: Define shared dev-command data structures used across parse, execution, and output layers.
+// responsibilities: Model summary payloads, go test events, failure snippets, reports, and coverage detail records.
+// architecture notes: Types are split from command logic to keep cross-file contracts explicit after cmd_dev decomposition.
 package cli
 
 import "time"

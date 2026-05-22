@@ -1,3 +1,6 @@
+// purpose: Validate coverage command behavior including thresholds, output styles, and failure handling.
+// responsibilities: Exercise cov flag parsing, coverage threshold enforcement, per_test rendering, and error paths via stubs.
+// architecture notes: Tests stub command execution to isolate CLI behavior from real toolchain output variability.
 package cli
 
 import (

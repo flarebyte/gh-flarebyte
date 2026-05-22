@@ -1,3 +1,6 @@
+// purpose: Validate format and lint command routing, usage handling, and failure semantics.
+// responsibilities: Assert help/usage output, language dispatch, pass/fail behavior, and failed-only output suppression.
+// architecture notes: Command runner stubs keep tests deterministic and focused on CLI orchestration rather than external tools.
 package cli
 
 import (

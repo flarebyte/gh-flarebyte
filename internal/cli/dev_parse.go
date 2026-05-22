@@ -1,3 +1,6 @@
+// purpose: Parse raw tool outputs into typed test/coverage summaries used by dev commands.
+// responsibilities: Extract total coverage; parse per-entry coverage details; decode go test JSON events into structured reports.
+// architecture notes: Parsers are intentionally tolerant of unrelated lines so command summaries remain stable across minor tool output changes.
 package cli
 
 import (

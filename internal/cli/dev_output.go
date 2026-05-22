@@ -1,3 +1,6 @@
+// purpose: Render dev-command output in consistent summary and per-test/per-entry formats.
+// responsibilities: Format status lines; apply color policy; print test and coverage entries; format failure snippets.
+// architecture notes: Output behavior is config-driven (`devOutput`) so presentation can evolve without changing command execution paths.
 package cli
 
 import (
