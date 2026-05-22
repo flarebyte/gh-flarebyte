@@ -110,20 +110,14 @@ func newTestCobraCommand(stdout, stderr io.Writer) *cobra.Command {
 		Use:           "test",
 		SilenceUsage:  true,
 		SilenceErrors: true,
-		Args: func(cmd *cobra.Command, args []string) error {
-			if len(args) > 0 {
-				return exitCodeError{code: ExitUsage, err: fmt.Errorf("invalid invocation: unknown argument %q", args[0])}
-			}
-			return nil
-		},
+		Args:          noExtraArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if style != "" && style != "summary" && style != "per_test" {
 				_, _ = fmt.Fprintf(stderr, "invalid invocation: --style %q is not supported; expected summary or per_test\n", style)
 				return exitCodeError{code: ExitUsage, err: fmt.Errorf("invalid invocation: --style %q is not supported; expected summary or per_test", style)}
 			}
-			if color != "" && color != "auto" && color != "true" && color != "false" {
-				_, _ = fmt.Fprintf(stderr, "invalid invocation: --color %q is not supported; expected auto, true, or false\n", color)
-				return exitCodeError{code: ExitUsage, err: fmt.Errorf("invalid invocation: --color %q is not supported; expected auto, true, or false", color)}
+			if err := validateColorFlag(color, stderr); err != nil {
+				return err
 			}
 			res := runTest(style, color, failedOnly, stdout, stderr)
 			return resultToError(res)
@@ -157,9 +151,8 @@ func newLintCobraCommand(stdout, stderr io.Writer) *cobra.Command {
 		SilenceErrors: true,
 		Args:          noExtraArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if color != "" && color != "auto" && color != "true" && color != "false" {
-				_, _ = fmt.Fprintf(stderr, "invalid invocation: --color %q is not supported; expected auto, true, or false\n", color)
-				return exitCodeError{code: ExitUsage, err: fmt.Errorf("invalid invocation: --color %q is not supported; expected auto, true, or false", color)}
+			if err := validateColorFlag(color, stderr); err != nil {
+				return err
 			}
 			return resultToError(runLint(color, failedOnly, stdout, stderr))
 		},
@@ -178,12 +171,7 @@ func newCovCobraCommand(stdout, stderr io.Writer) *cobra.Command {
 		Short:         "Compute test coverage. --min sets a failure threshold percentage (0-100).",
 		SilenceUsage:  true,
 		SilenceErrors: true,
-		Args: func(cmd *cobra.Command, args []string) error {
-			if len(args) > 0 {
-				return exitCodeError{code: ExitUsage, err: fmt.Errorf("invalid invocation: unknown argument %q", args[0])}
-			}
-			return nil
-		},
+		Args:          noExtraArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var minPtr *float64
 			if cmd.Flags().Changed("min") {
@@ -193,9 +181,8 @@ func newCovCobraCommand(stdout, stderr io.Writer) *cobra.Command {
 				}
 				minPtr = &min
 			}
-			if color != "" && color != "auto" && color != "true" && color != "false" {
-				_, _ = fmt.Fprintf(stderr, "invalid invocation: --color %q is not supported; expected auto, true, or false\n", color)
-				return exitCodeError{code: ExitUsage, err: fmt.Errorf("invalid invocation: --color %q is not supported; expected auto, true, or false", color)}
+			if err := validateColorFlag(color, stderr); err != nil {
+				return err
 			}
 			res := runCov(minPtr, color, failedOnly, stdout, stderr)
 			return resultToError(res)
@@ -247,12 +234,7 @@ func newBuildCobraCommand(stdout, stderr io.Writer) *cobra.Command {
 		Use:           "build",
 		SilenceUsage:  true,
 		SilenceErrors: true,
-		Args: func(cmd *cobra.Command, args []string) error {
-			if len(args) > 0 {
-				return exitCodeError{code: ExitUsage, err: fmt.Errorf("invalid invocation: unknown argument %q", args[0])}
-			}
-			return nil
-		},
+		Args:          noExtraArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return resultToError(runBuild(target, outputDir, stdout, stderr))
 		},
@@ -269,12 +251,7 @@ func newReleaseCobraCommand(stdout, stderr io.Writer) *cobra.Command {
 		Use:           "release",
 		SilenceUsage:  true,
 		SilenceErrors: true,
-		Args: func(cmd *cobra.Command, args []string) error {
-			if len(args) > 0 {
-				return exitCodeError{code: ExitUsage, err: fmt.Errorf("invalid invocation: unknown argument %q", args[0])}
-			}
-			return nil
-		},
+		Args:          noExtraArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return resultToError(runRelease(draft, notesFile, stdout, stderr))
 		},
@@ -349,6 +326,14 @@ func noExtraArgs(cmd *cobra.Command, args []string) error {
 		return exitCodeError{code: ExitUsage, err: fmt.Errorf("invalid invocation: unknown argument %q", args[0])}
 	}
 	return nil
+}
+
+func validateColorFlag(color string, stderr io.Writer) error {
+	if color == "" || color == "auto" || color == "true" || color == "false" {
+		return nil
+	}
+	_, _ = fmt.Fprintf(stderr, "invalid invocation: --color %q is not supported; expected auto, true, or false\n", color)
+	return exitCodeError{code: ExitUsage, err: fmt.Errorf("invalid invocation: --color %q is not supported; expected auto, true, or false", color)}
 }
 
 func resultToError(res Result) error {
