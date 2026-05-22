@@ -108,6 +108,7 @@ func newDevSubCommand(name string, handler func([]string, io.Writer, io.Writer) 
 
 func newTestCobraCommand(stdout, stderr io.Writer) *cobra.Command {
 	var style string
+	var color string
 	cmd := &cobra.Command{
 		Use:           "test",
 		SilenceUsage:  true,
@@ -123,11 +124,16 @@ func newTestCobraCommand(stdout, stderr io.Writer) *cobra.Command {
 				_, _ = fmt.Fprintf(stderr, "invalid invocation: --style %q is not supported; expected summary or per_test\n", style)
 				return exitCodeError{code: ExitUsage, err: fmt.Errorf("invalid invocation: --style %q is not supported; expected summary or per_test", style)}
 			}
-			res := runTest(style, stdout, stderr)
+			if color != "" && color != "auto" && color != "true" && color != "false" {
+				_, _ = fmt.Fprintf(stderr, "invalid invocation: --color %q is not supported; expected auto, true, or false\n", color)
+				return exitCodeError{code: ExitUsage, err: fmt.Errorf("invalid invocation: --color %q is not supported; expected auto, true, or false", color)}
+			}
+			res := runTest(style, color, stdout, stderr)
 			return resultToError(res)
 		},
 	}
 	cmd.Flags().StringVar(&style, "style", "", "Override output style: summary or per_test")
+	cmd.Flags().StringVar(&color, "color", "", "Override color mode: auto, true, or false")
 	return cmd
 }
 

@@ -67,25 +67,28 @@ var runCommandCapture = func(name string, args []string, env []string) (string, 
 
 func handleTest(args []string, stdout, stderr io.Writer) Result {
 	if isHelpArgs(args) {
-		_, _ = fmt.Fprintln(stdout, "Usage: gh flarebyte test [--style summary|per_test]")
+		_, _ = fmt.Fprintln(stdout, "Usage: gh flarebyte test [--style summary|per_test] [--color auto|true|false]")
 		_, _ = fmt.Fprintln(stdout, "Run unit tests for the configured build language.")
 		return Result{ExitCode: ExitOK}
 	}
-	styleOverride, err := parseTestArgs(args)
+	styleOverride, colorOverride, err := parseTestArgs(args)
 	if err != nil {
 		_, _ = fmt.Fprintln(stderr, err.Error())
 		return Result{ExitCode: ExitUsage, Err: err}
 	}
-	return runTest(styleOverride, stdout, stderr)
+	return runTest(styleOverride, colorOverride, stdout, stderr)
 }
 
-func runTest(styleOverride string, stdout, stderr io.Writer) Result {
+func runTest(styleOverride, colorOverride string, stdout, stderr io.Writer) Result {
 	cfg, usage := loadConfigOrUsage(stderr)
 	if usage != nil {
 		return *usage
 	}
 	if styleOverride != "" {
 		cfg.DevOutput.Style = styleOverride
+	}
+	if colorOverride != "" {
+		cfg.DevOutput.Color = colorOverride
 	}
 	env := buildCommandEnv(cfg)
 	start := time.Now()
@@ -128,24 +131,34 @@ func runTest(styleOverride string, stdout, stderr io.Writer) Result {
 	return Result{ExitCode: ExitOK}
 }
 
-func parseTestArgs(args []string) (string, error) {
-	style := ""
+func parseTestArgs(args []string) (style string, color string, err error) {
+	style = ""
+	color = ""
 	for i := 0; i < len(args); i++ {
 		switch args[i] {
 		case "--style":
 			if i+1 >= len(args) {
-				return "", errors.New("invalid invocation: --style requires one of summary or per_test")
+				return "", "", errors.New("invalid invocation: --style requires one of summary or per_test")
 			}
 			style = args[i+1]
 			if style != "summary" && style != "per_test" {
-				return "", fmt.Errorf("invalid invocation: --style %q is not supported; expected summary or per_test", style)
+				return "", "", fmt.Errorf("invalid invocation: --style %q is not supported; expected summary or per_test", style)
+			}
+			i++
+		case "--color":
+			if i+1 >= len(args) {
+				return "", "", errors.New("invalid invocation: --color requires one of auto, true, or false")
+			}
+			color = args[i+1]
+			if color != "auto" && color != "true" && color != "false" {
+				return "", "", fmt.Errorf("invalid invocation: --color %q is not supported; expected auto, true, or false", color)
 			}
 			i++
 		default:
-			return "", fmt.Errorf("invalid invocation: unknown argument %q", args[i])
+			return "", "", fmt.Errorf("invalid invocation: unknown argument %q", args[i])
 		}
 	}
-	return style, nil
+	return style, color, nil
 }
 
 func handleFormat(args []string, stdout, stderr io.Writer) Result {

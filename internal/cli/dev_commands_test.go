@@ -407,6 +407,9 @@ func TestDevCommandHelpHandlers(t *testing.T) {
 	if !strings.Contains(out.String(), "--style summary|per_test") {
 		t.Fatalf("expected style flag in test help, got: %s", out.String())
 	}
+	if !strings.Contains(out.String(), "--color auto|true|false") {
+		t.Fatalf("expected color flag in test help, got: %s", out.String())
+	}
 	out.Reset()
 	if res := handleFormat([]string{"--help"}, &out, &errOut); res.ExitCode != ExitOK || !strings.Contains(out.String(), "Usage: gh flarebyte format") {
 		t.Fatalf("unexpected format help output: code=%d out=%s", res.ExitCode, out.String())
@@ -459,6 +462,19 @@ func TestRunTestStyleOverrideRejectsInvalidValue(t *testing.T) {
 	}
 	if !strings.Contains(errOut.String(), "--style") {
 		t.Fatalf("expected style error, got: %s", errOut.String())
+	}
+}
+
+func TestRunTestColorOverrideRejectsInvalidValue(t *testing.T) {
+	_ = setupTempWorkdirWithConfig(t, testConfigCue())
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	res := Run([]string{"test", "--color", "bad"}, &out, &errOut)
+	if res.ExitCode != ExitUsage {
+		t.Fatalf("expected usage error, got %d", res.ExitCode)
+	}
+	if !strings.Contains(errOut.String(), "--color") {
+		t.Fatalf("expected color error, got: %s", errOut.String())
 	}
 }
 
