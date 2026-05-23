@@ -84,7 +84,7 @@ func findCGODependencies(goos string, goarch string, packages []string) ([]strin
 	if goos != "" && goarch != "" {
 		env = append(env, "GOOS="+goos, "GOARCH="+goarch)
 	}
-	args := append([]string{"list", "-deps", "-f", "{{if .CgoFiles}}{{.ImportPath}}{{end}}"}, packages...)
+	args := append([]string{"list", "-deps", "-f", "{{if and .CgoFiles (not .Standard)}}{{.ImportPath}}{{end}}"}, packages...)
 	cmd := exec.Command("go", args...)
 	cmd.Env = env
 	out, err := cmd.Output()
