@@ -49,8 +49,8 @@ export type GoCGOConfig = {
 };
 
 export type GoConfig = {
-  cache_dir?: string;
-  mod_cache_dir?: string;
+  cacheDir?: string;
+  modCacheDir?: string;
   toolchain?: string;
   cgo?: GoCGOConfig;
 };

@@ -142,15 +142,15 @@ func parseCueConfig(raw string) (Config, error) {
 	}
 	if goBlock, ok := extractOptionalObjectBlock(raw, "go"); ok {
 		if err := assertOnlyAllowedFields("go", goBlock, map[string]struct{}{
-			"cache_dir":     {},
-			"mod_cache_dir": {},
-			"toolchain":     {},
-			"cgo":           {},
+			"cacheDir":    {},
+			"modCacheDir": {},
+			"toolchain":   {},
+			"cgo":         {},
 		}); err != nil {
 			return cfg, err
 		}
-		cfg.Go.CacheDir = extractOptionalStringField(goBlock, "cache_dir")
-		cfg.Go.ModCacheDir = extractOptionalStringField(goBlock, "mod_cache_dir")
+		cfg.Go.CacheDir = extractOptionalStringField(goBlock, "cacheDir")
+		cfg.Go.ModCacheDir = extractOptionalStringField(goBlock, "modCacheDir")
 		cfg.Go.Toolchain = extractOptionalStringField(goBlock, "toolchain")
 		if cgoBlock, ok := extractOptionalObjectBlock(goBlock, "cgo"); ok {
 			if err := assertOnlyAllowedFields("go.cgo", cgoBlock, map[string]struct{}{
@@ -191,13 +191,13 @@ func parseCueConfig(raw string) (Config, error) {
 	}
 	if coverageBlock, ok := extractOptionalObjectBlock(raw, "coverage"); ok {
 		if err := assertOnlyAllowedFields("coverage", coverageBlock, map[string]struct{}{
-			"default_min_percent": {},
-			"fail_below_min":      {},
+			"min":        {},
+			"enforceMin": {},
 		}); err != nil {
 			return cfg, err
 		}
-		cfg.Coverage.DefaultMinPercent = extractOptionalNumberPointerField(coverageBlock, "default_min_percent")
-		cfg.Coverage.FailBelowMin = extractOptionalBoolField(coverageBlock, "fail_below_min", true)
+		cfg.Coverage.DefaultMinPercent = extractOptionalNumberPointerField(coverageBlock, "min")
+		cfg.Coverage.FailBelowMin = extractOptionalBoolField(coverageBlock, "enforceMin", true)
 	} else {
 		cfg.Coverage.FailBelowMin = true
 	}

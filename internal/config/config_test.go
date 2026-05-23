@@ -277,10 +277,10 @@ func TestLoadDefaultsForDevOutputAndCoverage(t *testing.T) {
 		t.Fatalf("expected devOutput.showPassed default true")
 	}
 	if !cfg.Coverage.FailBelowMin {
-		t.Fatalf("expected coverage.fail_below_min default true")
+		t.Fatalf("expected coverage.enforceMin default true")
 	}
 	if cfg.Coverage.DefaultMinPercent != nil {
-		t.Fatalf("expected nil default coverage.default_min_percent")
+		t.Fatalf("expected nil default coverage.min")
 	}
 }
 

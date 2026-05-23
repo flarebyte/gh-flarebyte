@@ -14,8 +14,8 @@ func TestRunTestGoUsesConfiguredCaches(t *testing.T) {
 	cfg := testConfigCue() + `
 
 go: {
-	cache_dir: "./.gocache"
-	mod_cache_dir: "./.gomodcache"
+	cacheDir: "./.gocache"
+	modCacheDir: "./.gomodcache"
 	toolchain: "local"
 }
 `
