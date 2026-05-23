@@ -156,6 +156,8 @@ release: {
   - when `false` with multiple targets, artifacts are written under per-target subdirectories to avoid filename collisions.
 - In `library` mode, `--target` applies `GOOS/GOARCH` cross-compile checks and does not force artifact generation.
 - `go.cgo` uses camelCase keys only: `enabled`, `cc`, `cxx`.
+- `go.cacheDir` and `go.modCacheDir` should be project-relative (for example `./.gocache`); `gh flarebyte` resolves them to absolute paths at runtime before invoking Go.
+- Absolute `go.cacheDir` and `go.modCacheDir` values still work, but emit portability warnings.
 - When `go.cgo.enabled: true`, `gh flarebyte build` sets `CGO_ENABLED=1` (and applies `CC`/`CXX` when configured).
 - When `go.cgo.enabled: false`, the build keeps `CGO_ENABLED=0` and fails with a policy error if CGO-backed dependencies are detected.
 - `release.includeArtifacts` defaults to `true`. Set it to `false` to publish tag and notes without uploading binaries or checksums.

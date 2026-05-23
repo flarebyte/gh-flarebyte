@@ -6,6 +6,7 @@ package cli
 import (
 	"bytes"
 	"fmt"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -33,11 +34,59 @@ go: {
 	if res.ExitCode != ExitOK {
 		t.Fatalf("expected exit code %d, got %d err=%v stderr=%s", ExitOK, res.ExitCode, res.Err, errOut.String())
 	}
-	want := []string{"GOCACHE=./.gocache", "GOMODCACHE=./.gomodcache", "GOTOOLCHAIN=local"}
+	cacheAbs, err := filepath.Abs("./.gocache")
+	if err != nil {
+		t.Fatalf("abs cache path: %v", err)
+	}
+	modCacheAbs, err := filepath.Abs("./.gomodcache")
+	if err != nil {
+		t.Fatalf("abs mod cache path: %v", err)
+	}
+	want := []string{"GOCACHE=" + cacheAbs, "GOMODCACHE=" + modCacheAbs, "GOTOOLCHAIN=local"}
 	for _, entry := range want {
 		if !contains(captured, entry) {
 			t.Fatalf("expected env to include %q", entry)
 		}
+	}
+	if strings.Contains(errOut.String(), "warning: config.go.cacheDir is absolute") || strings.Contains(errOut.String(), "warning: config.go.modCacheDir is absolute") {
+		t.Fatalf("expected no absolute-path warning for relative config, got: %s", errOut.String())
+	}
+}
+
+func TestRunTestGoWarnsWhenCachesAreAbsolute(t *testing.T) {
+	cfg := testConfigCue() + `
+
+go: {
+	cacheDir: "/tmp/codex-abs-gocache"
+	modCacheDir: "/tmp/codex-abs-gomodcache"
+	toolchain: "local"
+}
+`
+	_ = setupTempWorkdirWithConfig(t, cfg)
+	oldRun := runCommandCapture
+	t.Cleanup(func() { runCommandCapture = oldRun })
+	var captured []string
+	runCommandCapture = func(name string, args []string, env []string) (string, string, error) {
+		captured = env
+		return "", "", nil
+	}
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	res := Run([]string{"test"}, &out, &errOut)
+	if res.ExitCode != ExitOK {
+		t.Fatalf("expected exit code %d, got %d err=%v stderr=%s", ExitOK, res.ExitCode, res.Err, errOut.String())
+	}
+	want := []string{"GOCACHE=/tmp/codex-abs-gocache", "GOMODCACHE=/tmp/codex-abs-gomodcache", "GOTOOLCHAIN=local"}
+	for _, entry := range want {
+		if !contains(captured, entry) {
+			t.Fatalf("expected env to include %q", entry)
+		}
+	}
+	if !strings.Contains(errOut.String(), "warning: config.go.cacheDir is absolute (/tmp/codex-abs-gocache)") {
+		t.Fatalf("expected cacheDir absolute warning, got: %s", errOut.String())
+	}
+	if !strings.Contains(errOut.String(), "warning: config.go.modCacheDir is absolute (/tmp/codex-abs-gomodcache)") {
+		t.Fatalf("expected modCacheDir absolute warning, got: %s", errOut.String())
 	}
 }
 
