@@ -8,14 +8,11 @@
 
 GO := go
 BUN := bun
-GOLINT := golangci-lint
 ROOT_DIR := $(CURDIR)
 TMP_DIR := $(ROOT_DIR)/tmp
 GO_CACHE_DIR := $(ROOT_DIR)/.gocache
 GO_MOD_CACHE_DIR := $(ROOT_DIR)/.gomodcache
-GO_LINT_CACHE_DIR := $(ROOT_DIR)/.golangci-lint-cache
 E2E_BIN_DIR := $(ROOT_DIR)/.e2e-bin
-BUILD_DIR := $(ROOT_DIR)/build
 CLI_BIN := $(E2E_BIN_DIR)/gh-flarebyte
 GO_PACKAGES := ./...
 GO_ENV := GOTOOLCHAIN=local GOCACHE=$(GO_CACHE_DIR) GOMODCACHE=$(GO_MOD_CACHE_DIR)
@@ -23,9 +20,6 @@ BUN_ENV := TMPDIR=$(TMP_DIR)
 BIOME := $(BUN_ENV) $(BUN)x @biomejs/biome
 THOTH := thoth
 FLYB := flyb
-GOLINT_ENV := $(GO_ENV) GOLANGCI_LINT_CACHE=$(GO_LINT_CACHE_DIR)
-COVER_PROFILE := $(TMP_DIR)/test-unit.coverage.out
-COVER_HTML := $(TMP_DIR)/test-unit.coverage.html
 VERSION ?= dev
 COMMIT ?= unknown
 BUILD_DATE ?= unknown
@@ -47,10 +41,9 @@ test: test-go test-e2e
 
 test-go: test-unit
 
-test-unit:
+test-unit: build-go
 	mkdir -p $(TMP_DIR)
-	$(GO_ENV) $(GO) test -v -coverprofile=$(COVER_PROFILE) -covermode=count $(GO_PACKAGES)
-	$(GO_ENV) $(GO) tool cover -func=$(COVER_PROFILE)
+	$(CLI_BIN) test --style per_test
 
 test-race:
 	mkdir -p $(TMP_DIR)
@@ -58,9 +51,9 @@ test-race:
 
 coverage: coverage-go
 
-coverage-go: test-unit
-	$(GO_ENV) $(GO) tool cover -html=$(COVER_PROFILE) -o $(COVER_HTML)
-	@printf "Coverage HTML: %s\n" "$(COVER_HTML)"
+coverage-go: build-go
+	mkdir -p $(TMP_DIR)
+	$(CLI_BIN) cov
 
 test-e2e: build-go
 	mkdir -p $(TMP_DIR)
@@ -68,10 +61,9 @@ test-e2e: build-go
 
 lint: lint-go lint-e2e
 
-lint-go:
+lint-go: build-go
 	mkdir -p $(TMP_DIR)
-	$(GO_ENV) $(GO) vet $(GO_PACKAGES)
-	$(GOLINT_ENV) $(GOLINT) run
+	$(CLI_BIN) lint
 
 lint-e2e:
 	mkdir -p $(TMP_DIR)
@@ -82,15 +74,9 @@ format: format-go format-e2e
 
 review: format test lint
 
-format-go:
+format-go: build-go
 	mkdir -p $(TMP_DIR)
-	find . -type f -name '*.go' \
-		-not -path './.git/*' \
-		-not -path './.gocache/*' \
-		-not -path './.gomodcache/*' \
-		-not -path './.e2e-bin/*' \
-		-not -path './node_modules/*' \
-		-print0 | xargs -0 -r gofmt -w
+	$(CLI_BIN) format
 
 format-e2e:
 	mkdir -p $(TMP_DIR)
@@ -136,7 +122,6 @@ thoth-meta-ts-e2e:
 check-tools:
 	@printf "go=%s\n" "$$(command -v $(GO) >/dev/null 2>&1 && printf true || printf false)"
 	@printf "bun=%s\n" "$$(command -v $(BUN) >/dev/null 2>&1 && printf true || printf false)"
-	@printf "golangci-lint=%s\n" "$$(command -v $(GOLINT) >/dev/null 2>&1 && printf true || printf false)"
 	@printf "flyb=%s\n" "$$(command -v $(FLYB) >/dev/null 2>&1 && printf true || printf false)"
 	@printf "thoth=%s\n" "$$(command -v $(THOTH) >/dev/null 2>&1 && printf true || printf false)"
 	@printf "semgrep=%s\n" "$$(command -v semgrep >/dev/null 2>&1 && printf true || printf false)"
@@ -147,7 +132,6 @@ install-tools-help:
 	@printf "Install required tools:\n"
 	@printf "  go: https://go.dev/doc/install\n"
 	@printf "  bun: https://bun.sh/docs/installation\n"
-	@printf "  golangci-lint: https://golangci-lint.run/welcome/install/\n"
 	@printf "  flyb: install the flyb CLI used for doc generation.\n"
 	@printf "  thoth: install the thoth CLI used for metadata pipelines.\n"
 	@printf "  semgrep: https://semgrep.dev/docs/getting-started/cli\n"
@@ -161,16 +145,16 @@ help:
 	@printf "  build-dist   Build artifacts via local gh-flarebyte build config.\n"
 	@printf "  test         Run Go tests and Bun E2E tests.\n"
 	@printf "  test-go      Run Go test targets.\n"
-	@printf "  test-unit    Run verbose Go tests and print coverage summary.\n"
+	@printf "  test-unit    Run tests via gh flarebyte test (per-test output).\n"
 	@printf "  test-race    Run Go tests with the race detector.\n"
 	@printf "  test-e2e     Build the CLI and run Bun E2E tests.\n"
-	@printf "  coverage     Generate the coverage HTML report.\n"
-	@printf "  coverage-go  Generate the Go coverage HTML report from test-unit output.\n"
+	@printf "  coverage     Run coverage checks via gh flarebyte cov.\n"
+	@printf "  coverage-go  Run coverage checks via gh flarebyte cov.\n"
 	@printf "  lint         Run Go linting and Biome checks.\n"
-	@printf "  lint-go      Run go vet and golangci-lint.\n"
+	@printf "  lint-go      Run lint checks via gh flarebyte lint.\n"
 	@printf "  lint-e2e     Run Biome checks for TypeScript and tooling files.\n"
 	@printf "  format       Format Go and Biome-managed files.\n"
-	@printf "  format-go    Format Go files with gofmt.\n"
+	@printf "  format-go    Format Go sources via gh flarebyte format.\n"
 	@printf "  format-e2e   Format TypeScript and tooling files with Biome.\n"
 	@printf "  review       Run format, test, and lint using existing targets.\n"
 	@printf "  doc-design   Regenerate design docs from flyb configs.\n"
