@@ -7,6 +7,7 @@ meta:
     - newAllowedDevCommand
     - prepareDevCommand
     - resolveCoverageMin
+    - resolvePortablePath
     - unsupportedLanguageResult
   import_files_list:
     - fmt

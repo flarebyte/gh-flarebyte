@@ -56,18 +56,49 @@ func resolveCoverageMin(cliMin *float64, cfg config.Config) *float64 {
 	return cfg.Coverage.DefaultMinPercent
 }
 
-func buildCommandEnv(cfg config.Config) []string {
+func buildCommandEnv(cfg config.Config, stderr io.Writer) []string {
 	env := os.Environ()
 	if cfg.Go.CacheDir != "" {
-		env = append(env, "GOCACHE="+cfg.Go.CacheDir)
+		cacheDir, warned := resolvePortablePath(cfg.Go.CacheDir)
+		if warned {
+			_, _ = fmt.Fprintf(stderr, "warning: config.go.cacheDir is absolute (%s). Prefer a project-relative path like ./.gocache for portable config.\n", cfg.Go.CacheDir)
+		}
+		env = append(env, "GOCACHE="+cacheDir)
 	}
 	if cfg.Go.ModCacheDir != "" {
-		env = append(env, "GOMODCACHE="+cfg.Go.ModCacheDir)
+		modCacheDir, warned := resolvePortablePath(cfg.Go.ModCacheDir)
+		if warned {
+			_, _ = fmt.Fprintf(stderr, "warning: config.go.modCacheDir is absolute (%s). Prefer a project-relative path like ./.gomodcache for portable config.\n", cfg.Go.ModCacheDir)
+		}
+		env = append(env, "GOMODCACHE="+modCacheDir)
 	}
 	if cfg.Go.Toolchain != "" {
 		env = append(env, "GOTOOLCHAIN="+cfg.Go.Toolchain)
 	}
 	return env
+}
+
+func resolvePortablePath(raw string) (string, bool) {
+	if raw == "" {
+		return "", false
+	}
+	path := raw
+	if strings.HasPrefix(path, "~") {
+		if home, err := os.UserHomeDir(); err == nil {
+			if path == "~" {
+				path = home
+			} else if strings.HasPrefix(path, "~/") {
+				path = filepath.Join(home, strings.TrimPrefix(path, "~/"))
+			}
+		}
+	}
+	wasAbsolute := filepath.IsAbs(path)
+	if !wasAbsolute {
+		if abs, err := filepath.Abs(path); err == nil {
+			return abs, false
+		}
+	}
+	return path, wasAbsolute
 }
 
 func discoverGoFiles(root string) ([]string, error) {
@@ -99,5 +130,5 @@ func prepareDevCommand(colorOverride string, stderr io.Writer) (config.Config, [
 	if colorOverride != "" {
 		cfg.DevOutput.Color = colorOverride
 	}
-	return cfg, buildCommandEnv(cfg), nil
+	return cfg, buildCommandEnv(cfg, stderr), nil
 }

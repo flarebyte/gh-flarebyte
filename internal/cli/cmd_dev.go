@@ -23,7 +23,7 @@ func runTest(styleOverride, colorOverride string, failedOnly bool, stdout, stder
 	if colorOverride != "" {
 		cfg.DevOutput.Color = colorOverride
 	}
-	env := buildCommandEnv(cfg)
+	env := buildCommandEnv(cfg, stderr)
 	start := time.Now()
 	switch cfg.Build.Language {
 	case "go":
@@ -69,7 +69,7 @@ func runFormat(stdout, stderr io.Writer) Result {
 	if usage != nil {
 		return *usage
 	}
-	env := buildCommandEnv(cfg)
+	env := buildCommandEnv(cfg, stderr)
 	start := time.Now()
 	switch cfg.Build.Language {
 	case "go":
