@@ -52,13 +52,19 @@ func Validate(cfg Config) error {
 	}
 	if cfg.Coverage.DefaultMinPercent != nil {
 		if *cfg.Coverage.DefaultMinPercent < 0 || *cfg.Coverage.DefaultMinPercent > 100 {
-			return fmt.Errorf("invalid coverage.default_min_percent %.2f: expected between 0 and 100", *cfg.Coverage.DefaultMinPercent)
+			return fmt.Errorf("invalid coverage.min %.2f: expected between 0 and 100", *cfg.Coverage.DefaultMinPercent)
 		}
 	}
 	switch cfg.Build.Language {
 	case "go", "dart":
 	default:
 		return fmt.Errorf("invalid build.language %q: expected go or dart", cfg.Build.Language)
+	}
+	if cfg.Go.CGO.CC != "" && !cfg.Go.CGO.Enabled {
+		return errors.New("invalid go.cgo.cc: requires go.cgo.enabled=true")
+	}
+	if cfg.Go.CGO.CXX != "" && !cfg.Go.CGO.Enabled {
+		return errors.New("invalid go.cgo.cxx: requires go.cgo.enabled=true")
 	}
 	switch cfg.Build.Mode {
 	case "binary":

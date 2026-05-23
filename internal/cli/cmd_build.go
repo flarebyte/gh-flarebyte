@@ -10,7 +10,39 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"github.com/flarebyte/gh-flarebyte/internal/config"
 )
+
+func envValue(env []string, key string) string {
+	prefix := key + "="
+	for _, entry := range env {
+		if strings.HasPrefix(entry, prefix) {
+			return strings.TrimPrefix(entry, prefix)
+		}
+	}
+	return ""
+}
+
+func formatGoBuildFailure(err error, target string, cgoCfg config.CGOConfig) string {
+	lines := []string{
+		fmt.Sprintf("target=%s", target),
+		fmt.Sprintf("effective_cgo=%t", cgoCfg.Enabled),
+	}
+	if e, ok := err.(*goBuildInvocationError); ok {
+		lines = append(lines,
+			fmt.Sprintf("go_env: GOOS=%s GOARCH=%s CGO_ENABLED=%s CC=%s CXX=%s",
+				envValue(e.Env, "GOOS"),
+				envValue(e.Env, "GOARCH"),
+				envValue(e.Env, "CGO_ENABLED"),
+				envValue(e.Env, "CC"),
+				envValue(e.Env, "CXX"),
+			),
+			fmt.Sprintf("first_failed_command: %s", e.Command),
+		)
+	}
+	return strings.Join(lines, "\n")
+}
 
 func runBuild(targetFilter, outputDirOverride string, stdout, stderr io.Writer) Result {
 	cfg, usage := loadConfigOrUsage(stderr)
@@ -35,12 +67,24 @@ func runBuild(targetFilter, outputDirOverride string, stdout, stderr io.Writer) 
 				return Result{ExitCode: ExitUsage, Err: err}
 			}
 		}
-		if err := goBuildPackages(goos, goarch, cfg.Build.Packages, cfg.Build.RunTests); err != nil {
+		if !cfg.Go.CGO.Enabled {
+			cgoPkgs, depErr := detectCGODependencies(goos, goarch, cfg.Build.Packages)
+			if depErr == nil && len(cgoPkgs) > 0 {
+				err := fmt.Errorf("build policy error: go.cgo.enabled=false but build uses CGO dependency %q", cgoPkgs[0])
+				_, _ = fmt.Fprintf(stderr, "%s\n", err.Error())
+				return Result{ExitCode: ExitBuildFailure, Err: err}
+			}
+		}
+		if err := goBuildPackages(goos, goarch, cfg.Build.Packages, cfg.Build.RunTests, cfg.Go.CGO); err != nil {
 			msg := "Build failed in library mode during go build/go test."
 			if targetFilter != "" {
 				msg = fmt.Sprintf("Build failed in library mode for target %s during go build/go test.", targetFilter)
 			}
-			_, _ = fmt.Fprintln(stderr, msg)
+			targetName := "all"
+			if targetFilter != "" {
+				targetName = targetFilter
+			}
+			_, _ = fmt.Fprintf(stderr, "%s\n%s\n", msg, formatGoBuildFailure(err, targetName, cfg.Go.CGO))
 			return Result{ExitCode: ExitBuildFailure, Err: err}
 		}
 		if targetFilter != "" {
@@ -93,9 +137,17 @@ func runBuild(targetFilter, outputDirOverride string, stdout, stderr io.Writer) 
 		if goos == "windows" {
 			archiveBinaryName += ".exe"
 		}
-		if err := buildTargetBinary(target, binPath, cfg.Build.MainPackage); err != nil {
+		if !cfg.Go.CGO.Enabled {
+			cgoPkgs, depErr := detectCGODependencies(goos, goarch, []string{cfg.Build.MainPackage})
+			if depErr == nil && len(cgoPkgs) > 0 {
+				err := fmt.Errorf("build policy error for %s: go.cgo.enabled=false but build uses CGO dependency %q", target, cgoPkgs[0])
+				_, _ = fmt.Fprintln(stderr, err.Error())
+				return Result{ExitCode: ExitBuildFailure, Err: err}
+			}
+		}
+		if err := buildTargetBinary(target, binPath, cfg.Build.MainPackage, cfg.Go.CGO); err != nil {
 			msg := fmt.Sprintf("Build failed for %s during go build. Re-run with --target %s to isolate the failure.", target, target)
-			_, _ = fmt.Fprintf(stderr, "%s\nUnderlying error: %v\n", msg, err)
+			_, _ = fmt.Fprintf(stderr, "%s\n%s\nUnderlying error: %v\n", msg, formatGoBuildFailure(err, target, cfg.Go.CGO), err)
 			return Result{ExitCode: ExitBuildFailure, Err: err}
 		}
 		artifactBase := cfg.Project.Repo

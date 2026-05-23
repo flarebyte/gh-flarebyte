@@ -7,6 +7,8 @@ import (
 	"encoding/json"
 	"os"
 	"testing"
+
+	"github.com/flarebyte/gh-flarebyte/internal/config"
 )
 
 func TestRepoTopicsFieldUnmarshalShapes(t *testing.T) {
@@ -98,10 +100,10 @@ func TestExtractHelpersAndBoolToCLI(t *testing.T) {
 }
 
 func TestBuildHelperDirectBranches(t *testing.T) {
-	if err := runGoBuildPackages("", "", []string{"./does/not/exist"}, false); err == nil {
+	if err := runGoBuildPackages("", "", []string{"./does/not/exist"}, false, config.CGOConfig{}); err == nil {
 		t.Fatalf("expected runGoBuildPackages error")
 	}
-	if err := goBuildTargetBinary("invalid-target", "out", "./cmd/x"); err == nil {
+	if err := goBuildTargetBinary("invalid-target", "out", "./cmd/x", config.CGOConfig{}); err == nil {
 		t.Fatalf("expected goBuildTargetBinary target parse error")
 	}
 }

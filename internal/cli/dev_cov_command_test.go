@@ -14,8 +14,8 @@ func setupCoverageConfig() string {
 	return testConfigCue() + `
 
 coverage: {
-	default_min_percent: 90
-	fail_below_min: true
+	min: 90
+	enforceMin: true
 }
 
 devOutput: {
@@ -165,8 +165,8 @@ func TestRunCovBelowMinAllowedWhenFailBelowDisabled(t *testing.T) {
 	cfg := testConfigCue() + `
 
 coverage: {
-	default_min_percent: 90
-	fail_below_min: false
+	min: 90
+	enforceMin: false
 }
 `
 	_ = setupTempWorkdirWithConfig(t, cfg)
@@ -182,7 +182,7 @@ coverage: {
 	var errOut bytes.Buffer
 	res := Run([]string{"cov"}, &out, &errOut)
 	if res.ExitCode != ExitOK {
-		t.Fatalf("expected success when fail_below_min=false, got %d stderr=%s", res.ExitCode, errOut.String())
+		t.Fatalf("expected success when enforceMin=false, got %d stderr=%s", res.ExitCode, errOut.String())
 	}
 }
 

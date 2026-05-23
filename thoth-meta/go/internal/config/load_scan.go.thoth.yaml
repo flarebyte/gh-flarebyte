@@ -1,7 +1,5 @@
 locator: internal/config/load_scan.go
 meta:
-  purpose: Scan raw config text for top-level field names and enforce strict schema keys.
-  responsibilities: Detect unknown fields in scopes and safely find matching braces while ignoring string literals.
   architecture_notes: Scanner is line-oriented and shallow by design to keep behavior deterministic and testable.
   function_list:
     - advanceStringState
@@ -12,3 +10,5 @@ meta:
     - fmt
     - unicode
   language: go
+  purpose: Scan raw config text for top-level field names and enforce strict schema keys.
+  responsibilities: Detect unknown fields in scopes and safely find matching braces while ignoring string literals.

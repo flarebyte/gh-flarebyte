@@ -8,6 +8,7 @@ meta:
     - stubRepoInitIO
     - testConfigCue
   import_files_list:
+    - github.com/flarebyte/gh-flarebyte/internal/config
     - os
     - testing
   language: go

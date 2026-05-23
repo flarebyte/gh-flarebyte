@@ -65,6 +65,13 @@ build: {
 	]
 }
 
+go: {
+	toolchain: "local"
+	cgo: {
+		enabled: false
+	}
+}
+
 release: {
 	versionSource:    "main.project.yaml"
 	tagPrefix:        "v"

@@ -1,7 +1,5 @@
 locator: internal/config/load_extract.go
 meta:
-  purpose: Provide low-level value extraction helpers for the CUE-like config parser.
-  responsibilities: Read object/string/bool/number/list fields and repository labels from raw config text.
   architecture_notes: Helpers intentionally use deterministic string/regex parsing to avoid a heavy parser dependency.
   function_list:
     - extractBoolField
@@ -23,3 +21,5 @@ meta:
     - strconv
     - strings
   language: go
+  purpose: Provide low-level value extraction helpers for the CUE-like config parser.
+  responsibilities: Read object/string/bool/number/list fields and repository labels from raw config text.

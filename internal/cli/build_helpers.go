@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/flarebyte/gh-flarebyte/internal/buildinfo"
+	"github.com/flarebyte/gh-flarebyte/internal/config"
 )
 
 var (
@@ -35,20 +36,87 @@ var (
 		}
 		return strings.TrimSpace(string(out)), nil
 	}
+	detectCGODependencies = findCGODependencies
 )
 
-func runGoBuildPackages(goos string, goarch string, packages []string, runTests bool) error {
+type goBuildInvocationError struct {
+	Command string
+	Env     []string
+	Stderr  string
+	Cause   error
+}
+
+func (e *goBuildInvocationError) Error() string {
+	return e.Cause.Error()
+}
+
+func goBuildError(err error, command string, env []string, stderr string) error {
+	if err == nil {
+		return nil
+	}
+	return &goBuildInvocationError{
+		Command: command,
+		Env:     env,
+		Stderr:  stderr,
+		Cause:   commandError(err, stderr),
+	}
+}
+
+func buildGoEnv(goos string, goarch string, cgo config.CGOConfig) []string {
 	env := append(os.Environ(), "CGO_ENABLED=0")
+	if cgo.Enabled {
+		env = append(os.Environ(), "CGO_ENABLED=1")
+	}
 	if goos != "" && goarch != "" {
 		env = append(env, "GOOS="+goos, "GOARCH="+goarch)
 	}
+	if cgo.CC != "" {
+		env = append(env, "CC="+cgo.CC)
+	}
+	if cgo.CXX != "" {
+		env = append(env, "CXX="+cgo.CXX)
+	}
+	return env
+}
+
+func findCGODependencies(goos string, goarch string, packages []string) ([]string, error) {
+	env := append(os.Environ(), "CGO_ENABLED=1")
+	if goos != "" && goarch != "" {
+		env = append(env, "GOOS="+goos, "GOARCH="+goarch)
+	}
+	args := append([]string{"list", "-deps", "-f", "{{if and .CgoFiles (not .Standard)}}{{.ImportPath}}{{end}}"}, packages...)
+	cmd := exec.Command("go", args...)
+	cmd.Env = env
+	out, err := cmd.Output()
+	if err != nil {
+		return nil, err
+	}
+	lines := strings.Split(strings.TrimSpace(string(out)), "\n")
+	seen := map[string]struct{}{}
+	cgoPkgs := make([]string, 0, len(lines))
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		if _, ok := seen[line]; ok {
+			continue
+		}
+		seen[line] = struct{}{}
+		cgoPkgs = append(cgoPkgs, line)
+	}
+	return cgoPkgs, nil
+}
+
+func runGoBuildPackages(goos string, goarch string, packages []string, runTests bool, cgo config.CGOConfig) error {
+	env := buildGoEnv(goos, goarch, cgo)
 	buildArgs := append([]string{"build"}, packages...)
 	buildCmd := exec.Command("go", buildArgs...)
 	buildCmd.Env = env
 	var buildStderr bytes.Buffer
 	buildCmd.Stderr = &buildStderr
 	if err := buildCmd.Run(); err != nil {
-		return commandError(err, buildStderr.String())
+		return goBuildError(err, "go "+strings.Join(buildArgs, " "), env, buildStderr.String())
 	}
 	if !runTests {
 		return nil
@@ -59,12 +127,12 @@ func runGoBuildPackages(goos string, goarch string, packages []string, runTests 
 	var testStderr bytes.Buffer
 	testCmd.Stderr = &testStderr
 	if err := testCmd.Run(); err != nil {
-		return commandError(err, testStderr.String())
+		return goBuildError(err, "go "+strings.Join(testArgs, " "), env, testStderr.String())
 	}
 	return nil
 }
 
-func goBuildTargetBinary(target string, outputPath string, mainPackage string) error {
+func goBuildTargetBinary(target string, outputPath string, mainPackage string, cgo config.CGOConfig) error {
 	goos, goarch, err := splitTarget(target)
 	if err != nil {
 		return err
@@ -79,11 +147,11 @@ func goBuildTargetBinary(target string, outputPath string, mainPackage string) e
 		mainPackage,
 	}
 	cmd := exec.Command("go", args...)
-	cmd.Env = append(os.Environ(), "GOOS="+goos, "GOARCH="+goarch, "CGO_ENABLED=0")
+	cmd.Env = buildGoEnv(goos, goarch, cgo)
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {
-		return commandError(err, stderr.String())
+		return goBuildError(err, "go "+strings.Join(args, " "), cmd.Env, stderr.String())
 	}
 	return nil
 }

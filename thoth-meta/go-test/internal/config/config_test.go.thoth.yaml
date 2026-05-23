@@ -5,12 +5,14 @@ meta:
     - TestLoadBuildArtifactTargetSuffixFalseWithMultipleTargets
     - TestLoadBuildMainPackageOverride
     - TestLoadDefaultsForDevOutputAndCoverage
+    - TestLoadGoCGOConfig
     - TestLoadInvalidBuildTarget
     - TestLoadInvalidNotesFilePath
     - TestLoadLibraryModeConfig
     - TestLoadRejectsInvalidDevOutputStyle
     - TestLoadRejectsLibraryModeWithArtifactsEnabled
     - TestLoadRejectsUnknownBuildField
+    - TestLoadRejectsUnknownGoCGOField
     - TestLoadRejectsUnknownTopLevelField
     - TestLoadValidConfig
   import_files_list:

@@ -3,6 +3,8 @@ package cli
 import (
 	"os"
 	"testing"
+
+	"github.com/flarebyte/gh-flarebyte/internal/config"
 )
 
 func setupTempWorkdirWithConfig(t *testing.T, cfg string) string {
@@ -32,7 +34,7 @@ func stubBuildArtifacts(t *testing.T) {
 		buildTargetBinary = oldBuildTargetBinary
 		packageBinary = oldPackageBinary
 	})
-	buildTargetBinary = func(target string, outputPath string, mainPackage string) error {
+	buildTargetBinary = func(target string, outputPath string, mainPackage string, _ config.CGOConfig) error {
 		return os.WriteFile(outputPath, []byte("bin"), 0o755)
 	}
 	packageBinary = func(binaryPath, target, artifactPath, archiveBinaryName string) error {

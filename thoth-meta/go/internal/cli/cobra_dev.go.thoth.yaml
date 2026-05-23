@@ -1,7 +1,5 @@
 locator: internal/cli/cobra_dev.go
 meta:
-  purpose: Define Cobra command wiring so CLI flags and subcommands map to the internal command runners consistently.
-  responsibilities: Build root/subcommand trees; validate CLI args/flags; convert command results into Cobra-compatible errors.
   architecture_notes: Validation and error-shaping are centralized here so command logic stays focused on behavior while CLI UX remains uniform.
   function_list:
     - newBuildCobraCommand
@@ -31,3 +29,5 @@ meta:
     - github.com/spf13/cobra
     - io
   language: go
+  purpose: Define Cobra command wiring so CLI flags and subcommands map to the internal command runners consistently.
+  responsibilities: Build root/subcommand trees; validate CLI args/flags; convert command results into Cobra-compatible errors.

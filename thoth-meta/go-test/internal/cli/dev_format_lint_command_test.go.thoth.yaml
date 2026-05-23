@@ -1,7 +1,5 @@
 locator: internal/cli/dev_format_lint_command_test.go
 meta:
-  purpose: Validate format and lint command routing, usage handling, and failure semantics.
-  responsibilities: Assert help/usage output, language dispatch, pass/fail behavior, and failed-only output suppression.
   architecture_notes: Command runner stubs keep tests deterministic and focused on CLI orchestration rather than external tools.
   function_list:
     - TestDevFormatLintCommandHelpAndUsage
@@ -18,3 +16,5 @@ meta:
     - strings
     - testing
   language: go
+  purpose: Validate format and lint command routing, usage handling, and failure semantics.
+  responsibilities: Assert help/usage output, language dispatch, pass/fail behavior, and failed-only output suppression.
