@@ -31,6 +31,9 @@ build.runTests,boolean,.gh-flarebyte.cue,local-only,Whether library mode runs `g
 build.outputDir,string,.gh-flarebyte.cue,local-only,Directory for built artifacts.
 build.checksumFile,string,.gh-flarebyte.cue,local-only,Checksum manifest for built artifacts.
 build.targets,list,.gh-flarebyte.cue,local-only,Target matrix for the build command using `os-arch` strings such as `linux-amd64` or `windows-amd64`. Each project declares only the targets it supports.
+go.cgo.enabled,boolean,.gh-flarebyte.cue,local-only,Explicit CGO mode for Go builds. When true build sets `CGO_ENABLED=1`; when false build sets `CGO_ENABLED=0`.
+go.cgo.cc,string,.gh-flarebyte.cue,local-only,Optional C compiler override for CGO builds. Requires `go.cgo.enabled: true`.
+go.cgo.cxx,string,.gh-flarebyte.cue,local-only,Optional C++ compiler override for CGO builds. Requires `go.cgo.enabled: true`.
 release.versionSource,string,.gh-flarebyte.cue,local-only,File or source that provides the release version.
 release.tagPrefix,string,.gh-flarebyte.cue,local-only,Prefix used for release tags.
 release.notesMode,enum,.gh-flarebyte.cue,local-only,"Release note strategy, such as generate-notes or notes-file."

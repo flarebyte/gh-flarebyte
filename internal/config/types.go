@@ -22,6 +22,13 @@ type GoConfig struct {
 	CacheDir    string `json:"cacheDir"`
 	ModCacheDir string `json:"modCacheDir"`
 	Toolchain   string `json:"toolchain"`
+	CGO         CGOConfig
+}
+
+type CGOConfig struct {
+	Enabled bool   `json:"enabled"`
+	CC      string `json:"cc"`
+	CXX     string `json:"cxx"`
 }
 
 type DevOutputConfig struct {

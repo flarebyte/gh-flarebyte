@@ -7,6 +7,8 @@ meta:
     - TestPackageBinaryArchiveTarGzAndZip
     - TestResolveVersionFromSourceYAMLAndJSON
     - TestRunBuildFailureIncludesUnderlyingError
+    - TestRunBuildFailurePrintsGoEnvAndCommand
+    - TestRunBuildLibraryModePassesCGOConfig
     - TestRunBuildLibraryModeSuccess
     - TestRunBuildRejectsUnknownConfiguredTargetFilter
     - TestRunBuildSuccessWritesChecksumAndSummary
@@ -27,6 +29,7 @@ meta:
     - compress/gzip
     - errors
     - github.com/flarebyte/gh-flarebyte/internal/buildinfo
+    - github.com/flarebyte/gh-flarebyte/internal/config
     - io
     - os
     - path/filepath

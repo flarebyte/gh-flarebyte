@@ -42,6 +42,19 @@ export type BuildConfig =
 
 export type BuildTarget = `${"linux" | "darwin" | "windows"}-${"amd64" | "arm64"}`;
 
+export type GoCGOConfig = {
+  enabled: boolean;
+  cc?: string;
+  cxx?: string;
+};
+
+export type GoConfig = {
+  cache_dir?: string;
+  mod_cache_dir?: string;
+  toolchain?: string;
+  cgo?: GoCGOConfig;
+};
+
 export type ReleaseConfigBase = {
   versionSource: string;
   tagPrefix: string;
@@ -79,6 +92,7 @@ export type GhFlarebyteConfig = {
   project: ProjectConfig;
   sync: SyncPlan;
   repository: RepositoryConfig;
+  go?: GoConfig;
   build: BuildConfig;
   release: ReleaseConfig;
 };

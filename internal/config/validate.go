@@ -60,6 +60,12 @@ func Validate(cfg Config) error {
 	default:
 		return fmt.Errorf("invalid build.language %q: expected go or dart", cfg.Build.Language)
 	}
+	if cfg.Go.CGO.CC != "" && !cfg.Go.CGO.Enabled {
+		return errors.New("invalid go.cgo.cc: requires go.cgo.enabled=true")
+	}
+	if cfg.Go.CGO.CXX != "" && !cfg.Go.CGO.Enabled {
+		return errors.New("invalid go.cgo.cxx: requires go.cgo.enabled=true")
+	}
 	switch cfg.Build.Mode {
 	case "binary":
 		if cfg.Build.OutputDir == "" {

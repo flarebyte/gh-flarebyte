@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/flarebyte/gh-flarebyte/internal/buildinfo"
+	"github.com/flarebyte/gh-flarebyte/internal/config"
 )
 
 func setupBuildTargetAndPackagingStubs(t *testing.T) {
@@ -27,7 +28,7 @@ func setupBuildTargetAndPackagingStubs(t *testing.T) {
 		buildTargetBinary = oldBuildTargetBinary
 		packageBinary = oldPackageBinary
 	})
-	buildTargetBinary = func(target string, outputPath string, mainPackage string) error {
+	buildTargetBinary = func(target string, outputPath string, mainPackage string, _ config.CGOConfig) error {
 		return os.WriteFile(outputPath, []byte("binary-"+target), 0o755)
 	}
 	packageBinary = packageBinaryArchive
@@ -132,7 +133,7 @@ func TestRunBuildUsesConfiguredMainPackage(t *testing.T) {
 		packageBinary = oldPackageBinary
 	})
 	var gotMainPackage string
-	buildTargetBinary = func(target string, outputPath string, mainPackage string) error {
+	buildTargetBinary = func(target string, outputPath string, mainPackage string, _ config.CGOConfig) error {
 		gotMainPackage = mainPackage
 		return os.WriteFile(outputPath, []byte("binary-"+target), 0o755)
 	}
@@ -179,7 +180,7 @@ func TestRunBuildFailureIncludesUnderlyingError(t *testing.T) {
 	t.Cleanup(func() {
 		buildTargetBinary = oldBuildTargetBinary
 	})
-	buildTargetBinary = func(target string, outputPath string, mainPackage string) error {
+	buildTargetBinary = func(target string, outputPath string, mainPackage string, _ config.CGOConfig) error {
 		return errors.New("go: cannot find main module")
 	}
 	var out bytes.Buffer
@@ -400,7 +401,7 @@ func TestRunBuildLibraryModeSuccess(t *testing.T) {
 	oldGoBuildPackages := goBuildPackages
 	t.Cleanup(func() { goBuildPackages = oldGoBuildPackages })
 	var gotRunTests bool
-	goBuildPackages = func(goos string, goarch string, packages []string, runTests bool) error {
+	goBuildPackages = func(goos string, goarch string, packages []string, runTests bool, _ config.CGOConfig) error {
 		gotRunTests = runTests
 		return nil
 	}
@@ -412,6 +413,58 @@ func TestRunBuildLibraryModeSuccess(t *testing.T) {
 	}
 	if !gotRunTests {
 		t.Fatalf("expected runTests=true in library mode")
+	}
+}
+
+func TestRunBuildLibraryModePassesCGOConfig(t *testing.T) {
+	cfg := strings.Replace(testConfigCue(), `build: {
+	language:     "go"
+	outputDir:    "build"
+	checksumFile: "build/checksums.txt"
+	targets: [
+		"linux-amd64",
+	]
+}`, `go: {
+	cgo: {
+		enabled: true
+		cc:      "clang"
+		cxx:     "clang++"
+	}
+}
+
+build: {
+	language: "go"
+	mode:     "library"
+	packages: ["./..."]
+}`, 1)
+	cfg = strings.Replace(cfg, `release: {
+	versionSource:    "main.project.yaml"
+	tagPrefix:        "v"
+	notesMode:        "generate-notes"
+	artifactDir:      "build"
+	includeChecksums: true
+}`, `release: {
+	versionSource:    "main.project.yaml"
+	tagPrefix:        "v"
+	notesMode:        "generate-notes"
+	includeArtifacts: false
+}`, 1)
+	_ = setupTempWorkdirWithConfig(t, cfg)
+	oldGoBuildPackages := goBuildPackages
+	t.Cleanup(func() { goBuildPackages = oldGoBuildPackages })
+	var got config.CGOConfig
+	goBuildPackages = func(goos string, goarch string, packages []string, runTests bool, cgo config.CGOConfig) error {
+		got = cgo
+		return nil
+	}
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	result := Run([]string{"build"}, &out, &errOut)
+	if result.ExitCode != ExitOK {
+		t.Fatalf("expected success, got %d (%s)", result.ExitCode, errOut.String())
+	}
+	if !got.Enabled || got.CC != "clang" || got.CXX != "clang++" {
+		t.Fatalf("unexpected cgo config: %+v", got)
 	}
 }
 
@@ -443,7 +496,9 @@ func TestRunReleaseLibraryModeWithoutArtifacts(t *testing.T) {
 	_ = setupTempWorkdirWithConfig(t, cfg)
 	oldGoBuildPackages := goBuildPackages
 	t.Cleanup(func() { goBuildPackages = oldGoBuildPackages })
-	goBuildPackages = func(goos string, goarch string, packages []string, runTests bool) error { return nil }
+	goBuildPackages = func(goos string, goarch string, packages []string, runTests bool, _ config.CGOConfig) error {
+		return nil
+	}
 	var capturedArtifacts []string
 	stubReleaseCaptureArtifacts(t, "1.2.3", false, &capturedArtifacts)
 	var out bytes.Buffer
@@ -454,5 +509,37 @@ func TestRunReleaseLibraryModeWithoutArtifacts(t *testing.T) {
 	}
 	if len(capturedArtifacts) != 0 {
 		t.Fatalf("expected no artifacts, got %v", capturedArtifacts)
+	}
+}
+
+func TestRunBuildFailurePrintsGoEnvAndCommand(t *testing.T) {
+	_ = setupTempWorkdirWithConfig(t, testConfigCue())
+	oldBuildTargetBinary := buildTargetBinary
+	t.Cleanup(func() { buildTargetBinary = oldBuildTargetBinary })
+	buildTargetBinary = func(target string, outputPath string, mainPackage string, _ config.CGOConfig) error {
+		return &goBuildInvocationError{
+			Command: "go build -o out ./cmd/gh-flarebyte",
+			Env: []string{
+				"GOOS=linux",
+				"GOARCH=amd64",
+				"CGO_ENABLED=0",
+				"CC=",
+				"CXX=",
+			},
+			Stderr: "build constraints exclude all Go files",
+			Cause:  errors.New("exit status 1"),
+		}
+	}
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	result := Run([]string{"build"}, &out, &errOut)
+	if result.ExitCode != ExitBuildFailure {
+		t.Fatalf("expected build failure, got %d", result.ExitCode)
+	}
+	if !strings.Contains(errOut.String(), "go_env: GOOS=linux GOARCH=amd64 CGO_ENABLED=0") {
+		t.Fatalf("expected go env diagnostics, got: %s", errOut.String())
+	}
+	if !strings.Contains(errOut.String(), "first_failed_command: go build -o out ./cmd/gh-flarebyte") {
+		t.Fatalf("expected command diagnostics, got: %s", errOut.String())
 	}
 }

@@ -2,9 +2,12 @@ locator: internal/cli/cmd_build.go
 meta:
   architecture_notes: Build metadata is hydrated before compilation so produced binaries report version info even when the running extension binary was built in dev mode.
   function_list:
+    - envValue
+    - formatGoBuildFailure
     - runBuild
   import_files_list:
     - fmt
+    - github.com/flarebyte/gh-flarebyte/internal/config
     - io
     - os
     - path/filepath

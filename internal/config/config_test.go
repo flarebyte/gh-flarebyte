@@ -444,3 +444,124 @@ release: {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
+
+func TestLoadGoCGOConfig(t *testing.T) {
+	tmp := t.TempDir()
+	path := filepath.Join(tmp, "valid-go-cgo.cue")
+	content := `package ghflarebyte
+
+project: {
+	org:  "flarebyte"
+	repo: "gh-flarebyte"
+}
+
+sync: {
+	mode: "push"
+}
+
+repository: {
+	description:   "CLI for landing your git commands right"
+	defaultBranch: "main"
+	homepage:      "https://github.com/flarebyte/gh-flarebyte"
+	visibility:    "public"
+	template:      false
+	topics: ["gh-extension"]
+	labels: [{name: "bug", color: "B60205"}]
+}
+
+go: {
+	toolchain: "local"
+	cgo: {
+		enabled: true
+		cc:      "clang"
+		cxx:     "clang++"
+	}
+}
+
+build: {
+	language:     "go"
+	outputDir:    "build"
+	checksumFile: "build/checksums.txt"
+	targets: ["linux-amd64"]
+}
+
+release: {
+	versionSource:    "main.project.yaml"
+	tagPrefix:        "v"
+	notesMode:        "generate-notes"
+	artifactDir:      "build"
+	includeChecksums: true
+}
+`
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatalf("write temp config failed: %v", err)
+	}
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("expected valid config, got %v", err)
+	}
+	if !cfg.Go.CGO.Enabled {
+		t.Fatalf("expected go.cgo.enabled=true")
+	}
+	if cfg.Go.CGO.CC != "clang" || cfg.Go.CGO.CXX != "clang++" {
+		t.Fatalf("unexpected go.cgo compiler fields: %+v", cfg.Go.CGO)
+	}
+}
+
+func TestLoadRejectsUnknownGoCGOField(t *testing.T) {
+	tmp := t.TempDir()
+	path := filepath.Join(tmp, "invalid-go-cgo-unknown-field.cue")
+	content := `package ghflarebyte
+
+project: {
+	org:  "flarebyte"
+	repo: "gh-flarebyte"
+}
+
+sync: {
+	mode: "push"
+}
+
+repository: {
+	description:   "CLI for landing your git commands right"
+	defaultBranch: "main"
+	homepage:      "https://github.com/flarebyte/gh-flarebyte"
+	visibility:    "public"
+	template:      false
+	topics: ["gh-extension"]
+	labels: [{name: "bug", color: "B60205"}]
+}
+
+go: {
+	cgo: {
+		enabled: true
+		compiler: "clang"
+	}
+}
+
+build: {
+	language:     "go"
+	outputDir:    "build"
+	checksumFile: "build/checksums.txt"
+	targets: ["linux-amd64"]
+}
+
+release: {
+	versionSource:    "main.project.yaml"
+	tagPrefix:        "v"
+	notesMode:        "generate-notes"
+	artifactDir:      "build"
+	includeChecksums: true
+}
+`
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatalf("write temp config failed: %v", err)
+	}
+	_, err := Load(path)
+	if err == nil {
+		t.Fatalf("expected invalid go.cgo unknown field error")
+	}
+	if !strings.Contains(err.Error(), `unknown field "compiler" in go.cgo`) {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}

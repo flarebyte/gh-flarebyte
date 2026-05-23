@@ -9,6 +9,7 @@ meta:
     - TestRepoTopicsFieldUnmarshalShapes
   import_files_list:
     - encoding/json
+    - github.com/flarebyte/gh-flarebyte/internal/config
     - os
     - testing
   language: go

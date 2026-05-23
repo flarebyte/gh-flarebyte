@@ -2,7 +2,10 @@ locator: internal/cli/build_helpers.go
 meta:
   architecture_notes: External process interactions are exposed through package variables for deterministic test stubbing while keeping production behavior shell-based.
   function_list:
+    - buildGoEnv
     - copyFile
+    - findCGODependencies
+    - goBuildError
     - goBuildTargetBinary
     - hydrateBuildInfo
     - packageBinaryArchive
@@ -21,6 +24,7 @@ meta:
     - crypto/sha256
     - fmt
     - github.com/flarebyte/gh-flarebyte/internal/buildinfo
+    - github.com/flarebyte/gh-flarebyte/internal/config
     - io
     - os
     - os/exec

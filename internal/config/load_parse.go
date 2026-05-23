@@ -145,12 +145,25 @@ func parseCueConfig(raw string) (Config, error) {
 			"cache_dir":     {},
 			"mod_cache_dir": {},
 			"toolchain":     {},
+			"cgo":           {},
 		}); err != nil {
 			return cfg, err
 		}
 		cfg.Go.CacheDir = extractOptionalStringField(goBlock, "cache_dir")
 		cfg.Go.ModCacheDir = extractOptionalStringField(goBlock, "mod_cache_dir")
 		cfg.Go.Toolchain = extractOptionalStringField(goBlock, "toolchain")
+		if cgoBlock, ok := extractOptionalObjectBlock(goBlock, "cgo"); ok {
+			if err := assertOnlyAllowedFields("go.cgo", cgoBlock, map[string]struct{}{
+				"enabled": {},
+				"cc":      {},
+				"cxx":     {},
+			}); err != nil {
+				return cfg, err
+			}
+			cfg.Go.CGO.Enabled = extractOptionalBoolField(cgoBlock, "enabled", false)
+			cfg.Go.CGO.CC = extractOptionalStringField(cgoBlock, "cc")
+			cfg.Go.CGO.CXX = extractOptionalStringField(cgoBlock, "cxx")
+		}
 	}
 	if devBlock, ok := extractOptionalObjectBlock(raw, "devOutput"); ok {
 		if err := assertOnlyAllowedFields("devOutput", devBlock, map[string]struct{}{

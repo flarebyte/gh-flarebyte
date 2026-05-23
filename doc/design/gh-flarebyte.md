@@ -100,6 +100,13 @@ build: {
 	]
 }
 
+go: {
+	toolchain: "local"
+	cgo: {
+		enabled: false
+	}
+}
+
 release: {
 	versionSource:    "main.project.yaml"
 	tagPrefix:        "v"
@@ -150,6 +157,9 @@ How config fields map onto GitHub sync targets and extension-local automation se
 | build.outputDir | string | .gh-flarebyte.cue | Directory for built artifacts. | local-only |
 | build.checksumFile | string | .gh-flarebyte.cue | Checksum manifest for built artifacts. | local-only |
 | build.targets | list | .gh-flarebyte.cue | Target matrix for the build command using `os-arch` strings such as `linux-amd64` or `windows-amd64`. Each project declares only the targets it supports. | local-only |
+| go.cgo.enabled | boolean | .gh-flarebyte.cue | Explicit CGO mode for Go builds. When true build sets `CGO_ENABLED=1`; when false build sets `CGO_ENABLED=0`. | local-only |
+| go.cgo.cc | string | .gh-flarebyte.cue | Optional C compiler override for CGO builds. Requires `go.cgo.enabled: true`. | local-only |
+| go.cgo.cxx | string | .gh-flarebyte.cue | Optional C++ compiler override for CGO builds. Requires `go.cgo.enabled: true`. | local-only |
 | release.versionSource | string | .gh-flarebyte.cue | File or source that provides the release version. | local-only |
 | release.tagPrefix | string | .gh-flarebyte.cue | Prefix used for release tags. | local-only |
 | release.notesMode | enum | .gh-flarebyte.cue | Release note strategy, such as generate-notes or notes-file. | local-only |
@@ -582,7 +592,7 @@ How build orchestration is driven from config.
 
 #### Build Command
 
-Build the project from the top-level `build` block. Start with Go only, but keep the config shape open for Dart so the command can grow without changing its contract. Support `build.mode: "binary"` for deterministic target artifacts and `build.mode: "library"` for package compile verification. In binary mode, target names are expressed as `os-arch` strings such as `linux-amd64` or `windows-amd64` and driven from config rather than shell scripts. Unix targets are packaged as `tar.gz`, Windows targets as `zip`, Windows binaries end in `.exe`, and checksums use SHA-256. In library mode, compile configured package patterns with `go build`, optionally run `go test`, and do not require a synthetic single executable artifact. Build output should also embed version metadata so the compiled CLI can report `version`, `commitId`, `date`, and related runtime details via `--version`, and the same metadata should be available as JSON with `--version --json`. When the command fails it should report the target or mode, failing step, and next useful action.
+Build the project from the top-level `build` block. Start with Go only, but keep the config shape open for Dart so the command can grow without changing its contract. Support `build.mode: "binary"` for deterministic target artifacts and `build.mode: "library"` for package compile verification. In binary mode, target names are expressed as `os-arch` strings such as `linux-amd64` or `windows-amd64` and driven from config rather than shell scripts. Unix targets are packaged as `tar.gz`, Windows targets as `zip`, Windows binaries end in `.exe`, and checksums use SHA-256. In library mode, compile configured package patterns with `go build`, optionally run `go test`, and do not require a synthetic single executable artifact. CGO behavior is driven by `go.cgo` using camelCase fields only (`enabled`, `cc`, `cxx`): when enabled, build uses `CGO_ENABLED=1`; when disabled, it uses `CGO_ENABLED=0` and should fail with a clear policy error if CGO-backed dependencies are detected. Build output should also embed version metadata so the compiled CLI can report `version`, `commitId`, `date`, and related runtime details via `--version`, and the same metadata should be available as JSON with `--version --json`. When the command fails it should report the target or mode, effective CGO settings, failing command, and next useful action.
 
 #### Build Artifact Rules
 
@@ -771,4 +781,3 @@ What still needs agreement before the sync contract hardens.
 #### Open Questions
 
 Clarify the non-interactive CI story for deletion confirmation, the first Dart build contract once it lands, and whether release notes should eventually support templates beyond generated notes and a single notes file path.
-

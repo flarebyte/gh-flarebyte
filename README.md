@@ -47,6 +47,7 @@ The repo config lives in `.gh-flarebyte.cue` and is the source of truth for:
 - repository feature flags currently enforced by sync/audit: `repository.features.mergeCommit`, `repository.features.rebaseMerge`, `repository.features.squashMerge`, `repository.features.deleteBranchOnMerge`
 - build language, mode, and artifact policy
 - go command execution env for dev flows (`go.cache_dir`, `go.mod_cache_dir`, `go.toolchain`)
+- go build CGO contract (`go.cgo.enabled`, `go.cgo.cc`, `go.cgo.cxx`)
 - dev command output controls (`devOutput.color`, `devOutput.style`, `devOutput.showPassed`)
 - coverage threshold policy (`coverage.default_min_percent`, `coverage.fail_below_min`)
 - release settings
@@ -86,6 +87,11 @@ go: {
   cache_dir: "./.gocache"
   mod_cache_dir: "./.gomodcache"
   toolchain: "local"
+  cgo: {
+    enabled: true
+    cc: "clang"
+    cxx: "clang++"
+  }
 }
 
 devOutput: {
@@ -149,6 +155,9 @@ release: {
 - `build.artifactTargetSuffix` controls whether artifact names include `-os-arch` suffixes.
   - when `false` with multiple targets, artifacts are written under per-target subdirectories to avoid filename collisions.
 - In `library` mode, `--target` applies `GOOS/GOARCH` cross-compile checks and does not force artifact generation.
+- `go.cgo` uses camelCase keys only: `enabled`, `cc`, `cxx`.
+- When `go.cgo.enabled: true`, `gh flarebyte build` sets `CGO_ENABLED=1` (and applies `CC`/`CXX` when configured).
+- When `go.cgo.enabled: false`, the build keeps `CGO_ENABLED=0` and fails with a policy error if CGO-backed dependencies are detected.
 - `release.includeArtifacts` defaults to `true`. Set it to `false` to publish tag and notes without uploading binaries or checksums.
 - `gh flarebyte cov --min 90` overrides config coverage threshold for that invocation.
 - `devOutput.style` supports `summary` and `per_test`.

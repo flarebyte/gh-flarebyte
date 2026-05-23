@@ -1,9 +1,9 @@
 locator: internal/cli/dev_types.go
 meta:
-  purpose: Define shared dev-command data structures used across parse, execution, and output layers.
-  responsibilities: Model summary payloads, go test events, failure snippets, reports, and coverage detail records.
   architecture_notes: Types are split from command logic to keep cross-file contracts explicit after cmd_dev decomposition.
   function_list: []
   import_files_list:
     - time
   language: go
+  purpose: Define shared dev-command data structures used across parse, execution, and output layers.
+  responsibilities: Model summary payloads, go test events, failure snippets, reports, and coverage detail records.
