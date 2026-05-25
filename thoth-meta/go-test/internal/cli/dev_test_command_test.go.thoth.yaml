@@ -3,6 +3,8 @@ meta:
   architecture_notes: Tests use captured command output stubs so assertions stay stable independent of real `go test` execution.
   function_list:
     - TestDevTestCommandHelpAndUsage
+    - TestRunDartTestFailedOnlyFiltersPassedAndSkipped
+    - TestRunDartTestPerTestStyleOutput
     - TestRunGoTestFailureIncludesSummaryDetails
     - TestRunTestColorOverrideRejectsInvalidValue
     - TestRunTestFailedOnlyFiltersPassedAndSkipped

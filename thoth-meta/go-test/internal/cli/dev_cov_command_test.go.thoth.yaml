@@ -3,6 +3,9 @@ meta:
   architecture_notes: Tests stub command execution to isolate CLI behavior from real toolchain output variability.
   function_list:
     - TestRunCovBelowMinAllowedWhenFailBelowDisabled
+    - TestRunCovDartFailsBelowThreshold
+    - TestRunCovDartMinFlagOverridesConfigThreshold
+    - TestRunCovDartPerTestStyleOutput
     - TestRunCovFailedOnlyHidesPassOutput
     - TestRunCovFailsBelowThreshold
     - TestRunCovFailurePaths
@@ -16,6 +19,8 @@ meta:
   import_files_list:
     - bytes
     - fmt
+    - os
+    - path/filepath
     - strings
     - testing
   language: go

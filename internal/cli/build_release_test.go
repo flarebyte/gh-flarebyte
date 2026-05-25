@@ -194,6 +194,82 @@ func TestRunBuildFailureIncludesUnderlyingError(t *testing.T) {
 	}
 }
 
+func TestRunBuildDartLibraryModeSuccess(t *testing.T) {
+	cfg := strings.Replace(testConfigCue(), `language:     "go"`, `language:     "dart"`, 1)
+	cfg = strings.Replace(cfg, "build: {\n\tlanguage:     \"dart\"", "build: {\n\tlanguage:     \"dart\"\n\tmode:         \"library\"\n\tpackages: [\n\t\t\"./...\",\n\t]\n\trunTests:     true", 1)
+	cfg = strings.Replace(cfg, `release: {
+	versionSource:    "main.project.yaml"
+	tagPrefix:        "v"
+	notesMode:        "generate-notes"
+	artifactDir:      "build"
+	includeChecksums: true
+}`, `release: {
+	versionSource:    "main.project.yaml"
+	tagPrefix:        "v"
+	notesMode:        "generate-notes"
+	includeArtifacts: false
+}`, 1)
+	_ = setupTempWorkdirWithConfig(t, cfg)
+	oldDartBuildPackages := dartBuildPackages
+	t.Cleanup(func() {
+		dartBuildPackages = oldDartBuildPackages
+	})
+	called := false
+	dartBuildPackages = func(runTests bool) error {
+		called = true
+		if !runTests {
+			t.Fatalf("expected runTests=true")
+		}
+		return nil
+	}
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	result := Run([]string{"build"}, &out, &errOut)
+	if result.ExitCode != ExitOK {
+		t.Fatalf("expected success, got %d stderr=%s", result.ExitCode, errOut.String())
+	}
+	if !called {
+		t.Fatalf("expected dart build execution")
+	}
+	if !strings.Contains(out.String(), "Dart library validation passed") {
+		t.Fatalf("unexpected output: %s", out.String())
+	}
+}
+
+func TestRunBuildDartLibraryModeFailure(t *testing.T) {
+	cfg := strings.Replace(testConfigCue(), `language:     "go"`, `language:     "dart"`, 1)
+	cfg = strings.Replace(cfg, "build: {\n\tlanguage:     \"dart\"", "build: {\n\tlanguage:     \"dart\"\n\tmode:         \"library\"\n\tpackages: [\n\t\t\"./...\",\n\t]", 1)
+	cfg = strings.Replace(cfg, `release: {
+	versionSource:    "main.project.yaml"
+	tagPrefix:        "v"
+	notesMode:        "generate-notes"
+	artifactDir:      "build"
+	includeChecksums: true
+}`, `release: {
+	versionSource:    "main.project.yaml"
+	tagPrefix:        "v"
+	notesMode:        "generate-notes"
+	includeArtifacts: false
+}`, 1)
+	_ = setupTempWorkdirWithConfig(t, cfg)
+	oldDartBuildPackages := dartBuildPackages
+	t.Cleanup(func() {
+		dartBuildPackages = oldDartBuildPackages
+	})
+	dartBuildPackages = func(runTests bool) error {
+		return errors.New("analyze failed")
+	}
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	result := Run([]string{"build"}, &out, &errOut)
+	if result.ExitCode != ExitBuildFailure {
+		t.Fatalf("expected build failure, got %d stderr=%s", result.ExitCode, errOut.String())
+	}
+	if !strings.Contains(errOut.String(), "Build failed in library mode during dart pub/analyze/test.") {
+		t.Fatalf("unexpected stderr: %s", errOut.String())
+	}
+}
+
 func TestPackageBinaryArchiveTarGzAndZip(t *testing.T) {
 	tmpDir := t.TempDir()
 	src := filepath.Join(tmpDir, "gh-flarebyte-linux-amd64")
@@ -279,6 +355,21 @@ func TestRunReleaseFailsWhenTagExists(t *testing.T) {
 	}
 }
 
+func TestRunReleaseRejectsDartArtifactsEnabled(t *testing.T) {
+	cfg := strings.Replace(testConfigCue(), `language:     "go"`, `language:     "dart"`, 1)
+	cfg = strings.Replace(cfg, "build: {\n\tlanguage:     \"dart\"", "build: {\n\tlanguage:     \"dart\"\n\tmode:         \"library\"\n\tpackages: [\n\t\t\"./...\",\n\t]", 1)
+	_ = setupTempWorkdirWithConfig(t, cfg)
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	result := Run([]string{"release"}, &out, &errOut)
+	if result.ExitCode != ExitUsage {
+		t.Fatalf("expected usage failure, got %d stderr=%s", result.ExitCode, errOut.String())
+	}
+	if !strings.Contains(errOut.String(), `release.includeArtifacts is true`) {
+		t.Fatalf("unexpected stderr: %s", errOut.String())
+	}
+}
+
 func TestRunReleaseSuccess(t *testing.T) {
 	_ = setupTempWorkdirWithConfig(t, testConfigCue())
 	stubReleaseFlow(t, "1.2.3", false)
@@ -292,6 +383,52 @@ func TestRunReleaseSuccess(t *testing.T) {
 	result := Run([]string{"release", "--draft"}, &out, &errOut)
 	if result.ExitCode != ExitOK || capturedTag != "v1.2.3" {
 		t.Fatalf("unexpected release result")
+	}
+}
+
+func TestRunReleaseDartLibraryNoArtifactsSuccess(t *testing.T) {
+	cfg := strings.Replace(testConfigCue(), `language:     "go"`, `language:     "dart"`, 1)
+	cfg = strings.Replace(cfg, "build: {\n\tlanguage:     \"dart\"", "build: {\n\tlanguage:     \"dart\"\n\tmode:         \"library\"\n\tpackages: [\n\t\t\"./...\",\n\t]\n\trunTests:     true", 1)
+	cfg = strings.Replace(cfg, `release: {
+	versionSource:    "main.project.yaml"
+	tagPrefix:        "v"
+	notesMode:        "generate-notes"
+	artifactDir:      "build"
+	includeChecksums: true
+}`, `release: {
+	versionSource:    "main.project.yaml"
+	tagPrefix:        "v"
+	notesMode:        "generate-notes"
+	includeArtifacts: false
+}`, 1)
+	_ = setupTempWorkdirWithConfig(t, cfg)
+	oldDartBuildPackages := dartBuildPackages
+	t.Cleanup(func() { dartBuildPackages = oldDartBuildPackages })
+	dartBuildPackages = func(runTests bool) error {
+		if !runTests {
+			t.Fatalf("expected runTests=true")
+		}
+		return nil
+	}
+	stubReleaseFlow(t, "1.2.3", false)
+	var capturedTag string
+	var capturedArtifacts []string
+	createRelease = func(tag string, artifacts []string, notesMode string, notesFile string, draft bool) error {
+		capturedTag = tag
+		capturedArtifacts = append([]string{}, artifacts...)
+		return nil
+	}
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	result := Run([]string{"release", "--draft"}, &out, &errOut)
+	if result.ExitCode != ExitOK {
+		t.Fatalf("expected success, got %d stderr=%s", result.ExitCode, errOut.String())
+	}
+	if capturedTag != "v1.2.3" {
+		t.Fatalf("unexpected tag: %s", capturedTag)
+	}
+	if len(capturedArtifacts) != 0 {
+		t.Fatalf("expected no artifacts for dart library release, got: %v", capturedArtifacts)
 	}
 }
 

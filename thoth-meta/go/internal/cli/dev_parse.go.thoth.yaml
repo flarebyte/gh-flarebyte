@@ -3,6 +3,8 @@ meta:
   architecture_notes: Parsers are intentionally tolerant of unrelated lines so command summaries remain stable across minor tool output changes.
   function_list:
     - parseCoverageDetails
+    - parseDartLCOVCoverage
+    - parseDartTestReport
     - parseGoTestJSONSummary
     - parseGoTestReport
     - parseTotalCoverage

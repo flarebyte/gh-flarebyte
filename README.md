@@ -25,6 +25,8 @@ Use `gh flarebyte` to keep a GitHub repository aligned with the config checked i
 ### Build and release
 - `gh flarebyte build [--target <os-arch>] [--output-dir <path>]` builds the project using the language and mode defined in `.gh-flarebyte.cue`.
 - `gh flarebyte release [--draft] [--notes-file <path>]` builds first, then publishes a GitHub release from the configured release policy.
+- `build`: Go supports `binary` and `library` modes; Dart currently supports `library` mode only.
+- `release`: Dart currently supports release with `release.includeArtifacts: false`.
 
 ### Dev commands
 - `gh flarebyte test [--style summary|per_test] [--color auto|true|false] [--failed-only]` runs tests for the configured build language, with optional per-invocation output overrides.
@@ -133,6 +135,29 @@ release: {
 }
 ```
 
+Dart library example:
+
+```cue
+build: {
+  language: "dart"
+  mode:     "library"
+  packages: ["./..."]
+  runTests: true
+}
+
+coverage: {
+  min: 80
+  enforceMin: true
+}
+
+release: {
+  versionSource: "main.project.yaml"
+  tagPrefix: "v"
+  notesMode: "generate-notes"
+  includeArtifacts: false
+}
+```
+
 ## Typical workflow
 1. Run `gh flarebyte repo init` in a repo that should be managed.
 2. Edit `.gh-flarebyte.cue` to match the desired repository state.
@@ -145,11 +170,24 @@ release: {
 - `make build-go` builds the local CLI binary at `.e2e-bin/gh-flarebyte`.
 - `make release` runs `.e2e-bin/gh-flarebyte release` (it depends on `build-go`).
 - `GH_FLAREBYTE_FAKE_RELEASE=1 make release` runs the release flow in fake mode (no GitHub mutation).
+- `make review-dart` runs `format-dart`, `test-dart`, `lint-dart`, and `coverage-dart`.
+
+## Language support snapshot
+- Go:
+  - `build` and `release`: supported
+  - dev commands (`test`, `format`, `lint`, `cov`): supported
+- Dart:
+  - `build`: supported in `library` mode only
+  - `release`: supported with `release.includeArtifacts: false`
+  - dev commands: supported
+  - `test --style per_test`: supported (uses Dart JSON reporter)
+  - `cov` threshold enforcement: supported (reads `.dart_tool/coverage/lcov.info`)
 
 ## Notes
 - Topics are managed as a flat list of strings.
 - Labels are managed as structured objects with `name`, `color`, and `description`.
-- Build is Go-first today, with Dart reserved in the config for later.
+- Build: Go supports `binary` and `library`; Dart currently supports `library` only.
+- Release: Dart currently supports `release.includeArtifacts: false`.
 - `build.mode` defaults to `binary`. Use `library` for multi-package libraries (compile verification with `go build`, and optional `go test` when `runTests: true`).
 - `build.mainPackage` controls the Go main package used for binary builds. Default: `./cmd/<project.repo>`.
 - `build.artifactTargetSuffix` controls whether artifact names include `-os-arch` suffixes.
@@ -162,7 +200,8 @@ release: {
 - When `go.cgo.enabled: false`, the build keeps `CGO_ENABLED=0` and fails with a policy error if CGO-backed dependencies are detected.
 - `release.includeArtifacts` defaults to `true`. Set it to `false` to publish tag and notes without uploading binaries or checksums.
 - `gh flarebyte cov --min 90` overrides config coverage threshold for that invocation.
+- For Dart projects, `cov` computes total line coverage from `.dart_tool/coverage/lcov.info` and enforces `coverage.min` / `--min` when `coverage.enforceMin` is enabled.
 - `devOutput.style` supports `summary` and `per_test`.
 - `--color` overrides `devOutput.color` for `test`, `lint`, and `cov`.
 - `--failed-only` suppresses PASS summary output for `test`, `lint`, and `cov`.
-- In `per_test` style, `test` prints `✓/↷/✗` per test and `cov` prints `✓/✗` per coverage entry; with `--failed-only`, only failing entries are shown.
+- In `per_test` style, `test` prints `✓/↷/✗` per test (Go and Dart) and `cov` prints `✓/✗` per coverage entry; with `--failed-only`, only failing entries are shown.

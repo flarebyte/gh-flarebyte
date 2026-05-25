@@ -52,16 +52,37 @@ func runTest(styleOverride, colorOverride string, failedOnly bool, stdout, stder
 		printDevSummary(stdout, cfg, devSummary{Kind: "test", Status: "PASS", Duration: time.Since(start), Details: formatGoTestDetails(report.Tests, report.Failed, report.Skipped, "PASS")})
 		return Result{ExitCode: ExitOK}
 	case "dart":
-		_, cmdErr, runErr := runCommandCapture("dart", []string{"test"}, env)
+		testArgs := []string{"test"}
+		if cfg.DevOutput.Style == "per_test" {
+			testArgs = []string{"test", "-r", "json"}
+		}
+		cmdOut, cmdErr, runErr := runCommandCapture("dart", testArgs, env)
+		report := parseDartTestReport(cmdOut)
+		if cfg.DevOutput.Style == "per_test" {
+			printDartPerTestEvents(stdout, cfg, report.Events, failedOnly)
+		}
 		if runErr != nil {
-			printDevSummary(stderr, cfg, devSummary{Kind: "test", Status: "FAIL", Duration: time.Since(start), Details: strings.TrimSpace(cmdErr)})
+			details := strings.TrimSpace(cmdErr)
+			if report.Tests > 0 {
+				summary := fmt.Sprintf("tests=%d failed=%d skipped=%d", report.Tests, report.Failed, report.Skipped)
+				if details != "" {
+					details = summary + "\n" + details
+				} else {
+					details = summary
+				}
+			}
+			printDevSummary(stderr, cfg, devSummary{Kind: "test", Status: "FAIL", Duration: time.Since(start), Details: details})
 			return Result{ExitCode: ExitFailure, Err: commandError(runErr, cmdErr)}
 		}
+		details := ""
+		if report.Tests > 0 {
+			details = fmt.Sprintf("tests=%d failed=0 skipped=%d", report.Tests, report.Skipped)
+		}
+		printDevSummary(stdout, cfg, devSummary{Kind: "test", Status: "PASS", Duration: time.Since(start), Details: details})
+		return Result{ExitCode: ExitOK}
 	default:
 		return unsupportedLanguageResult(cfg.Build.Language, stderr)
 	}
-	printDevSummary(stdout, cfg, devSummary{Kind: "test", Status: "PASS", Duration: time.Since(start)})
-	return Result{ExitCode: ExitOK}
 }
 
 func runFormat(stdout, stderr io.Writer) Result {
@@ -180,8 +201,31 @@ func runCov(min *float64, colorOverride string, failedOnly bool, stdout, stderr 
 			_, _ = fmt.Fprintln(stderr, strings.TrimSpace(cmdErr))
 			return Result{ExitCode: ExitFailure, Err: commandError(runErr, cmdErr)}
 		}
+		lcovPath := filepath.Join(".dart_tool", "coverage", "lcov.info")
+		lcovBytes, readErr := os.ReadFile(lcovPath)
+		if readErr != nil {
+			_, _ = fmt.Fprintln(stderr, readErr.Error())
+			return Result{ExitCode: ExitFailure, Err: readErr}
+		}
+		coverage, details, parseErr := parseDartLCOVCoverage(string(lcovBytes))
+		if parseErr != nil {
+			_, _ = fmt.Fprintln(stderr, parseErr.Error())
+			return Result{ExitCode: ExitFailure, Err: parseErr}
+		}
+		effectiveMin := resolveCoverageMin(min, cfg)
+		if cfg.DevOutput.Style == "per_test" {
+			printCoverageDetails(stdout, details, effectiveMin, failedOnly)
+		}
+		if effectiveMin != nil && cfg.Coverage.FailBelowMin && coverage < *effectiveMin {
+			printDevSummary(stderr, cfg, devSummary{Kind: "cov", Status: "FAIL", Duration: time.Since(start), Details: fmt.Sprintf("total=%.2f%% min=%.2f%%", coverage, *effectiveMin)})
+			return Result{ExitCode: ExitFailure, Err: fmt.Errorf("coverage %.2f below minimum %.2f", coverage, *effectiveMin)}
+		}
 		if !failedOnly {
-			printDevSummary(stdout, cfg, devSummary{Kind: "cov", Status: "PASS", Duration: time.Since(start)})
+			if effectiveMin != nil {
+				printDevSummary(stdout, cfg, devSummary{Kind: "cov", Status: "PASS", Duration: time.Since(start), Details: fmt.Sprintf("total=%.2f%% min=%.2f%%", coverage, *effectiveMin)})
+			} else {
+				printDevSummary(stdout, cfg, devSummary{Kind: "cov", Status: "PASS", Duration: time.Since(start), Details: fmt.Sprintf("total=%.2f%%", coverage)})
+			}
 		}
 		return Result{ExitCode: ExitOK}
 	default:

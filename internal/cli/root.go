@@ -159,6 +159,10 @@ Usage:
   gh flarebyte repo audit [--repo owner/name] [--json]
   gh flarebyte repos mine --org my-org [--json]
   gh flarebyte config validate [--config path]
+
+Notes:
+  build: Go supports binary and library modes; Dart currently supports library mode only.
+  release: Dart currently supports release with includeArtifacts=false.
 `)
 }
 
