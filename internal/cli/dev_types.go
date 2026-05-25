@@ -33,6 +33,18 @@ type goTestReport struct {
 	Failures []goFailure
 }
 
+type dartTestEvent struct {
+	Action string
+	Test   string
+}
+
+type dartTestReport struct {
+	Tests   int
+	Failed  int
+	Skipped int
+	Events  []dartTestEvent
+}
+
 type coverageDetail struct {
 	Label   string
 	Percent float64

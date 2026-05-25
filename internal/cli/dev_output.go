@@ -87,6 +87,26 @@ func printPerTestEvents(w io.Writer, cfg config.Config, events []goTestEvent, fa
 	}
 }
 
+func printDartPerTestEvents(w io.Writer, cfg config.Config, events []dartTestEvent, failedOnly bool) {
+	for _, ev := range events {
+		if ev.Test == "" {
+			continue
+		}
+		switch ev.Action {
+		case "pass":
+			if !failedOnly && cfg.DevOutput.ShowPassed {
+				_, _ = fmt.Fprintf(w, "✓ %s\n", ev.Test)
+			}
+		case "skip":
+			if !failedOnly {
+				_, _ = fmt.Fprintf(w, "↷ %s\n", ev.Test)
+			}
+		case "fail":
+			_, _ = fmt.Fprintf(w, "✗ %s\n", ev.Test)
+		}
+	}
+}
+
 func printCoverageDetails(w io.Writer, details []coverageDetail, min *float64, failedOnly bool) {
 	for _, d := range details {
 		mark := "✓"

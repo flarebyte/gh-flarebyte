@@ -252,3 +252,81 @@ func TestRunGoTestFailureIncludesSummaryDetails(t *testing.T) {
 		t.Fatalf("expected failure snippets, got: %s", errOut.String())
 	}
 }
+
+func TestRunDartTestPerTestStyleOutput(t *testing.T) {
+	cfg := strings.Replace(testConfigCue(), `language:     "go"`, `language:     "dart"`, 1)
+	cfg += `
+
+devOutput: {
+	color: "false"
+	style: "per_test"
+	showPassed: true
+}
+`
+	_ = setupTempWorkdirWithConfig(t, cfg)
+	oldRun := runCommandCapture
+	t.Cleanup(func() { runCommandCapture = oldRun })
+	runCommandCapture = func(name string, args []string, env []string) (string, string, error) {
+		if name == "dart" {
+			if len(args) < 3 || args[0] != "test" || args[1] != "-r" || args[2] != "json" {
+				t.Fatalf("expected dart test -r json, got: %v", args)
+			}
+			return strings.Join([]string{
+				`{"type":"testDone","test":{"id":1,"name":"adds numbers"},"result":"success"}`,
+				`{"type":"testDone","test":{"id":2,"name":"skips legacy","skip":true},"result":"success"}`,
+				"",
+			}, "\n"), "", nil
+		}
+		return "", "", nil
+	}
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	res := Run([]string{"test"}, &out, &errOut)
+	if res.ExitCode != ExitOK {
+		t.Fatalf("expected success, got %d stderr=%s", res.ExitCode, errOut.String())
+	}
+	if !strings.Contains(out.String(), "✓ adds numbers") || !strings.Contains(out.String(), "↷ skips legacy") {
+		t.Fatalf("expected per-test dart output, got: %s", out.String())
+	}
+	if !strings.Contains(out.String(), "TEST PASS") || !strings.Contains(out.String(), "tests=2 failed=0 skipped=1") {
+		t.Fatalf("expected dart summary details, got: %s", out.String())
+	}
+}
+
+func TestRunDartTestFailedOnlyFiltersPassedAndSkipped(t *testing.T) {
+	cfg := strings.Replace(testConfigCue(), `language:     "go"`, `language:     "dart"`, 1)
+	cfg += `
+
+devOutput: {
+	color: "false"
+	style: "per_test"
+	showPassed: true
+}
+`
+	_ = setupTempWorkdirWithConfig(t, cfg)
+	oldRun := runCommandCapture
+	t.Cleanup(func() { runCommandCapture = oldRun })
+	runCommandCapture = func(name string, args []string, env []string) (string, string, error) {
+		return strings.Join([]string{
+			`{"type":"testDone","test":{"id":1,"name":"ok"},"result":"success"}`,
+			`{"type":"testDone","test":{"id":2,"name":"skipped","skip":true},"result":"success"}`,
+			`{"type":"testDone","test":{"id":3,"name":"fails"},"result":"failure"}`,
+			"",
+		}, "\n"), "stderr detail", fmt.Errorf("boom")
+	}
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	res := Run([]string{"test", "--failed-only"}, &out, &errOut)
+	if res.ExitCode != ExitFailure {
+		t.Fatalf("expected failure, got %d", res.ExitCode)
+	}
+	if strings.Contains(out.String(), "✓ ok") || strings.Contains(out.String(), "↷ skipped") {
+		t.Fatalf("expected pass/skip entries hidden, got: %s", out.String())
+	}
+	if !strings.Contains(out.String(), "✗ fails") {
+		t.Fatalf("expected failing entry shown, got: %s", out.String())
+	}
+	if !strings.Contains(errOut.String(), "tests=3 failed=1 skipped=1") {
+		t.Fatalf("expected failure summary details, got: %s", errOut.String())
+	}
+}

@@ -94,3 +94,60 @@ func parseGoTestReport(out string) goTestReport {
 	}
 	return report
 }
+
+func parseDartTestReport(out string) dartTestReport {
+	type dartJSONTestRef struct {
+		ID    int    `json:"id"`
+		Name  string `json:"name"`
+		Skip  bool   `json:"skip"`
+		Hidden bool  `json:"hidden"`
+	}
+	type dartJSONEvent struct {
+		Type   string          `json:"type"`
+		Test   *dartJSONTestRef `json:"test"`
+		Result string          `json:"result"`
+	}
+
+	report := dartTestReport{}
+	testsByID := map[int]dartJSONTestRef{}
+
+	for _, line := range strings.Split(out, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		var ev dartJSONEvent
+		if err := json.Unmarshal([]byte(line), &ev); err != nil {
+			continue
+		}
+		if ev.Test != nil {
+			testsByID[ev.Test.ID] = *ev.Test
+		}
+		if ev.Type != "testDone" || ev.Test == nil {
+			continue
+		}
+		test := testsByID[ev.Test.ID]
+		if test.Hidden {
+			continue
+		}
+		name := strings.TrimSpace(test.Name)
+		if name == "" {
+			continue
+		}
+		report.Tests++
+		if test.Skip {
+			report.Skipped++
+			report.Events = append(report.Events, dartTestEvent{Action: "skip", Test: name})
+			continue
+		}
+		switch ev.Result {
+		case "success":
+			report.Events = append(report.Events, dartTestEvent{Action: "pass", Test: name})
+		default:
+			report.Failed++
+			report.Events = append(report.Events, dartTestEvent{Action: "fail", Test: name})
+		}
+	}
+
+	return report
+}
