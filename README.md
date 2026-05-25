@@ -146,10 +146,19 @@ release: {
 - `make release` runs `.e2e-bin/gh-flarebyte release` (it depends on `build-go`).
 - `GH_FLAREBYTE_FAKE_RELEASE=1 make release` runs the release flow in fake mode (no GitHub mutation).
 
+## Language support snapshot
+- Go:
+  - `build` and `release`: supported
+  - dev commands (`test`, `format`, `lint`, `cov`): supported
+- Dart:
+  - `build` and `release`: not supported yet (`build` is Go-only today)
+  - dev commands: supported
+  - `test --style per_test`: supported (uses Dart JSON reporter)
+
 ## Notes
 - Topics are managed as a flat list of strings.
 - Labels are managed as structured objects with `name`, `color`, and `description`.
-- Build is Go-first today, with Dart reserved in the config for later.
+- Build/release are Go-first today; Dart is currently supported for dev commands.
 - `build.mode` defaults to `binary`. Use `library` for multi-package libraries (compile verification with `go build`, and optional `go test` when `runTests: true`).
 - `build.mainPackage` controls the Go main package used for binary builds. Default: `./cmd/<project.repo>`.
 - `build.artifactTargetSuffix` controls whether artifact names include `-os-arch` suffixes.
@@ -165,4 +174,4 @@ release: {
 - `devOutput.style` supports `summary` and `per_test`.
 - `--color` overrides `devOutput.color` for `test`, `lint`, and `cov`.
 - `--failed-only` suppresses PASS summary output for `test`, `lint`, and `cov`.
-- In `per_test` style, `test` prints `✓/↷/✗` per test and `cov` prints `✓/✗` per coverage entry; with `--failed-only`, only failing entries are shown.
+- In `per_test` style, `test` prints `✓/↷/✗` per test (Go and Dart) and `cov` prints `✓/✗` per coverage entry; with `--failed-only`, only failing entries are shown.
