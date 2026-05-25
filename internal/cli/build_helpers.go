@@ -28,6 +28,7 @@ var (
 	currentTimeUTC      = func() time.Time { return time.Now().UTC() }
 	currentGoVersion    = runtime.Version
 	goBuildPackages     = runGoBuildPackages
+	dartBuildPackages   = runDartBuildPackages
 	readGitOutput       = func(args ...string) (string, error) {
 		cmd := exec.Command("git", args...)
 		out, err := cmd.Output()
@@ -128,6 +129,33 @@ func runGoBuildPackages(goos string, goarch string, packages []string, runTests 
 	testCmd.Stderr = &testStderr
 	if err := testCmd.Run(); err != nil {
 		return goBuildError(err, "go "+strings.Join(testArgs, " "), env, testStderr.String())
+	}
+	return nil
+}
+
+func runDartBuildPackages(runTests bool) error {
+	pubGetCmd := exec.Command("dart", "pub", "get")
+	var pubGetStderr bytes.Buffer
+	pubGetCmd.Stderr = &pubGetStderr
+	if err := pubGetCmd.Run(); err != nil {
+		return commandError(err, pubGetStderr.String())
+	}
+
+	analyzeCmd := exec.Command("dart", "analyze")
+	var analyzeStderr bytes.Buffer
+	analyzeCmd.Stderr = &analyzeStderr
+	if err := analyzeCmd.Run(); err != nil {
+		return commandError(err, analyzeStderr.String())
+	}
+
+	if !runTests {
+		return nil
+	}
+	testCmd := exec.Command("dart", "test")
+	var testStderr bytes.Buffer
+	testCmd.Stderr = &testStderr
+	if err := testCmd.Run(); err != nil {
+		return commandError(err, testStderr.String())
 	}
 	return nil
 }

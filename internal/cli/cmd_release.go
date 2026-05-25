@@ -13,6 +13,11 @@ func runRelease(draft bool, notesFileOverride string, stdout, stderr io.Writer) 
 	if usage != nil {
 		return *usage
 	}
+	if cfg.Build.Language == "dart" && cfg.Release.IncludeArtifacts {
+		err := fmt.Errorf(`invalid config: build.language is "dart" and release.includeArtifacts is true. Use release.includeArtifacts: false for Dart projects`)
+		_, _ = fmt.Fprintln(stderr, err.Error())
+		return Result{ExitCode: ExitUsage, Err: err}
+	}
 	buildRes := Run([]string{"build"}, io.Discard, stderr)
 	if buildRes.ExitCode != ExitOK {
 		if buildRes.ExitCode == ExitBuildFailure {

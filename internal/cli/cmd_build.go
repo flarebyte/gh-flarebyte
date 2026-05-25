@@ -49,8 +49,27 @@ func runBuild(targetFilter, outputDirOverride string, stdout, stderr io.Writer) 
 	if usage != nil {
 		return *usage
 	}
+	if cfg.Build.Language == "dart" {
+		if cfg.Build.Mode != "library" {
+			err := fmt.Errorf(`build.language "dart" currently supports build.mode "library" only`)
+			_, _ = fmt.Fprintln(stderr, err.Error())
+			return Result{ExitCode: ExitUsage, Err: err}
+		}
+		if targetFilter != "" {
+			err := fmt.Errorf(`--target is not supported for build.language "dart"`)
+			_, _ = fmt.Fprintln(stderr, err.Error())
+			return Result{ExitCode: ExitUsage, Err: err}
+		}
+		hydrateBuildInfo(cfg.Release.VersionSource)
+		if err := dartBuildPackages(cfg.Build.RunTests); err != nil {
+			_, _ = fmt.Fprintf(stderr, "Build failed in library mode during dart pub/analyze/test.\n%s\n", err.Error())
+			return Result{ExitCode: ExitBuildFailure, Err: err}
+		}
+		_, _ = fmt.Fprintln(stdout, "Build complete: Dart library validation passed.")
+		return Result{ExitCode: ExitOK}
+	}
 	if cfg.Build.Language != "go" {
-		err := fmt.Errorf("build.language %q is not supported yet. Supported values: go", cfg.Build.Language)
+		err := fmt.Errorf("build.language %q is not supported yet. Supported values: go, dart", cfg.Build.Language)
 		_, _ = fmt.Fprintln(stderr, err.Error())
 		return Result{ExitCode: ExitUsage, Err: err}
 	}
