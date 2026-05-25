@@ -6,6 +6,8 @@ meta:
     - TestHydrateBuildInfoPopulatesAllFields
     - TestPackageBinaryArchiveTarGzAndZip
     - TestResolveVersionFromSourceYAMLAndJSON
+    - TestRunBuildDartLibraryModeFailure
+    - TestRunBuildDartLibraryModeSuccess
     - TestRunBuildFailureIncludesUnderlyingError
     - TestRunBuildFailurePrintsGoEnvAndCommand
     - TestRunBuildLibraryModePassesCGOConfig
@@ -14,9 +16,11 @@ meta:
     - TestRunBuildSuccessWritesChecksumAndSummary
     - TestRunBuildUsesConfiguredMainPackage
     - TestRunBuildWithoutSuffixUsesTargetSubdirsForMultipleTargets
+    - TestRunReleaseDartLibraryNoArtifactsSuccess
     - TestRunReleaseFailsWhenTagExists
     - TestRunReleaseLibraryModeWithoutArtifacts
     - TestRunReleaseNotesFileModeRequiresPath
+    - TestRunReleaseRejectsDartArtifactsEnabled
     - TestRunReleaseSuccess
     - TestRunReleaseSupportsNoSuffixModeWithMultipleTargets
     - setupBuildTargetAndPackagingStubs

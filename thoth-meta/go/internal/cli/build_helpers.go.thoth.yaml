@@ -12,6 +12,7 @@ meta:
     - packageTarGz
     - packageZip
     - resolveChecksumPath
+    - runDartBuildPackages
     - runGoBuildPackages
     - sha256File
     - splitTarget

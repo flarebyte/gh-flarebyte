@@ -6,6 +6,7 @@ meta:
     - formatFailureDetails
     - formatGoTestDetails
     - printCoverageDetails
+    - printDartPerTestEvents
     - printDevSummary
     - printPerTestEvents
     - useColor
