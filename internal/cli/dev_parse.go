@@ -97,15 +97,15 @@ func parseGoTestReport(out string) goTestReport {
 
 func parseDartTestReport(out string) dartTestReport {
 	type dartJSONTestRef struct {
-		ID    int    `json:"id"`
-		Name  string `json:"name"`
-		Skip  bool   `json:"skip"`
-		Hidden bool  `json:"hidden"`
+		ID     int    `json:"id"`
+		Name   string `json:"name"`
+		Skip   bool   `json:"skip"`
+		Hidden bool   `json:"hidden"`
 	}
 	type dartJSONEvent struct {
-		Type   string          `json:"type"`
+		Type   string           `json:"type"`
 		Test   *dartJSONTestRef `json:"test"`
-		Result string          `json:"result"`
+		Result string           `json:"result"`
 	}
 
 	report := dartTestReport{}
@@ -150,4 +150,66 @@ func parseDartTestReport(out string) dartTestReport {
 	}
 
 	return report
+}
+
+func parseDartLCOVCoverage(lcov string) (float64, []coverageDetail, error) {
+	type fileCoverage struct {
+		label string
+		lf    float64
+		lh    float64
+	}
+	var current fileCoverage
+	resetCurrent := func() {
+		current = fileCoverage{}
+	}
+	finalizeCurrent := func(details []coverageDetail) []coverageDetail {
+		if current.label == "" || current.lf <= 0 {
+			return details
+		}
+		details = append(details, coverageDetail{
+			Label:   current.label,
+			Percent: (current.lh / current.lf) * 100,
+		})
+		return details
+	}
+
+	totalLF := 0.0
+	totalLH := 0.0
+	details := make([]coverageDetail, 0)
+	resetCurrent()
+
+	for _, line := range strings.Split(lcov, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		switch {
+		case strings.HasPrefix(line, "SF:"):
+			current.label = strings.TrimPrefix(line, "SF:")
+		case strings.HasPrefix(line, "LF:"):
+			lf, err := strconv.ParseFloat(strings.TrimPrefix(line, "LF:"), 64)
+			if err != nil {
+				return 0, nil, fmt.Errorf("unable to parse dart lcov LF value")
+			}
+			current.lf = lf
+			totalLF += lf
+		case strings.HasPrefix(line, "LH:"):
+			lh, err := strconv.ParseFloat(strings.TrimPrefix(line, "LH:"), 64)
+			if err != nil {
+				return 0, nil, fmt.Errorf("unable to parse dart lcov LH value")
+			}
+			current.lh = lh
+			totalLH += lh
+		case line == "end_of_record":
+			details = finalizeCurrent(details)
+			resetCurrent()
+		}
+	}
+	// Handle files even if end_of_record is missing.
+	details = finalizeCurrent(details)
+
+	if totalLF <= 0 {
+		return 0, nil, fmt.Errorf("unable to parse total coverage from dart lcov output")
+	}
+	return (totalLH / totalLF) * 100, details, nil
 }

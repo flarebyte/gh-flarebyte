@@ -154,6 +154,7 @@ release: {
   - `build` and `release`: not supported yet (`build` is Go-only today)
   - dev commands: supported
   - `test --style per_test`: supported (uses Dart JSON reporter)
+  - `cov` threshold enforcement: supported (reads `.dart_tool/coverage/lcov.info`)
 
 ## Notes
 - Topics are managed as a flat list of strings.
@@ -171,6 +172,7 @@ release: {
 - When `go.cgo.enabled: false`, the build keeps `CGO_ENABLED=0` and fails with a policy error if CGO-backed dependencies are detected.
 - `release.includeArtifacts` defaults to `true`. Set it to `false` to publish tag and notes without uploading binaries or checksums.
 - `gh flarebyte cov --min 90` overrides config coverage threshold for that invocation.
+- For Dart projects, `cov` computes total line coverage from `.dart_tool/coverage/lcov.info` and enforces `coverage.min` / `--min` when `coverage.enforceMin` is enabled.
 - `devOutput.style` supports `summary` and `per_test`.
 - `--color` overrides `devOutput.color` for `test`, `lint`, and `cov`.
 - `--failed-only` suppresses PASS summary output for `test`, `lint`, and `cov`.
