@@ -235,6 +235,7 @@ func newBuildCobraCommand(stdout, stderr io.Writer) *cobra.Command {
 	var target, outputDir string
 	cmd := &cobra.Command{
 		Use:           "build",
+		Short:         "Build project outputs. Go supports binary/library; Dart supports library validation only.",
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		Args:          noExtraArgs,
@@ -252,6 +253,7 @@ func newReleaseCobraCommand(stdout, stderr io.Writer) *cobra.Command {
 	var notesFile string
 	cmd := &cobra.Command{
 		Use:           "release",
+		Short:         "Publish a GitHub release after build. Dart currently supports release without artifacts only.",
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		Args:          noExtraArgs,

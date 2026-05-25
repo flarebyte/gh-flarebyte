@@ -1,7 +1,7 @@
 .DEFAULT_GOAL := help
 
-.PHONY: build build-go build-dist test test-go test-unit test-race test-e2e \
-	lint lint-go lint-e2e format format-go format-e2e review coverage coverage-go \
+.PHONY: build build-go build-dist test test-go test-dart test-unit test-race test-e2e \
+	lint lint-go lint-dart lint-e2e format format-go format-dart format-e2e review review-dart coverage coverage-go coverage-dart \
 	doc-design doc-decision dup complexity release sec \
 	thoth-meta thoth-meta-go thoth-meta-go-test thoth-meta-ts-e2e \
 	check-tools install-tools-help help
@@ -41,6 +41,10 @@ test: test-go test-e2e
 
 test-go: test-unit
 
+test-dart: build-go
+	mkdir -p $(TMP_DIR)
+	$(CLI_BIN) test --style per_test
+
 test-unit: build-go
 	mkdir -p $(TMP_DIR)
 	$(CLI_BIN) test --style per_test
@@ -55,6 +59,10 @@ coverage-go: build-go
 	mkdir -p $(TMP_DIR)
 	$(CLI_BIN) cov
 
+coverage-dart: build-go
+	mkdir -p $(TMP_DIR)
+	$(CLI_BIN) cov
+
 test-e2e: build-go
 	mkdir -p $(TMP_DIR)
 	$(BUN_ENV) $(BUN) test ./e2e
@@ -62,6 +70,10 @@ test-e2e: build-go
 lint: lint-go lint-e2e
 
 lint-go: build-go
+	mkdir -p $(TMP_DIR)
+	$(CLI_BIN) lint
+
+lint-dart: build-go
 	mkdir -p $(TMP_DIR)
 	$(CLI_BIN) lint
 
@@ -77,6 +89,12 @@ review: format test lint
 format-go: build-go
 	mkdir -p $(TMP_DIR)
 	$(CLI_BIN) format
+
+format-dart: build-go
+	mkdir -p $(TMP_DIR)
+	$(CLI_BIN) format
+
+review-dart: format-dart test-dart lint-dart coverage-dart
 
 format-e2e:
 	mkdir -p $(TMP_DIR)
@@ -145,18 +163,23 @@ help:
 	@printf "  build-dist   Build artifacts via local gh-flarebyte build config.\n"
 	@printf "  test         Run Go tests and Bun E2E tests.\n"
 	@printf "  test-go      Run Go test targets.\n"
+	@printf "  test-dart    Run Dart test target via gh flarebyte test.\n"
 	@printf "  test-unit    Run tests via gh flarebyte test (per-test output).\n"
 	@printf "  test-race    Run Go tests with the race detector.\n"
 	@printf "  test-e2e     Build the CLI and run Bun E2E tests.\n"
 	@printf "  coverage     Run coverage checks via gh flarebyte cov.\n"
 	@printf "  coverage-go  Run coverage checks via gh flarebyte cov.\n"
+	@printf "  coverage-dart Run coverage checks for Dart via gh flarebyte cov.\n"
 	@printf "  lint         Run Go linting and Biome checks.\n"
 	@printf "  lint-go      Run lint checks via gh flarebyte lint.\n"
+	@printf "  lint-dart    Run lint checks for Dart via gh flarebyte lint.\n"
 	@printf "  lint-e2e     Run Biome checks for TypeScript and tooling files.\n"
 	@printf "  format       Format Go and Biome-managed files.\n"
 	@printf "  format-go    Format Go sources via gh flarebyte format.\n"
+	@printf "  format-dart  Format Dart sources via gh flarebyte format.\n"
 	@printf "  format-e2e   Format TypeScript and tooling files with Biome.\n"
 	@printf "  review       Run format, test, and lint using existing targets.\n"
+	@printf "  review-dart  Run format, test, lint, and coverage for Dart targets.\n"
 	@printf "  doc-design   Regenerate design docs from flyb configs.\n"
 	@printf "  doc-decision Validate decision configs and regenerate markdown decision reports.\n"
 	@printf "  dup          Run duplicate code detection.\n"

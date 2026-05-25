@@ -386,6 +386,52 @@ func TestRunReleaseSuccess(t *testing.T) {
 	}
 }
 
+func TestRunReleaseDartLibraryNoArtifactsSuccess(t *testing.T) {
+	cfg := strings.Replace(testConfigCue(), `language:     "go"`, `language:     "dart"`, 1)
+	cfg = strings.Replace(cfg, "build: {\n\tlanguage:     \"dart\"", "build: {\n\tlanguage:     \"dart\"\n\tmode:         \"library\"\n\tpackages: [\n\t\t\"./...\",\n\t]\n\trunTests:     true", 1)
+	cfg = strings.Replace(cfg, `release: {
+	versionSource:    "main.project.yaml"
+	tagPrefix:        "v"
+	notesMode:        "generate-notes"
+	artifactDir:      "build"
+	includeChecksums: true
+}`, `release: {
+	versionSource:    "main.project.yaml"
+	tagPrefix:        "v"
+	notesMode:        "generate-notes"
+	includeArtifacts: false
+}`, 1)
+	_ = setupTempWorkdirWithConfig(t, cfg)
+	oldDartBuildPackages := dartBuildPackages
+	t.Cleanup(func() { dartBuildPackages = oldDartBuildPackages })
+	dartBuildPackages = func(runTests bool) error {
+		if !runTests {
+			t.Fatalf("expected runTests=true")
+		}
+		return nil
+	}
+	stubReleaseFlow(t, "1.2.3", false)
+	var capturedTag string
+	var capturedArtifacts []string
+	createRelease = func(tag string, artifacts []string, notesMode string, notesFile string, draft bool) error {
+		capturedTag = tag
+		capturedArtifacts = append([]string{}, artifacts...)
+		return nil
+	}
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	result := Run([]string{"release", "--draft"}, &out, &errOut)
+	if result.ExitCode != ExitOK {
+		t.Fatalf("expected success, got %d stderr=%s", result.ExitCode, errOut.String())
+	}
+	if capturedTag != "v1.2.3" {
+		t.Fatalf("unexpected tag: %s", capturedTag)
+	}
+	if len(capturedArtifacts) != 0 {
+		t.Fatalf("expected no artifacts for dart library release, got: %v", capturedArtifacts)
+	}
+}
+
 func TestRunReleaseSupportsNoSuffixModeWithMultipleTargets(t *testing.T) {
 	cfg := strings.Replace(testConfigCue(), `targets: [
 		"linux-amd64",
