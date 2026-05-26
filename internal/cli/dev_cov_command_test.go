@@ -390,3 +390,57 @@ func TestRunCovDartGeneratesLCOVWhenMissing(t *testing.T) {
 		t.Fatalf("expected pass summary, got: %s", out.String())
 	}
 }
+
+func TestRunCovDartReactivatesCoverageToolWhenGlobalRunDepsDrift(t *testing.T) {
+	cfg := strings.Replace(setupCoverageConfig(), `language:     "go"`, `language:     "dart"`, 1)
+	_ = setupTempWorkdirWithConfig(t, cfg)
+	oldRun := runCommandCapture
+	t.Cleanup(func() { runCommandCapture = oldRun })
+	formatAttempts := 0
+	activateCalled := false
+	runCommandCapture = func(name string, args []string, env []string) (string, string, error) {
+		if name != "dart" {
+			return "", "", nil
+		}
+		if len(args) >= 3 && args[0] == "test" && args[1] == "--coverage" {
+			return "", "", nil
+		}
+		if len(args) >= 4 && args[0] == "pub" && args[1] == "global" && args[2] == "run" && args[3] == "coverage:format_coverage" {
+			formatAttempts++
+			if formatAttempts == 1 {
+				return "", "The current activation of `coverage` cannot resolve to the same set of dependencies.", fmt.Errorf("boom")
+			}
+			if err := os.MkdirAll(filepath.Join(".dart_tool", "coverage"), 0o755); err != nil {
+				return "", "", err
+			}
+			lcov := strings.Join([]string{
+				"SF:lib/a.dart",
+				"LF:10",
+				"LH:10",
+				"end_of_record",
+				"",
+			}, "\n")
+			if err := os.WriteFile(filepath.Join(".dart_tool", "coverage", "lcov.info"), []byte(lcov), 0o644); err != nil {
+				return "", "", err
+			}
+			return "", "", nil
+		}
+		if len(args) >= 4 && args[0] == "pub" && args[1] == "global" && args[2] == "activate" && args[3] == "coverage" {
+			activateCalled = true
+			return "", "", nil
+		}
+		return "", "", nil
+	}
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	res := Run([]string{"cov"}, &out, &errOut)
+	if res.ExitCode != ExitOK {
+		t.Fatalf("expected success, got %d stderr=%s", res.ExitCode, errOut.String())
+	}
+	if !activateCalled {
+		t.Fatalf("expected coverage activation to be called")
+	}
+	if formatAttempts < 2 {
+		t.Fatalf("expected format_coverage retry, got %d attempt(s)", formatAttempts)
+	}
+}

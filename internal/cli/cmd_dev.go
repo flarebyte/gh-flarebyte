@@ -204,20 +204,32 @@ func runCov(min *float64, colorOverride string, failedOnly bool, stdout, stderr 
 		lcovPath := filepath.Join(".dart_tool", "coverage", "lcov.info")
 		lcovBytes, readErr := os.ReadFile(lcovPath)
 		if readErr != nil {
+			formatArgs := []string{
+				"pub", "global", "run", "coverage:format_coverage",
+				"--packages=.dart_tool/package_config.json",
+				"--lcov",
+				"--in=.dart_tool/coverage",
+				"--out=.dart_tool/coverage/lcov.info",
+			}
 			_, formatErrText, formatErr := runCommandCapture(
 				"dart",
-				[]string{
-					"pub", "global", "run", "coverage:format_coverage",
-					"--packages=.dart_tool/package_config.json",
-					"--lcov",
-					"--in=.dart_tool/coverage",
-					"--out=.dart_tool/coverage/lcov.info",
-				},
+				formatArgs,
 				env,
 			)
 			if formatErr != nil {
-				_, _ = fmt.Fprintln(stderr, strings.TrimSpace(formatErrText))
-				return Result{ExitCode: ExitFailure, Err: fmt.Errorf("dart coverage report missing (%s) and lcov generation failed; ensure coverage tooling is installed and rerun", lcovPath)}
+				// Repair stale global activation and retry once.
+				if strings.Contains(formatErrText, "cannot resolve to the same set of dependencies") {
+					_, activateErrText, activateErr := runCommandCapture("dart", []string{"pub", "global", "activate", "coverage"}, env)
+					if activateErr == nil {
+						_, formatErrText, formatErr = runCommandCapture("dart", formatArgs, env)
+					} else {
+						_, _ = fmt.Fprintln(stderr, strings.TrimSpace(activateErrText))
+					}
+				}
+				if formatErr != nil {
+					_, _ = fmt.Fprintln(stderr, strings.TrimSpace(formatErrText))
+					return Result{ExitCode: ExitFailure, Err: fmt.Errorf("dart coverage report missing (%s) and lcov generation failed; ensure coverage tooling is installed and rerun", lcovPath)}
+				}
 			}
 			lcovBytes, readErr = os.ReadFile(lcovPath)
 			if readErr != nil {
