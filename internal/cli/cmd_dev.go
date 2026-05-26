@@ -204,8 +204,26 @@ func runCov(min *float64, colorOverride string, failedOnly bool, stdout, stderr 
 		lcovPath := filepath.Join(".dart_tool", "coverage", "lcov.info")
 		lcovBytes, readErr := os.ReadFile(lcovPath)
 		if readErr != nil {
-			_, _ = fmt.Fprintln(stderr, readErr.Error())
-			return Result{ExitCode: ExitFailure, Err: readErr}
+			_, formatErrText, formatErr := runCommandCapture(
+				"dart",
+				[]string{
+					"pub", "global", "run", "coverage:format_coverage",
+					"--packages=.dart_tool/package_config.json",
+					"--lcov",
+					"--in=.dart_tool/coverage",
+					"--out=.dart_tool/coverage/lcov.info",
+				},
+				env,
+			)
+			if formatErr != nil {
+				_, _ = fmt.Fprintln(stderr, strings.TrimSpace(formatErrText))
+				return Result{ExitCode: ExitFailure, Err: fmt.Errorf("dart coverage report missing (%s) and lcov generation failed; ensure coverage tooling is installed and rerun", lcovPath)}
+			}
+			lcovBytes, readErr = os.ReadFile(lcovPath)
+			if readErr != nil {
+				_, _ = fmt.Fprintln(stderr, readErr.Error())
+				return Result{ExitCode: ExitFailure, Err: readErr}
+			}
 		}
 		coverage, details, parseErr := parseDartLCOVCoverage(string(lcovBytes))
 		if parseErr != nil {

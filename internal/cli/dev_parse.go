@@ -105,6 +105,9 @@ func parseDartTestReport(out string) dartTestReport {
 	type dartJSONEvent struct {
 		Type   string           `json:"type"`
 		Test   *dartJSONTestRef `json:"test"`
+		TestID int              `json:"testID"`
+		Hidden bool             `json:"hidden"`
+		Skipped bool            `json:"skipped"`
 		Result string           `json:"result"`
 	}
 
@@ -123,11 +126,16 @@ func parseDartTestReport(out string) dartTestReport {
 		if ev.Test != nil {
 			testsByID[ev.Test.ID] = *ev.Test
 		}
-		if ev.Type != "testDone" || ev.Test == nil {
+		if ev.Type != "testDone" {
 			continue
 		}
-		test := testsByID[ev.Test.ID]
-		if test.Hidden {
+		test := dartJSONTestRef{}
+		if ev.Test != nil {
+			test = *ev.Test
+		} else if ev.TestID != 0 {
+			test = testsByID[ev.TestID]
+		}
+		if test.Hidden || ev.Hidden {
 			continue
 		}
 		name := strings.TrimSpace(test.Name)
@@ -135,7 +143,7 @@ func parseDartTestReport(out string) dartTestReport {
 			continue
 		}
 		report.Tests++
-		if test.Skip {
+		if test.Skip || ev.Skipped || ev.Result == "skipped" {
 			report.Skipped++
 			report.Events = append(report.Events, dartTestEvent{Action: "skip", Test: name})
 			continue

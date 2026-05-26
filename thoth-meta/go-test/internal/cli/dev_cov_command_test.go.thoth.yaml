@@ -4,6 +4,7 @@ meta:
   function_list:
     - TestRunCovBelowMinAllowedWhenFailBelowDisabled
     - TestRunCovDartFailsBelowThreshold
+    - TestRunCovDartGeneratesLCOVWhenMissing
     - TestRunCovDartMinFlagOverridesConfigThreshold
     - TestRunCovDartPerTestStyleOutput
     - TestRunCovFailedOnlyHidesPassOutput
