@@ -330,3 +330,36 @@ devOutput: {
 		t.Fatalf("expected failure summary details, got: %s", errOut.String())
 	}
 }
+
+func TestRunDartTestPerTestStyleWithTestIDEvents(t *testing.T) {
+	cfg := strings.Replace(testConfigCue(), `language:     "go"`, `language:     "dart"`, 1)
+	cfg += `
+
+devOutput: {
+	color: "false"
+	style: "per_test"
+	showPassed: true
+}
+`
+	_ = setupTempWorkdirWithConfig(t, cfg)
+	oldRun := runCommandCapture
+	t.Cleanup(func() { runCommandCapture = oldRun })
+	runCommandCapture = func(name string, args []string, env []string) (string, string, error) {
+		return strings.Join([]string{
+			`{"type":"testStart","test":{"id":1,"name":"adds numbers"}}`,
+			`{"type":"testDone","testID":1,"result":"success","hidden":false}`,
+			`{"type":"testStart","test":{"id":2,"name":"skips legacy"}}`,
+			`{"type":"testDone","testID":2,"result":"skipped","skipped":true}`,
+			"",
+		}, "\n"), "", nil
+	}
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	res := Run([]string{"test"}, &out, &errOut)
+	if res.ExitCode != ExitOK {
+		t.Fatalf("expected success, got %d stderr=%s", res.ExitCode, errOut.String())
+	}
+	if !strings.Contains(out.String(), "✓ adds numbers") || !strings.Contains(out.String(), "↷ skips legacy") {
+		t.Fatalf("expected per-test output, got: %s", out.String())
+	}
+}

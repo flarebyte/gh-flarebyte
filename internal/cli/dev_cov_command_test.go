@@ -350,3 +350,43 @@ func TestRunCovDartPerTestStyleOutput(t *testing.T) {
 		t.Fatalf("unexpected per-test output: %s", out.String())
 	}
 }
+
+func TestRunCovDartGeneratesLCOVWhenMissing(t *testing.T) {
+	cfg := strings.Replace(setupCoverageConfig(), `language:     "go"`, `language:     "dart"`, 1)
+	_ = setupTempWorkdirWithConfig(t, cfg)
+	oldRun := runCommandCapture
+	t.Cleanup(func() { runCommandCapture = oldRun })
+	runCommandCapture = func(name string, args []string, env []string) (string, string, error) {
+		if name != "dart" {
+			return "", "", nil
+		}
+		if len(args) >= 3 && args[0] == "test" && args[1] == "--coverage" {
+			return "", "", nil
+		}
+		if len(args) >= 4 && args[0] == "pub" && args[1] == "global" && args[2] == "run" && args[3] == "coverage:format_coverage" {
+			if err := os.MkdirAll(filepath.Join(".dart_tool", "coverage"), 0o755); err != nil {
+				return "", "", err
+			}
+			lcov := strings.Join([]string{
+				"SF:lib/a.dart",
+				"LF:10",
+				"LH:10",
+				"end_of_record",
+				"",
+			}, "\n")
+			if err := os.WriteFile(filepath.Join(".dart_tool", "coverage", "lcov.info"), []byte(lcov), 0o644); err != nil {
+				return "", "", err
+			}
+		}
+		return "", "", nil
+	}
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	res := Run([]string{"cov"}, &out, &errOut)
+	if res.ExitCode != ExitOK {
+		t.Fatalf("expected success, got %d stderr=%s", res.ExitCode, errOut.String())
+	}
+	if !strings.Contains(out.String(), "COV PASS") {
+		t.Fatalf("expected pass summary, got: %s", out.String())
+	}
+}

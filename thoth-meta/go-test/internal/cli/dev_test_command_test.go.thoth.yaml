@@ -5,6 +5,7 @@ meta:
     - TestDevTestCommandHelpAndUsage
     - TestRunDartTestFailedOnlyFiltersPassedAndSkipped
     - TestRunDartTestPerTestStyleOutput
+    - TestRunDartTestPerTestStyleWithTestIDEvents
     - TestRunGoTestFailureIncludesSummaryDetails
     - TestRunTestColorOverrideRejectsInvalidValue
     - TestRunTestFailedOnlyFiltersPassedAndSkipped
