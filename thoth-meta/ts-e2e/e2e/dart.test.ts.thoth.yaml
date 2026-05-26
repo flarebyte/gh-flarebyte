@@ -1,0 +1,15 @@
+locator: e2e/dart.test.ts
+meta:
+  import_files_list:
+    - ./helpers
+    - bun:test
+    - node:fs/promises
+    - node:path
+    - node:process
+  language: typescript
+  testcase_titles_list:
+    - cov runs with dart language config
+    - format runs with dart language config
+    - gh-flarebyte dart e2e
+    - lint runs with dart language config
+    - test --style per_test runs with dart language config

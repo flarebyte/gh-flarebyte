@@ -103,12 +103,12 @@ func parseDartTestReport(out string) dartTestReport {
 		Hidden bool   `json:"hidden"`
 	}
 	type dartJSONEvent struct {
-		Type   string           `json:"type"`
-		Test   *dartJSONTestRef `json:"test"`
-		TestID int              `json:"testID"`
-		Hidden bool             `json:"hidden"`
-		Skipped bool            `json:"skipped"`
-		Result string           `json:"result"`
+		Type    string           `json:"type"`
+		Test    *dartJSONTestRef `json:"test"`
+		TestID  int              `json:"testID"`
+		Hidden  bool             `json:"hidden"`
+		Skipped bool             `json:"skipped"`
+		Result  string           `json:"result"`
 	}
 
 	report := dartTestReport{}

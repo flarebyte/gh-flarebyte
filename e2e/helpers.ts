@@ -40,6 +40,7 @@ export async function runCLI(
   args: string[],
   cwd: string,
   repoRoot = cwd,
+  extraEnv: Record<string, string> = {},
 ): Promise<RunResult> {
   const cmdString = `gh flarebyte ${args.join(' ')}`.trim();
   assertReadOnlyCLICommand(cmdString);
@@ -51,6 +52,7 @@ export async function runCLI(
     ...process.env,
     GOCACHE: join(cwd, '.gocache'),
     GH_FLAREBYTE_FAKE_READONLY: '1',
+    ...extraEnv,
   };
   const proc = Bun.spawn(cmd, {
     cwd,
