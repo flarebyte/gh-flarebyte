@@ -5,9 +5,11 @@ meta:
     - TestRunCovBelowMinAllowedWhenFailBelowDisabled
     - TestRunCovDartFailsBelowThreshold
     - TestRunCovDartGeneratesLCOVWhenMissing
+    - TestRunCovDartIgnoresPubCacheEntries
     - TestRunCovDartMinFlagOverridesConfigThreshold
     - TestRunCovDartPerTestStyleOutput
     - TestRunCovDartReactivatesCoverageToolWhenGlobalRunDepsDrift
+    - TestRunCovDartUsesRelativePathsAndScopesToCurrentDir
     - TestRunCovFailedOnlyHidesPassOutput
     - TestRunCovFailsBelowThreshold
     - TestRunCovFailurePaths

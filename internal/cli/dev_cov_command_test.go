@@ -351,6 +351,95 @@ func TestRunCovDartPerTestStyleOutput(t *testing.T) {
 	}
 }
 
+func TestRunCovDartIgnoresPubCacheEntries(t *testing.T) {
+	cfg := strings.Replace(perTestStyleConfig(), `language:     "go"`, `language:     "dart"`, 1)
+	_ = setupTempWorkdirWithConfig(t, cfg)
+	oldRun := runCommandCapture
+	t.Cleanup(func() { runCommandCapture = oldRun })
+	runCommandCapture = func(name string, args []string, env []string) (string, string, error) {
+		if name == "dart" && len(args) >= 3 && args[0] == "test" && args[1] == "--coverage" {
+			if err := os.MkdirAll(filepath.Join(".dart_tool", "coverage"), 0o755); err != nil {
+				return "", "", err
+			}
+			lcov := strings.Join([]string{
+				"SF:/Users/olivier/.pub-cache/hosted/pub.dev/test_core-0.6.12/lib/src/scaffolding.dart",
+				"LF:10",
+				"LH:2",
+				"end_of_record",
+				"SF:lib/a.dart",
+				"LF:10",
+				"LH:10",
+				"end_of_record",
+				"",
+			}, "\n")
+			if err := os.WriteFile(filepath.Join(".dart_tool", "coverage", "lcov.info"), []byte(lcov), 0o644); err != nil {
+				return "", "", err
+			}
+		}
+		return "", "", nil
+	}
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	res := Run([]string{"cov"}, &out, &errOut)
+	if res.ExitCode != ExitOK {
+		t.Fatalf("expected success, got %d stderr=%s", res.ExitCode, errOut.String())
+	}
+	if strings.Contains(out.String(), ".pub-cache") {
+		t.Fatalf("expected pub-cache entries filtered out, got: %s", out.String())
+	}
+	if !strings.Contains(out.String(), "total=100.00%") {
+		t.Fatalf("expected total based on project files only, got: %s", out.String())
+	}
+}
+
+func TestRunCovDartUsesRelativePathsAndScopesToCurrentDir(t *testing.T) {
+	cfg := strings.Replace(perTestStyleConfig(), `language:     "go"`, `language:     "dart"`, 1)
+	_ = setupTempWorkdirWithConfig(t, cfg)
+	cwdPath, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("getwd failed: %v", err)
+	}
+	oldRun := runCommandCapture
+	t.Cleanup(func() { runCommandCapture = oldRun })
+	runCommandCapture = func(name string, args []string, env []string) (string, string, error) {
+		if name == "dart" && len(args) >= 3 && args[0] == "test" && args[1] == "--coverage" {
+			if err := os.MkdirAll(filepath.Join(".dart_tool", "coverage"), 0o755); err != nil {
+				return "", "", err
+			}
+			lcov := strings.Join([]string{
+				"SF:" + filepath.Join(cwdPath, "lib", "src", "client", "rest_requests.dart"),
+				"LF:10",
+				"LH:3",
+				"end_of_record",
+				"SF:/tmp/outside.dart",
+				"LF:10",
+				"LH:10",
+				"end_of_record",
+				"",
+			}, "\n")
+			if err := os.WriteFile(filepath.Join(".dart_tool", "coverage", "lcov.info"), []byte(lcov), 0o644); err != nil {
+				return "", "", err
+			}
+		}
+		return "", "", nil
+	}
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	res := Run([]string{"cov"}, &out, &errOut)
+	if res.ExitCode != ExitOK {
+		t.Fatalf("expected success, got %d stderr=%s", res.ExitCode, errOut.String())
+	}
+	if !strings.Contains(out.String(), "lib/src/client/rest_requests.dart 30.0%") {
+		t.Fatalf("expected relative local path in output, got: %s", out.String())
+	}
+	if strings.Contains(out.String(), cwdPath) || strings.Contains(out.String(), "/tmp/outside.dart") {
+		t.Fatalf("expected absolute/outside paths filtered, got: %s", out.String())
+	}
+	if !strings.Contains(out.String(), "total=30.00%") {
+		t.Fatalf("expected total scoped to current dir only, got: %s", out.String())
+	}
+}
+
 func TestRunCovDartGeneratesLCOVWhenMissing(t *testing.T) {
 	cfg := strings.Replace(setupCoverageConfig(), `language:     "go"`, `language:     "dart"`, 1)
 	_ = setupTempWorkdirWithConfig(t, cfg)

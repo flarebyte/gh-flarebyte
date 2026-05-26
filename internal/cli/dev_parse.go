@@ -6,6 +6,7 @@ package cli
 import (
 	"encoding/json"
 	"fmt"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -162,16 +163,40 @@ func parseDartTestReport(out string) dartTestReport {
 
 func parseDartLCOVCoverage(lcov string) (float64, []coverageDetail, error) {
 	type fileCoverage struct {
-		label string
-		lf    float64
-		lh    float64
+		label   string
+		lf      float64
+		lh      float64
+		include bool
+	}
+	cwdAbs, err := filepath.Abs(".")
+	if err != nil {
+		return 0, nil, fmt.Errorf("unable to resolve current working directory")
+	}
+	resolveLabel := func(label string) (string, bool) {
+		if strings.TrimSpace(label) == "" {
+			return "", false
+		}
+		var abs string
+		if filepath.IsAbs(label) {
+			abs = filepath.Clean(label)
+		} else {
+			abs = filepath.Clean(filepath.Join(cwdAbs, label))
+		}
+		rel, err := filepath.Rel(cwdAbs, abs)
+		if err != nil {
+			return "", false
+		}
+		if rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+			return "", false
+		}
+		return filepath.ToSlash(rel), true
 	}
 	var current fileCoverage
 	resetCurrent := func() {
 		current = fileCoverage{}
 	}
 	finalizeCurrent := func(details []coverageDetail) []coverageDetail {
-		if current.label == "" || current.lf <= 0 {
+		if current.label == "" || current.lf <= 0 || !current.include {
 			return details
 		}
 		details = append(details, coverageDetail{
@@ -193,21 +218,28 @@ func parseDartLCOVCoverage(lcov string) (float64, []coverageDetail, error) {
 		}
 		switch {
 		case strings.HasPrefix(line, "SF:"):
-			current.label = strings.TrimPrefix(line, "SF:")
+			raw := strings.TrimPrefix(line, "SF:")
+			label, include := resolveLabel(raw)
+			current.label = label
+			current.include = include
 		case strings.HasPrefix(line, "LF:"):
 			lf, err := strconv.ParseFloat(strings.TrimPrefix(line, "LF:"), 64)
 			if err != nil {
 				return 0, nil, fmt.Errorf("unable to parse dart lcov LF value")
 			}
 			current.lf = lf
-			totalLF += lf
+			if current.include {
+				totalLF += lf
+			}
 		case strings.HasPrefix(line, "LH:"):
 			lh, err := strconv.ParseFloat(strings.TrimPrefix(line, "LH:"), 64)
 			if err != nil {
 				return 0, nil, fmt.Errorf("unable to parse dart lcov LH value")
 			}
 			current.lh = lh
-			totalLH += lh
+			if current.include {
+				totalLH += lh
+			}
 		case line == "end_of_record":
 			details = finalizeCurrent(details)
 			resetCurrent()
