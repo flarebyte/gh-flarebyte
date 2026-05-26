@@ -11,6 +11,7 @@ meta:
   import_files_list:
     - encoding/json
     - fmt
+    - path/filepath
     - regexp
     - strconv
     - strings
