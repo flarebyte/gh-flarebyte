@@ -25,6 +25,9 @@ func resolveVersionFromSource(sourcePath string) (string, error) {
 	ext := strings.ToLower(filepath.Ext(sourcePath))
 	switch ext {
 	case ".toml":
+		if filepath.Base(sourcePath) == "Cargo.toml" {
+			return rustProjectVersion(sourcePath)
+		}
 		return pythonProjectVersion(data)
 	case ".json":
 		var payload map[string]any

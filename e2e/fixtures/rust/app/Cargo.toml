@@ -1,0 +1,9 @@
+[package]
+name = "flarebyte-rust-app"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Rust integration fixture executable"
+
+[dependencies]
+flarebyte-rust-math = { path = "../math", version = "1.2.3" }

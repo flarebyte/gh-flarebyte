@@ -1,0 +1,6 @@
+[package]
+name = "flarebyte-rust-math"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Rust integration fixture library"

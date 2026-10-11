@@ -1,0 +1,18 @@
+locator: internal/cli/rust_project.go
+meta:
+  function_list:
+    - cargoMetadata
+    - rustBinaryPackage
+    - rustCustomHarness
+    - rustManifestPath
+    - rustPackageArgs
+    - rustPackages
+    - rustProjectVersion
+    - rustTargetTriple
+  import_files_list:
+    - encoding/json
+    - fmt
+    - github.com/pelletier/go-toml/v2
+    - os
+    - path/filepath
+  language: go

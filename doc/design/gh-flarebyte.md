@@ -150,22 +150,23 @@ How config fields map onto GitHub sync targets and extension-local automation se
 | repository.features.advancedSecurity | boolean | .gh-flarebyte.cue | GitHub Advanced Security. | local-to-remote |
 | repository.features.secretScanning | boolean | .gh-flarebyte.cue | Secret scanning for the repository. | local-to-remote |
 | repository.features.secretScanningPushProtection | boolean | .gh-flarebyte.cue | Secret scanning push protection. | local-to-remote |
-| build.language | enum | .gh-flarebyte.cue | Supported languages: go, dart, python. Python 3 workflows use uv. | local-only |
-| build.mode | enum | .gh-flarebyte.cue | Go supports binary/library; Dart supports library; Python supports package (wheel and source distribution). Default remains binary. | local-only |
-| build.packages | list | .gh-flarebyte.cue | Package patterns used in `library` mode, defaulting to `["./..."]`. | local-only |
-| build.runTests | boolean | .gh-flarebyte.cue | Whether library/package builds also run the language test runner. Python runs locked pytest before packaging. | local-only |
+| build.language | enum | .gh-flarebyte.cue | Supported languages: go, dart, python, rust. Python uses uv; Rust uses Cargo. | local-only |
+| build.mode | enum | .gh-flarebyte.cue | Go supports binary/library; Dart supports library; Python supports package; Rust supports binary/library/package. Default remains binary. | local-only |
+| build.packages | list | .gh-flarebyte.cue | Defaults to ["./..."]. Go uses package patterns; Rust uses all workspace members or explicit crate names for library/package builds. | local-only |
+| build.runTests | boolean | .gh-flarebyte.cue | Enable optional tests during library/package builds and Rust binary builds. Rust tests selected crates on the active compiler host before cross-building. | local-only |
+| build.mainPackage | string | .gh-flarebyte.cue | Go main package defaults to ./cmd/<repo>; Rust package manifest directory defaults to a dot. Rust chooses the sole binary or package.default-run. | local-only |
 | build.outputDir | string | .gh-flarebyte.cue | Directory for built artifacts. | local-only |
 | build.checksumFile | string | .gh-flarebyte.cue | Checksum manifest for built artifacts. | local-only |
-| build.targets | list | .gh-flarebyte.cue | Go target matrix using os-arch strings. Python package builds reject target matrices and --target. | local-only |
+| build.targets | list | .gh-flarebyte.cue | Go/Rust target matrix using os-arch strings. Rust maps to GNU Linux and Apple Darwin and MSVC Windows triples. Package mode rejects target matrices and --target. | local-only |
 | go.cgo.enabled | boolean | .gh-flarebyte.cue | Explicit CGO mode for Go builds. When true build sets `CGO_ENABLED=1`; when false build sets `CGO_ENABLED=0`. | local-only |
 | go.cgo.cc | string | .gh-flarebyte.cue | Optional C compiler override for CGO builds. Requires `go.cgo.enabled: true`. | local-only |
 | go.cgo.cxx | string | .gh-flarebyte.cue | Optional C++ compiler override for CGO builds. Requires `go.cgo.enabled: true`. | local-only |
-| release.versionSource | string | .gh-flarebyte.cue | File or source that provides the release version. | local-only |
+| release.versionSource | string | .gh-flarebyte.cue | YAML/JSON version or Python project.version in TOML or a Rust package Cargo.toml including workspace-inherited versions. Virtual Rust workspaces require a member manifest. | local-only |
 | release.tagPrefix | string | .gh-flarebyte.cue | Prefix used for release tags. | local-only |
 | release.notesMode | enum | .gh-flarebyte.cue | Release note strategy, such as generate-notes or notes-file. | local-only |
 | release.releaseNotesFilePath | string | .gh-flarebyte.cue | Path required when notesMode is `notes-file`. | local-only |
 | release.includeArtifacts | boolean | .gh-flarebyte.cue | Whether release uploads build artifacts or publishes tag/notes only. | local-only |
-| release.artifactDir | string | .gh-flarebyte.cue | Directory scanned for release assets. | local-only |
+| release.artifactDir | string | .gh-flarebyte.cue | Release asset directory. Go scans matching assets; Python/Rust stage only current build outputs and preserve relative artifact paths. | local-only |
 | release.includeChecksums | boolean | .gh-flarebyte.cue | Whether to include the checksum manifest as a release asset. | local-only |
 
 ### 03 Topics
@@ -190,7 +191,7 @@ Build language selection for gh flarebyte build.
 
 #### Build Config
 
-Build orchestration uses the shared top-level `build` block. Go supports binary and library modes; Dart supports library validation; Python 3 with uv supports package mode. Python package builds produce a wheel and source distribution via `uv build --no-sources`, reuse outputDir/checksumFile/runTests, and reject target matrices and --target. All Python developer tools run through `uv run --locked` with a repository-local pyproject.toml and uv.lock. Python version selection and tool rules remain in pyproject.toml and optional .python-version. Go binary mode writes per-target binaries and archives with SHA-256 checksums; library mode compiles configured packages and optionally runs tests without binary artifacts. Go library --target maps to GOOS/GOARCH validation. Isolated Python build dependencies are resolved separately from uv.lock and should be pinned in build-system.requires.
+Build orchestration uses the shared top-level `build` block. Go supports binary and library modes; Dart supports library validation; Python 3 with uv supports package mode; Rust with Cargo supports binary/library/package modes. Python package builds produce a wheel and source distribution via `uv build --no-sources`, reuse outputDir/checksumFile/runTests, and reject target matrices and --target. All Python developer tools run through `uv run --locked` with a repository-local pyproject.toml and uv.lock. Python version selection and tool rules remain in pyproject.toml and optional .python-version. Go binary mode writes per-target binaries and archives with SHA-256 checksums; library mode compiles configured packages and optionally runs tests without binary artifacts. Go library --target maps to GOOS/GOARCH validation. Isolated Python build dependencies are resolved separately from uv.lock and should be pinned in build-system.requires.
 
 ### 06 Release
 
@@ -198,7 +199,7 @@ Release publication settings for gh flarebyte release.
 
 #### Release Config
 
-Release publication uses the shared top-level `release` block for tag prefix, version source, artifact policy, and notes. YAML/JSON version sources read top-level version; TOML reads static [project].version under the same semantic-version rule. Dynamic Python versions are rejected. Python releases stage only distributions and optional checksums returned by the fresh build into artifactDir, avoiding stale assets. Dart releases require includeArtifacts=false. No PyPI publishing or native Python wheel matrix is included.
+Release publication uses the shared top-level `release` block for tag prefix, version source, artifact policy, and notes. YAML/JSON version sources read top-level version; TOML reads Python static [project].version or Rust Cargo package.version including workspace inheritance under the same semantic-version rule. Virtual Rust workspaces require a member manifest as versionSource. Dynamic Python versions are rejected. Python and Rust releases stage only artifacts and optional checksums returned by the fresh build into artifactDir, preserving relative paths and avoiding stale assets. Dart releases require includeArtifacts=false. No PyPI or crates.io publishing or native Python wheel matrix is included.
 
 ### 07 Sync Types
 
@@ -337,11 +338,11 @@ User-facing extension actions and their purpose.
 
 | command | config_touchpoints | output | purpose | read_write |
 | --- | --- | --- | --- | --- |
-| gh flarebyte build | build.* -> binaries or library checks or Python distributions | language-specific build output | build the project according to the configured language and build mode | write |
-| gh flarebyte test | build.language and devOutput.* | Go JSON or Dart JSON or Python pytest JUnit XML | run language tests with summary or per-test output | write |
-| gh flarebyte format | build.language | Go gofmt or Dart format or Python locked Ruff format | format sources for the configured language | write |
-| gh flarebyte lint | build.language and devOutput.* | Go vet or Dart analyze or Python locked Ruff check | run static checks without fixing sources | write |
-| gh flarebyte cov | build.language and coverage.* and devOutput.* | Go coverage or Dart LCOV or Python coverage.py JSON | measure coverage and apply the shared threshold policy | write |
+| gh flarebyte build | build.* -> binaries or library checks or Python distributions or Rust crate packages | language-specific build output | build the project according to the configured language and build mode | write |
+| gh flarebyte test | build.language and devOutput.* | Go JSON or Dart JSON or Python JUnit XML or Rust standard harness pretty output. Rust includes doctests; custom harnesses require summary style. | run language tests with summary or per-test output | write |
+| gh flarebyte format | build.language | Go gofmt or Dart format or Python locked Ruff format or Rust cargo fmt --all | format sources for the configured language | write |
+| gh flarebyte lint | build.language and devOutput.* | Go vet or Dart analyze or Python Ruff or Rust Clippy with warnings denied across workspace targets | run static checks without fixing sources | write |
+| gh flarebyte cov | build.language and coverage.* and devOutput.* | Go coverage or Dart LCOV or Python JSON or Rust cargo-llvm-cov LCOV. Rust stable coverage excludes doctests and dependency/generated directories. | measure coverage and apply the shared threshold policy | write |
 | gh flarebyte release | build.* and release.* -> GitHub release with optional assets | versioned GitHub release | run build then publish a GitHub release from the configured release settings | write |
 | gh flarebyte repo init | .gh-flarebyte.cue created or seeded | initialized repo state | bootstrap a repo-local config and initial GitHub defaults | write |
 | gh flarebyte repo update | .gh-flarebyte.cue -> GitHub repo state with `--confirm-deletions` and `--accept-visibility-change-consequences` when needed | updated remote repo state | reconcile GitHub repo metadata from local config with explicit safety flags | write |
@@ -610,7 +611,7 @@ How build orchestration is driven from config.
 
 #### Build Command
 
-Build from the shared build block: Go binary/library, Dart library, or Python package. Go targets use os-arch strings; Unix archives use tar.gz and Windows zip with .exe binaries. Go library builds compile package patterns and optionally test. Dart libraries run pub get/analyze and optional tests. Python package builds validate Python 3 and the lockfile, optionally run pytest, then build a wheel and source distribution in a fresh temporary directory and copy them to outputDir with SHA-256 checksums. --output-dir relocates artifacts and checksums. Python test, format, lint, and cov use pytest JUnit XML, Ruff, and coverage.py JSON with shared output and threshold fields. Go binary builds embed version, commitId, date, and runtime metadata for --version and --version --json. Failures identify the target or mode and failing step. Python failures preserve stdout and stderr diagnostics.
+Build from the shared build block: Go binary/library, Dart library, Python package, or Rust binary/library/package. Go targets use os-arch strings; Unix archives use tar.gz and Windows zip with .exe binaries. Go library builds compile package patterns and optionally test. Dart libraries run pub get/analyze and optional tests. Python package builds validate Python 3 and the lockfile, optionally run pytest, then build a wheel and source distribution in a fresh temporary directory and copy them to outputDir with SHA-256 checksums. --output-dir relocates artifacts and checksums. Python test, format, lint, and cov use pytest JUnit XML, Ruff, and coverage.py JSON with shared output and threshold fields. Go binary builds embed version, commitId, date, and runtime metadata for --version and --version --json. Failures identify the target or mode and failing step. Python and Rust failures preserve stdout and stderr diagnostics. Rust commands resolve dependencies with --locked, test the workspace including doctests, format with rustfmt, lint with Clippy and warnings denied, and measure line coverage with cargo-llvm-cov LCOV. Custom Rust harnesses require summary output. Stable Rust coverage excludes doctests and dependency/generated sources. Rust library/package selection uses ./... for all workspace members or exact crate names; binary selection uses mainPackage as a manifest directory and the sole binary or package.default-run. Rust target names map to GNU Linux, Apple Darwin, and MSVC Windows triples; installed target components and linkers are required. Optional build tests execute on the compiler host. Rust packaging keeps verification enabled and copies only fresh .crate files; binary packaging reuses the Go artifact policy and discovers executable paths through Cargo compiler JSON.
 
 #### Build Artifact Rules
 
@@ -621,6 +622,8 @@ Build from the shared build block: Go binary/library, Dart library, or Python pa
 | gh-flarebyte-windows-amd64.exe | sha256 | Windows targets should use `.exe` binaries and zip packaging. | zip | windows-amd64 |
 | <distribution>-<version>-<python>-<abi>-<platform>.whl | sha256 | uv builds one wheel and source distribution in a fresh temporary directory; only fresh assets are copied and released. | wheel | python-package |
 | <distribution>-<version>.tar.gz | sha256 | Python package builds use outputDir and checksumFile with no target suffix override or target matrix. | sdist | python-package |
+| <crate>-<version>.crate | sha256 | Cargo package verification stays enabled; only selected crates produced in the fresh target directory are copied and released. No crates.io publication. | crate | rust-package |
+| <repo>-<os-arch> | sha256 | Rust binaries reuse Go naming and archive policies. Cargo compiler JSON identifies executables. Windows binary assets end in .exe. | tar.gz or zip | rust-binary |
 
 ### 11 Release
 
@@ -628,15 +631,15 @@ How release publication is driven from config.
 
 #### Release Command
 
-Build first, then publish a GitHub release using the shared release policy. Resolve YAML/JSON top-level version or TOML static [project].version, derive tagPrefix + version, and fail if the tag exists. includeArtifacts controls uploads; includeChecksums controls the manifest. Python assets come only from the current build and are staged into artifactDir without scanning for stale distributions. notes-file requires releaseNotesFilePath; --draft and --notes-file keep their existing behavior. Failures distinguish build, version/tag, and publication steps.
+Build first, then publish a GitHub release using the shared release policy. Resolve YAML/JSON top-level version or TOML Python project.version or Rust Cargo package.version with workspace inheritance, derive tagPrefix + version, and fail if the tag exists. includeArtifacts controls uploads; includeChecksums controls the manifest. Python and Rust assets come only from the current build and are staged into artifactDir without scanning for stale distributions. notes-file requires releaseNotesFilePath; --draft and --notes-file keep their existing behavior. Failures distinguish build, version/tag, and publication steps.
 
 #### Release Version Resolution
 
 | behavior | on_failure | source_rule |
 | --- | --- | --- |
 | The initial implementation should read a repository-local file path rather than an arbitrary command or expression. | Fail with exit code `2` if the path is missing or unreadable. | `release.versionSource` is a file path |
-| Read YAML/JSON top-level version or TOML project.version. | Fail with exit code `2` if the file format is unsupported. | Supported formats are YAML JSON and TOML |
-| TOML reads only [project].version and rejects dynamic versions; YAML/JSON use top-level version. | Fail with exit code `2` if the version is missing or invalid. | Static version field is required |
+| Read YAML/JSON top-level version or Python project.version or Rust package.version from Cargo metadata. | Fail with exit code `2` if the file format is unsupported. | Supported formats are YAML JSON and TOML |
+| Python rejects dynamic versions; Rust resolves workspace inheritance from a package Cargo.toml; YAML/JSON use top-level version. | Fail with exit code `2` if the version is missing or invalid. Virtual Rust workspaces require a member manifest. | Static version field is required |
 | The extracted version should already be normalized as a semantic version string such as `1.2.3` or `1.2.3-rc.1`. | Fail with exit code `2` if the version string is invalid. | Semantic version required |
 | The release tag should be computed as `release.tagPrefix + version`. | Fail with exit code `7` if tag creation or release publication cannot proceed. | Tag derivation |
 | If the computed tag already exists the command should fail rather than mutate the existing release implicitly. | Fail with exit code `7` and explain that the tag already exists. | Existing tag conflict |
@@ -737,6 +740,7 @@ Release creation and publication flows that remain existing gh behavior.
 | gh release create --discussion-category | --discussion-category | write | Keeps release conversation attached. | open a discussion with the release |
 | gh release create --verify-tag | --verify-tag | write | Useful for protected publication flows. | require the release tag to exist already |
 | Python package release | --draft --notes-file | write | Uses shared release fields and fresh artifact paths rather than scanning stale files. No PyPI upload. | build fresh wheel and source distribution then create a GitHub release |
+| Rust release | --draft --notes-file | write | Uses shared release fields and fresh assets including optional checksums. Library releases have no artifacts. No crates.io upload. | build fresh target binaries or verified crate packages then create a GitHub release |
 
 ### 03 Search
 
@@ -801,4 +805,4 @@ What still needs agreement before the sync contract hardens.
 
 #### Open Questions
 
-Clarify the non-interactive CI story for deletion confirmation, future Python dynamic versions, PyPI publishing, and native wheel matrices, and whether release notes should eventually support templates beyond generated notes and a single notes file path.
+Clarify the non-interactive CI story for deletion confirmation, future Python dynamic versions, registry publishing, native wheel matrices, and custom Rust target triples, and whether release notes should eventually support templates beyond generated notes and a single notes file path.

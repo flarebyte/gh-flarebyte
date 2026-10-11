@@ -1,0 +1,28 @@
+locator: internal/cli/rust_test.go
+meta:
+  function_list:
+    - TestRustBuildModes
+    - TestRustBuildStopsOnTestFailure
+    - TestRustConfigAndTargetValidation
+    - TestRustCoveragePolicy
+    - TestRustCustomHarness
+    - TestRustDevCommands
+    - TestRustFailures
+    - TestRustMissingProjectFiles
+    - TestRustMultiTargetStaging
+    - TestRustReleaseFreshAssets
+    - TestRustReports
+    - TestRustSelectionAndVersions
+    - rustConfigCue
+    - setupRust
+    - stubRust
+  import_files_list:
+    - bytes
+    - encoding/json
+    - fmt
+    - github.com/flarebyte/gh-flarebyte/internal/config
+    - os
+    - path/filepath
+    - strings
+    - testing
+  language: go
