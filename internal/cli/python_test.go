@@ -18,7 +18,11 @@ const pythonCoverage = `{"totals":{"percent_covered":75},"files":{"src/z.py":{"s
 func pythonConfigCue() string {
 	cfg := strings.Replace(testConfigCue(), `language:     "go"`, "language:     \"python\"\n\tmode: \"package\"", 1)
 	cfg = strings.Replace(cfg, "targets: [\n\t\t\"linux-amd64\",\n\t]", "", 1)
-	return strings.Replace(cfg, "main.project.yaml", "pyproject.toml", 1)
+	// Keep plain-text assertions independent of the caller's terminal color support.
+	return strings.Replace(cfg, "main.project.yaml", "pyproject.toml", 1) + `
+
+devOutput: { color: "false" }
+`
 }
 
 func setupPython(t *testing.T, cfg string) {
