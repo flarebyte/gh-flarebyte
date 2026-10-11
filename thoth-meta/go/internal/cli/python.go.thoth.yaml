@@ -1,0 +1,20 @@
+locator: internal/cli/python.go
+meta:
+  function_list:
+    - buildPythonPackage
+    - preparePython
+    - pythonFailure
+    - runPythonCov
+    - runPythonTest
+    - runPythonTool
+    - uvRun
+  import_files_list:
+    - fmt
+    - github.com/flarebyte/gh-flarebyte/internal/config
+    - github.com/pelletier/go-toml/v2
+    - io
+    - os
+    - path/filepath
+    - strings
+    - time
+  language: go

@@ -1,0 +1,28 @@
+locator: internal/cli/python_test.go
+meta:
+  function_list:
+    - TestPythonBuildAndRelease
+    - TestPythonBuildStopsOnTestFailure
+    - TestPythonConfigValidation
+    - TestPythonCoverageThreshold
+    - TestPythonDevCommands
+    - TestPythonFailures
+    - TestPythonMissingProjectFiles
+    - TestPythonProjectVersion
+    - TestPythonReleaseStaging
+    - TestPythonReports
+    - TestPythonTestReportFailures
+    - boolInt
+    - pythonConfigCue
+    - setupPython
+    - stubPython
+  import_files_list:
+    - bytes
+    - fmt
+    - github.com/flarebyte/gh-flarebyte/internal/config
+    - os
+    - path/filepath
+    - reflect
+    - strings
+    - testing
+  language: go

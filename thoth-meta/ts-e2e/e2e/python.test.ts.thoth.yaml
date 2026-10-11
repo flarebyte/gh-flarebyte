@@ -1,0 +1,10 @@
+locator: e2e/python.test.ts
+meta:
+  import_files_list:
+    - ./helpers
+    - bun:test
+    - node:fs/promises
+    - node:path
+  language: typescript
+  testcase_titles_list:
+    - developer commands, packaging, failures, and simulated release
