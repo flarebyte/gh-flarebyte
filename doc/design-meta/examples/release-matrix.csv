@@ -4,3 +4,4 @@ gh release upload,attach assets to an existing release,write,--clobber,"Can repl
 gh release edit,change release state after creation,write,--draft=false,"Useful for publishing a reviewed draft."
 gh release create --discussion-category,open a discussion with the release,write,--discussion-category,"Keeps release conversation attached."
 gh release create --verify-tag,require the release tag to exist already,write,--verify-tag,"Useful for protected publication flows."
+Python package release,build fresh wheel and source distribution then create a GitHub release,write,--draft --notes-file,Uses shared release fields and fresh artifact paths rather than scanning stale files. No PyPI upload.

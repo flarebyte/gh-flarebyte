@@ -49,6 +49,20 @@ func runBuild(targetFilter, outputDirOverride string, stdout, stderr io.Writer) 
 	if usage != nil {
 		return *usage
 	}
+	if cfg.Build.Language == "python" {
+		if targetFilter != "" {
+			err := fmt.Errorf(`--target is not supported for build.language "python"`)
+			_, _ = fmt.Fprintln(stderr, err)
+			return Result{ExitCode: ExitUsage, Err: err}
+		}
+		artifacts, err := buildPythonPackage(cfg, outputDirOverride, stderr)
+		if err != nil {
+			_, _ = fmt.Fprintln(stderr, err)
+			return Result{ExitCode: ExitBuildFailure, Err: err}
+		}
+		_, _ = fmt.Fprintf(stdout, "Build complete: Python wheel and source distribution written to %s with checksums in %s.\n", filepath.Dir(artifacts[0]), artifacts[len(artifacts)-1])
+		return Result{ExitCode: ExitOK}
+	}
 	if cfg.Build.Language == "dart" {
 		if cfg.Build.Mode != "library" {
 			err := fmt.Errorf(`build.language "dart" currently supports build.mode "library" only`)
@@ -69,7 +83,7 @@ func runBuild(targetFilter, outputDirOverride string, stdout, stderr io.Writer) 
 		return Result{ExitCode: ExitOK}
 	}
 	if cfg.Build.Language != "go" {
-		err := fmt.Errorf("build.language %q is not supported yet. Supported values: go, dart", cfg.Build.Language)
+		err := fmt.Errorf("build.language %q is not supported yet. Supported values: go, dart, python", cfg.Build.Language)
 		_, _ = fmt.Fprintln(stderr, err.Error())
 		return Result{ExitCode: ExitUsage, Err: err}
 	}

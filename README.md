@@ -10,8 +10,8 @@ Use `gh flarebyte` to keep a GitHub repository aligned with the config checked i
 - update repo settings from config
 - audit drift between config and GitHub
 - sync topics and labels from config
-- build either binary artifacts or library compile checks from the configured language
-- publish a GitHub release with or without binary artifacts
+- build binary artifacts, library compile checks, or Python package distributions
+- publish a GitHub release with or without build artifacts
 - discover repositories you contribute to in an organization
 
 ## Commands
@@ -25,7 +25,7 @@ Use `gh flarebyte` to keep a GitHub repository aligned with the config checked i
 ### Build and release
 - `gh flarebyte build [--target <os-arch>] [--output-dir <path>]` builds the project using the language and mode defined in `.gh-flarebyte.cue`.
 - `gh flarebyte release [--draft] [--notes-file <path>]` builds first, then publishes a GitHub release from the configured release policy.
-- `build`: Go supports `binary` and `library` modes; Dart currently supports `library` mode only.
+- `build`: Go supports `binary` and `library`; Dart supports `library`; Python 3 with uv supports `package`.
 - `release`: Dart currently supports release with `release.includeArtifacts: false`.
 
 ### Dev commands
@@ -158,6 +158,62 @@ release: {
 }
 ```
 
+Python package example (reuse the same repository configuration as Go or Dart):
+
+```cue
+build: {
+  language: "python"
+  mode: "package"
+  runTests: true
+  outputDir: "build"
+  checksumFile: "build/checksums.txt"
+}
+
+devOutput: {
+  color: "auto"
+  style: "summary"
+  showPassed: true
+}
+
+coverage: {
+  min: 80
+  enforceMin: true
+}
+
+release: {
+  versionSource: "pyproject.toml"
+  tagPrefix: "v"
+  notesMode: "generate-notes"
+  artifactDir: "build"
+  includeArtifacts: true
+  includeChecksums: true
+}
+```
+
+Install uv and declare Python support with `[project].requires-python` in `pyproject.toml`.
+Use `.python-version` if you want to pin the interpreter. Add the developer tools with
+`uv add --dev pytest ruff coverage`, configure their rules in `pyproject.toml`, and commit `uv.lock`.
+Commands run through `uv run --locked`: uv may install the locked dependencies into `.venv`,
+but a missing or stale lockfile fails rather than being updated. Missing tools are reported as failures.
+
+`test` uses pytest JUnit XML for summaries and per-test output. `format` uses Ruff formatting;
+`lint` uses Ruff checks without automatic fixes. `cov` runs pytest under coverage.py and applies
+the same `coverage.min`, `coverage.enforceMin`, and `--min` policy as Go and Dart. Configure
+`[tool.coverage.run].source` to include your package and measure untested modules.
+
+`build` produces a wheel and source distribution using `uv build --no-sources`, plus SHA-256
+checksums. Use an explicit `[build-system]` and pin its build dependencies for repeatable
+isolated builds; those dependencies are resolved separately from `uv.lock`.
+`--output-dir` relocates both distributions and the checksum manifest.
+`release` attaches only files from its fresh build, respecting `release.artifactDir` and
+`release.includeChecksums`; `release.includeArtifacts: false` publishes without assets.
+
+Initial Python support covers one package per repository, with no binary mode, target matrix,
+or PyPI upload. Keep `build.targets` unset. Package filenames follow Python distribution naming,
+so `build.artifactTargetSuffix` does not apply. TOML version sources require a static
+`[project].version` following the existing semantic-version rule (for example `1.2.3`).
+Dynamic versions and Python-specific versions such as `1.2.3rc1` are not supported yet.
+
 ## Typical workflow
 1. Run `gh flarebyte repo init` in a repo that should be managed.
 2. Edit `.gh-flarebyte.cue` to match the desired repository state.
@@ -171,6 +227,7 @@ release: {
 - `make release` runs `.e2e-bin/gh-flarebyte release` (it depends on `build-go`).
 - `GH_FLAREBYTE_FAKE_RELEASE=1 make release` runs the release flow in fake mode (no GitHub mutation).
 - `make review-dart` runs `format-dart`, `test-dart`, `lint-dart`, and `coverage-dart`.
+- `make test-python-e2e` runs the real uv fixture (requires uv and an installed Python 3; may download dependencies).
 
 ## Language support snapshot
 - Go:
@@ -182,13 +239,17 @@ release: {
   - dev commands: supported
   - `test --style per_test`: supported (uses Dart JSON reporter)
   - `cov` threshold enforcement: supported (reads `.dart_tool/coverage/lcov.info`)
+- Python 3 with uv:
+  - `build`: wheel and source distribution in `package` mode, with checksums and optional tests
+  - `release`: GitHub releases with or without package artifacts
+  - `test`, `format`, `lint`, `cov`: supported, including per-test output and coverage thresholds
 
 ## Notes
 - Topics are managed as a flat list of strings.
 - Labels are managed as structured objects with `name`, `color`, and `description`.
-- Build: Go supports `binary` and `library`; Dart currently supports `library` only.
+- Build: Go supports `binary` and `library`; Dart supports `library`; Python supports `package`.
 - Release: Dart currently supports `release.includeArtifacts: false`.
-- `build.mode` defaults to `binary`. Use `library` for multi-package libraries (compile verification with `go build`, and optional `go test` when `runTests: true`).
+- `build.mode` defaults to `binary`. Use `library` for Go/Dart libraries or `package` for Python distributions. `build.runTests` enables optional tests during builds.
 - `build.mainPackage` controls the Go main package used for binary builds. Default: `./cmd/<project.repo>`.
 - `build.artifactTargetSuffix` controls whether artifact names include `-os-arch` suffixes.
   - when `false` with multiple targets, artifacts are written under per-target subdirectories to avoid filename collisions.
@@ -205,4 +266,4 @@ release: {
 - `devOutput.style` supports `summary` and `per_test`.
 - `--color` overrides `devOutput.color` for `test`, `lint`, and `cov`.
 - `--failed-only` suppresses PASS summary output for `test`, `lint`, and `cov`.
-- In `per_test` style, `test` prints `✓/↷/✗` per test (Go and Dart) and `cov` prints `✓/✗` per coverage entry; with `--failed-only`, only failing entries are shown.
+- In `per_test` style, `test` prints `✓/↷/✗` per test (Go, Dart, and Python) and `cov` prints `✓/✗` per coverage entry; with `--failed-only`, only failing entries are shown.

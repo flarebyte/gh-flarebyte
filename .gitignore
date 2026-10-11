@@ -87,3 +87,11 @@ tmp/
 *~
 
 coverage/
+
+# Python fixture environments and reports
+.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+.coverage
+*.egg-info/

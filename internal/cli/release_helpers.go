@@ -24,6 +24,8 @@ func resolveVersionFromSource(sourcePath string) (string, error) {
 	}
 	ext := strings.ToLower(filepath.Ext(sourcePath))
 	switch ext {
+	case ".toml":
+		return pythonProjectVersion(data)
 	case ".json":
 		var payload map[string]any
 		if err := json.Unmarshal(data, &payload); err != nil {
@@ -55,7 +57,7 @@ func resolveVersionFromSource(sourcePath string) (string, error) {
 		}
 		return "", errors.New("invalid release.versionSource: top-level string field version is required")
 	default:
-		return "", fmt.Errorf("unsupported release.versionSource format %q: expected YAML or JSON file", ext)
+		return "", fmt.Errorf("unsupported release.versionSource format %q: expected YAML, JSON, or TOML file", ext)
 	}
 }
 

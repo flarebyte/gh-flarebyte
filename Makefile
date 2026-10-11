@@ -4,7 +4,7 @@
 	lint lint-go lint-dart lint-e2e format format-go format-dart format-e2e review review-dart coverage coverage-go coverage-dart \
 	doc-design doc-decision dup complexity release sec \
 	thoth-meta thoth-meta-go thoth-meta-go-test thoth-meta-ts-e2e \
-	check-tools install-tools-help help
+	check-tools install-tools-help help test-python-e2e
 
 GO := go
 BUN := bun
@@ -66,6 +66,10 @@ coverage-dart: build-go
 test-e2e: build-go
 	mkdir -p $(TMP_DIR)
 	$(BUN_ENV) $(BUN) test ./e2e
+
+test-python-e2e: build-go
+	mkdir -p $(TMP_DIR)
+	GH_FLAREBYTE_PYTHON_E2E=1 $(BUN_ENV) $(BUN) test ./e2e/python.test.ts
 
 lint: lint-go lint-e2e
 
@@ -138,6 +142,7 @@ thoth-meta-ts-e2e:
 	$(THOTH) run --config ./pipeline-ts-e2e-maat.thoth.cue
 
 check-tools:
+	@printf "uv=%s\n" "$$(command -v uv >/dev/null 2>&1 && printf true || printf false)"
 	@printf "go=%s\n" "$$(command -v $(GO) >/dev/null 2>&1 && printf true || printf false)"
 	@printf "bun=%s\n" "$$(command -v $(BUN) >/dev/null 2>&1 && printf true || printf false)"
 	@printf "flyb=%s\n" "$$(command -v $(FLYB) >/dev/null 2>&1 && printf true || printf false)"
@@ -148,6 +153,7 @@ check-tools:
 
 install-tools-help:
 	@printf "Install required tools:\n"
+	@printf "  uv (optional Python integration): https://docs.astral.sh/uv/getting-started/installation/\n"
 	@printf "  go: https://go.dev/doc/install\n"
 	@printf "  bun: https://bun.sh/docs/installation\n"
 	@printf "  flyb: install the flyb CLI used for doc generation.\n"
@@ -158,6 +164,7 @@ install-tools-help:
 
 help:
 	@printf "Targets:\n"
+	@printf "  test-python-e2e Run the real Python 3/uv integration fixture (requires uv and Python 3).\n"
 	@printf "  build        Build the E2E binary and release artifacts.\n"
 	@printf "  build-go     Build the Go CLI into .e2e-bin/ for local and E2E use.\n"
 	@printf "  build-dist   Build artifacts via local gh-flarebyte build config.\n"

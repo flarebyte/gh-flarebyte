@@ -56,9 +56,9 @@ func Validate(cfg Config) error {
 		}
 	}
 	switch cfg.Build.Language {
-	case "go", "dart":
+	case "go", "dart", "python":
 	default:
-		return fmt.Errorf("invalid build.language %q: expected go or dart", cfg.Build.Language)
+		return fmt.Errorf("invalid build.language %q: expected go, dart, or python", cfg.Build.Language)
 	}
 	if cfg.Go.CGO.CC != "" && !cfg.Go.CGO.Enabled {
 		return errors.New("invalid go.cgo.cc: requires go.cgo.enabled=true")
@@ -66,7 +66,20 @@ func Validate(cfg Config) error {
 	if cfg.Go.CGO.CXX != "" && !cfg.Go.CGO.Enabled {
 		return errors.New("invalid go.cgo.cxx: requires go.cgo.enabled=true")
 	}
+	if cfg.Build.Language == "python" && cfg.Build.Mode != "package" {
+		return errors.New(`invalid build.mode: Python supports "package" mode only`)
+	}
 	switch cfg.Build.Mode {
+	case "package":
+		if cfg.Build.Language != "python" {
+			return errors.New(`invalid build.mode: "package" requires build.language: "python"`)
+		}
+		if cfg.Build.OutputDir == "" || cfg.Build.ChecksumFile == "" {
+			return errors.New("invalid build: package mode requires outputDir and checksumFile")
+		}
+		if len(cfg.Build.Targets) != 0 {
+			return errors.New("invalid build.targets: Python package builds do not support a target matrix")
+		}
 	case "binary":
 		if cfg.Build.OutputDir == "" {
 			return errors.New("invalid build.outputDir: value is required")
@@ -87,7 +100,7 @@ func Validate(cfg Config) error {
 			return errors.New("invalid build.packages: at least one package pattern is required in library mode")
 		}
 	default:
-		return fmt.Errorf("invalid build.mode %q: expected binary or library", cfg.Build.Mode)
+		return fmt.Errorf("invalid build.mode %q: expected binary, library, or package", cfg.Build.Mode)
 	}
 	switch cfg.Release.NotesMode {
 	case "generate-notes", "notes-from-tag":
