@@ -26,6 +26,8 @@ func runTest(styleOverride, colorOverride string, failedOnly bool, stdout, stder
 	env := buildCommandEnv(cfg, stderr)
 	start := time.Now()
 	switch cfg.Build.Language {
+	case "rust":
+		return runRustTest(cfg, env, failedOnly, stdout, stderr)
 	case "python":
 		return runPythonTest(cfg, env, failedOnly, stdout, stderr)
 	case "go":
@@ -95,6 +97,8 @@ func runFormat(stdout, stderr io.Writer) Result {
 	env := buildCommandEnv(cfg, stderr)
 	start := time.Now()
 	switch cfg.Build.Language {
+	case "rust":
+		return runRustTool(cfg, env, "format", []string{"fmt", "--all"}, false, stdout, stderr)
 	case "python":
 		return runPythonTool(cfg, env, "format", []string{"ruff", "format", "."}, false, stdout, stderr)
 	case "go":
@@ -132,6 +136,8 @@ func runLint(colorOverride string, failedOnly bool, stdout, stderr io.Writer) Re
 	}
 	start := time.Now()
 	switch cfg.Build.Language {
+	case "rust":
+		return runRustTool(cfg, env, "lint", []string{"clippy", "--locked", "--workspace", "--all-targets", "--", "-D", "warnings"}, failedOnly, stdout, stderr)
 	case "python":
 		return runPythonTool(cfg, env, "lint", []string{"ruff", "check", "."}, failedOnly, stdout, stderr)
 	case "go":
@@ -162,6 +168,8 @@ func runCov(min *float64, colorOverride string, failedOnly bool, stdout, stderr 
 	}
 	start := time.Now()
 	switch cfg.Build.Language {
+	case "rust":
+		return runRustCov(cfg, env, min, failedOnly, stdout, stderr)
 	case "python":
 		return runPythonCov(cfg, env, min, failedOnly, stdout, stderr)
 	case "go":

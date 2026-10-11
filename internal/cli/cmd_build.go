@@ -49,6 +49,9 @@ func runBuild(targetFilter, outputDirOverride string, stdout, stderr io.Writer) 
 	if usage != nil {
 		return *usage
 	}
+	if cfg.Build.Language == "rust" {
+		return runRustBuild(cfg, targetFilter, outputDirOverride, stdout, stderr)
+	}
 	if cfg.Build.Language == "python" {
 		if targetFilter != "" {
 			err := fmt.Errorf(`--target is not supported for build.language "python"`)
@@ -83,7 +86,7 @@ func runBuild(targetFilter, outputDirOverride string, stdout, stderr io.Writer) 
 		return Result{ExitCode: ExitOK}
 	}
 	if cfg.Build.Language != "go" {
-		err := fmt.Errorf("build.language %q is not supported yet. Supported values: go, dart, python", cfg.Build.Language)
+		err := fmt.Errorf("build.language %q is not supported yet. Supported values: go, dart, python, rust", cfg.Build.Language)
 		_, _ = fmt.Fprintln(stderr, err.Error())
 		return Result{ExitCode: ExitUsage, Err: err}
 	}

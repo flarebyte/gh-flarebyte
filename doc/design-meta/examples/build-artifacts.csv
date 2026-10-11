@@ -4,3 +4,5 @@ darwin-arm64,gh-flarebyte-darwin-arm64,tar.gz,sha256,macOS targets should be pub
 windows-amd64,gh-flarebyte-windows-amd64.exe,zip,sha256,Windows targets should use `.exe` binaries and zip packaging.
 python-package,<distribution>-<version>-<python>-<abi>-<platform>.whl,wheel,sha256,uv builds one wheel and source distribution in a fresh temporary directory; only fresh assets are copied and released.
 python-package,<distribution>-<version>.tar.gz,sdist,sha256,Python package builds use outputDir and checksumFile with no target suffix override or target matrix.
+rust-package,<crate>-<version>.crate,crate,sha256,Cargo package verification stays enabled; only selected crates produced in the fresh target directory are copied and released. No crates.io publication.
+rust-binary,<repo>-<os-arch>,tar.gz or zip,sha256,Rust binaries reuse Go naming and archive policies. Cargo compiler JSON identifies executables. Windows binary assets end in .exe.

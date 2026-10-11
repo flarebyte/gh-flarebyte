@@ -207,7 +207,11 @@ func parseCueConfig(raw string) (Config, error) {
 	}
 	cfg.Build.MainPackage = extractOptionalStringField(buildBlock, "mainPackage")
 	if cfg.Build.MainPackage == "" {
-		cfg.Build.MainPackage = fmt.Sprintf("./cmd/%s", cfg.Project.Repo)
+		if cfg.Build.Language == "rust" {
+			cfg.Build.MainPackage = "."
+		} else {
+			cfg.Build.MainPackage = fmt.Sprintf("./cmd/%s", cfg.Project.Repo)
+		}
 	}
 	cfg.Build.Packages = extractOptionalStringListBlock(buildBlock, "packages")
 	if len(cfg.Build.Packages) == 0 {

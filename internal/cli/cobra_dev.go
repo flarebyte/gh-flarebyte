@@ -235,7 +235,7 @@ func newBuildCobraCommand(stdout, stderr io.Writer) *cobra.Command {
 	var target, outputDir string
 	cmd := &cobra.Command{
 		Use:           "build",
-		Short:         "Build project outputs. Go: binary/library; Dart: library; Python 3 with uv: package.",
+		Short:         "Build project outputs. Go: binary/library; Dart: library; Python: package; Rust: binary/library/package.",
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		Args:          noExtraArgs,

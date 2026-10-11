@@ -10,7 +10,7 @@ Use `gh flarebyte` to keep a GitHub repository aligned with the config checked i
 - update repo settings from config
 - audit drift between config and GitHub
 - sync topics and labels from config
-- build binary artifacts, library compile checks, or Python package distributions
+- build binary artifacts, library compile checks, Python distributions, or Rust crate packages
 - publish a GitHub release with or without build artifacts
 - discover repositories you contribute to in an organization
 
@@ -25,7 +25,7 @@ Use `gh flarebyte` to keep a GitHub repository aligned with the config checked i
 ### Build and release
 - `gh flarebyte build [--target <os-arch>] [--output-dir <path>]` builds the project using the language and mode defined in `.gh-flarebyte.cue`.
 - `gh flarebyte release [--draft] [--notes-file <path>]` builds first, then publishes a GitHub release from the configured release policy.
-- `build`: Go supports `binary` and `library`; Dart supports `library`; Python 3 with uv supports `package`.
+- `build`: Go supports `binary` and `library`; Dart supports `library`; Python 3 with uv supports `package`; Rust supports all three modes.
 - `release`: Dart currently supports release with `release.includeArtifacts: false`.
 
 ### Dev commands
@@ -214,6 +214,98 @@ so `build.artifactTargetSuffix` does not apply. TOML version sources require a s
 `[project].version` following the existing semantic-version rule (for example `1.2.3`).
 Dynamic versions and Python-specific versions such as `1.2.3rc1` are not supported yet.
 
+Rust library example (reuse the same repository configuration and output/coverage settings):
+
+```cue
+build: {
+  language: "rust"
+  mode: "library"
+  packages: ["./..."]
+  runTests: true
+}
+
+coverage: { min: 80, enforceMin: true }
+devOutput: { color: "auto", style: "summary", showPassed: true }
+
+release: {
+  versionSource: "Cargo.toml"
+  tagPrefix: "v"
+  notesMode: "generate-notes"
+  includeArtifacts: false
+}
+```
+
+Rust executable build block:
+
+```cue
+build: {
+  language: "rust"
+  mode: "binary"
+  mainPackage: "."
+  runTests: true
+  outputDir: "build"
+  checksumFile: "build/checksums.txt"
+  artifactTargetSuffix: true
+  targets: ["linux-amd64", "darwin-arm64"]
+}
+```
+
+For `.crate` distributions, use `mode: "package"`, `packages: ["./..."]`, `outputDir`, and
+`checksumFile`, omitting `targets`. For executable or package releases, set
+`release.includeArtifacts: true`, `release.artifactDir: "build"`, and optionally
+`release.includeChecksums: true`. All artifact-producing Rust builds honor `--output-dir`.
+
+Install a stable Rust toolchain with rustfmt and Clippy. Keep toolchain selection in
+`rust-toolchain.toml`, Rust version/edition/lints in `Cargo.toml`, and Cargo configuration in
+`.cargo/config.toml`. Commit `Cargo.lock` at the workspace root. Dependency-resolving commands
+use `--locked`; a missing or stale lock fails without being rewritten. Formatting also requires
+a project manifest and an existing lockfile. Cargo may download locked dependencies and consult the registry during packaging.
+
+`test` runs the whole workspace, including unit, integration, and documentation tests. Standard
+harness output supports summaries, `per_test`, ignored tests, and `--failed-only`.
+Custom `harness = false` targets support summary style only. `format` uses `cargo fmt --all`;
+`lint` uses Clippy across the workspace and all targets, treats warnings as errors, and does not fix code.
+
+`cov` requires `cargo-llvm-cov` (`cargo install cargo-llvm-cov --locked`) and the active toolchain's
+`llvm-tools-preview` component (`rustup component add llvm-tools-preview`). It runs workspace
+tests and computes total line coverage from LCOV line counts, excluding sources outside the workspace
+and generated/dependency directories (`target`, `.cargo`, `.cache`, `vendor`). It uses isolated
+temporary coverage artifacts and the shared threshold/output settings. Stable coverage excludes
+doctests; ordinary `test` still runs them. Missing coverage components fail with installation guidance.
+
+`build.packages` defaults to `["./..."]`, selecting all workspace members for library/package builds;
+explicit values are exact Cargo crate names. Developer commands operate on the whole workspace.
+Binary builds use `build.mainPackage`, the directory containing the package's `Cargo.toml`, defaulting
+to `"."`. The selected package must have one binary or declare `package.default-run`.
+Cargo compiler JSON identifies the executable, avoiding assumptions about Cargo's output filenames.
+
+Library builds compile selected crates without release assets. Binary builds use Cargo's release
+profile and the same archive, binary naming, checksums, and target-suffix policy as Go.
+Package builds run verified `cargo package --locked` and produce one `.crate` per selected crate;
+Cargo's clean-source and registry packaging rules apply. `build.runTests` enables host tests of the
+selected crates before any build mode, including cross-compilation.
+
+Rust preserves the shared target names with these mappings:
+
+| Target | Rust triple |
+|---|---|
+| `linux-amd64` | `x86_64-unknown-linux-gnu` |
+| `linux-arm64` | `aarch64-unknown-linux-gnu` |
+| `darwin-amd64` | `x86_64-apple-darwin` |
+| `darwin-arm64` | `aarch64-apple-darwin` |
+| `windows-amd64` | `x86_64-pc-windows-msvc` |
+| `windows-arm64` | `aarch64-pc-windows-msvc` |
+
+Install the target components and suitable linkers before cross-building. `--target` filters binary
+targets or selects a library compile check; package mode rejects it. Custom triples and musl builds
+are outside the initial target mapping.
+
+`release.versionSource` can point to a package's `Cargo.toml`, including workspace-inherited
+`package.version`. A virtual workspace manifest has no package release version: point to a member
+manifest instead. Releases use fresh build assets only, preserve subdirectories when staging into
+`release.artifactDir`, and support notes, drafts, and releases without assets. crates.io publishing
+is outside the initial scope.
+
 ## Typical workflow
 1. Run `gh flarebyte repo init` in a repo that should be managed.
 2. Edit `.gh-flarebyte.cue` to match the desired repository state.
@@ -228,6 +320,7 @@ Dynamic versions and Python-specific versions such as `1.2.3rc1` are not support
 - `GH_FLAREBYTE_FAKE_RELEASE=1 make release` runs the release flow in fake mode (no GitHub mutation).
 - `make review-dart` runs `format-dart`, `test-dart`, `lint-dart`, and `coverage-dart`.
 - `make test-python-e2e` runs the real uv fixture (requires uv and an installed Python 3; may download dependencies).
+- `make test-rust-e2e` runs the real Rust workspace fixture (requires Cargo, rustfmt, Clippy, cargo-llvm-cov, and llvm-tools-preview; may access crates.io).
 
 ## Language support snapshot
 - Go:
@@ -243,14 +336,18 @@ Dynamic versions and Python-specific versions such as `1.2.3rc1` are not support
   - `build`: wheel and source distribution in `package` mode, with checksums and optional tests
   - `release`: GitHub releases with or without package artifacts
   - `test`, `format`, `lint`, `cov`: supported, including per-test output and coverage thresholds
+- Rust with Cargo:
+  - `build`: library verification, target binaries, and verified `.crate` packages
+  - `release`: GitHub releases with fresh build artifacts or without assets
+  - `test`, `format`, `lint`, `cov`: supported, including workspace tests, per-test output, and line coverage thresholds
 
 ## Notes
 - Topics are managed as a flat list of strings.
 - Labels are managed as structured objects with `name`, `color`, and `description`.
-- Build: Go supports `binary` and `library`; Dart supports `library`; Python supports `package`.
+- Build: Go supports `binary` and `library`; Dart supports `library`; Python supports `package`; Rust supports all three.
 - Release: Dart currently supports `release.includeArtifacts: false`.
-- `build.mode` defaults to `binary`. Use `library` for Go/Dart libraries or `package` for Python distributions. `build.runTests` enables optional tests during builds.
-- `build.mainPackage` controls the Go main package used for binary builds. Default: `./cmd/<project.repo>`.
+- `build.mode` defaults to `binary`. Use `library` for Go/Dart/Rust verification or `package` for Python/Rust distributions. `build.runTests` enables optional tests during builds.
+- `build.mainPackage` controls the Go main package (default `./cmd/<project.repo>`) or Rust manifest directory (default `.`) used for binary builds.
 - `build.artifactTargetSuffix` controls whether artifact names include `-os-arch` suffixes.
   - when `false` with multiple targets, artifacts are written under per-target subdirectories to avoid filename collisions.
 - In `library` mode, `--target` applies `GOOS/GOARCH` cross-compile checks and does not force artifact generation.
@@ -266,4 +363,4 @@ Dynamic versions and Python-specific versions such as `1.2.3rc1` are not support
 - `devOutput.style` supports `summary` and `per_test`.
 - `--color` overrides `devOutput.color` for `test`, `lint`, and `cov`.
 - `--failed-only` suppresses PASS summary output for `test`, `lint`, and `cov`.
-- In `per_test` style, `test` prints `✓/↷/✗` per test (Go, Dart, and Python) and `cov` prints `✓/✗` per coverage entry; with `--failed-only`, only failing entries are shown.
+- In `per_test` style, `test` prints `✓/↷/✗` per test (Go, Dart, Python, and Rust) and `cov` prints `✓/✗` per coverage entry; with `--failed-only`, only failing entries are shown.

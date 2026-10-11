@@ -5,3 +5,4 @@ gh release edit,change release state after creation,write,--draft=false,"Useful 
 gh release create --discussion-category,open a discussion with the release,write,--discussion-category,"Keeps release conversation attached."
 gh release create --verify-tag,require the release tag to exist already,write,--verify-tag,"Useful for protected publication flows."
 Python package release,build fresh wheel and source distribution then create a GitHub release,write,--draft --notes-file,Uses shared release fields and fresh artifact paths rather than scanning stale files. No PyPI upload.
+Rust release,build fresh target binaries or verified crate packages then create a GitHub release,write,--draft --notes-file,Uses shared release fields and fresh assets including optional checksums. Library releases have no artifacts. No crates.io upload.

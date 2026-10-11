@@ -95,3 +95,6 @@ __pycache__/
 .ruff_cache/
 .coverage
 *.egg-info/
+
+# Rust build outputs
+target/

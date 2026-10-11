@@ -24,20 +24,21 @@ repository.features.allowUpdateBranch,boolean,.gh-flarebyte.cue,local-to-remote,
 repository.features.advancedSecurity,boolean,.gh-flarebyte.cue,local-to-remote,GitHub Advanced Security.
 repository.features.secretScanning,boolean,.gh-flarebyte.cue,local-to-remote,Secret scanning for the repository.
 repository.features.secretScanningPushProtection,boolean,.gh-flarebyte.cue,local-to-remote,Secret scanning push protection.
-build.language,enum,.gh-flarebyte.cue,local-only,"Supported languages: go, dart, python. Python 3 workflows use uv."
-build.mode,enum,.gh-flarebyte.cue,local-only,"Go supports binary/library; Dart supports library; Python supports package (wheel and source distribution). Default remains binary."
-build.packages,list,.gh-flarebyte.cue,local-only,"Package patterns used in `library` mode, defaulting to `[""./...""]`."
-build.runTests,boolean,.gh-flarebyte.cue,local-only,Whether library/package builds also run the language test runner. Python runs locked pytest before packaging.
+build.language,enum,.gh-flarebyte.cue,local-only,"Supported languages: go, dart, python, rust. Python uses uv; Rust uses Cargo."
+build.mode,enum,.gh-flarebyte.cue,local-only,"Go supports binary/library; Dart supports library; Python supports package; Rust supports binary/library/package. Default remains binary."
+build.packages,list,.gh-flarebyte.cue,local-only,"Defaults to [""./...""]. Go uses package patterns; Rust uses all workspace members or explicit crate names for library/package builds."
+build.runTests,boolean,.gh-flarebyte.cue,local-only,Enable optional tests during library/package builds and Rust binary builds. Rust tests selected crates on the active compiler host before cross-building.
+build.mainPackage,string,.gh-flarebyte.cue,local-only,Go main package defaults to ./cmd/<repo>; Rust package manifest directory defaults to a dot. Rust chooses the sole binary or package.default-run.
 build.outputDir,string,.gh-flarebyte.cue,local-only,Directory for built artifacts.
 build.checksumFile,string,.gh-flarebyte.cue,local-only,Checksum manifest for built artifacts.
-build.targets,list,.gh-flarebyte.cue,local-only,Go target matrix using os-arch strings. Python package builds reject target matrices and --target.
+build.targets,list,.gh-flarebyte.cue,local-only,Go/Rust target matrix using os-arch strings. Rust maps to GNU Linux and Apple Darwin and MSVC Windows triples. Package mode rejects target matrices and --target.
 go.cgo.enabled,boolean,.gh-flarebyte.cue,local-only,Explicit CGO mode for Go builds. When true build sets `CGO_ENABLED=1`; when false build sets `CGO_ENABLED=0`.
 go.cgo.cc,string,.gh-flarebyte.cue,local-only,Optional C compiler override for CGO builds. Requires `go.cgo.enabled: true`.
 go.cgo.cxx,string,.gh-flarebyte.cue,local-only,Optional C++ compiler override for CGO builds. Requires `go.cgo.enabled: true`.
-release.versionSource,string,.gh-flarebyte.cue,local-only,File or source that provides the release version.
+release.versionSource,string,.gh-flarebyte.cue,local-only,YAML/JSON version or Python project.version in TOML or a Rust package Cargo.toml including workspace-inherited versions. Virtual Rust workspaces require a member manifest.
 release.tagPrefix,string,.gh-flarebyte.cue,local-only,Prefix used for release tags.
 release.notesMode,enum,.gh-flarebyte.cue,local-only,"Release note strategy, such as generate-notes or notes-file."
 release.releaseNotesFilePath,string,.gh-flarebyte.cue,local-only,Path required when notesMode is `notes-file`.
 release.includeArtifacts,boolean,.gh-flarebyte.cue,local-only,Whether release uploads build artifacts or publishes tag/notes only.
-release.artifactDir,string,.gh-flarebyte.cue,local-only,Directory scanned for release assets.
+release.artifactDir,string,.gh-flarebyte.cue,local-only,Release asset directory. Go scans matching assets; Python/Rust stage only current build outputs and preserve relative artifact paths.
 release.includeChecksums,boolean,.gh-flarebyte.cue,local-only,Whether to include the checksum manifest as a release asset.

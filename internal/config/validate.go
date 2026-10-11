@@ -56,9 +56,9 @@ func Validate(cfg Config) error {
 		}
 	}
 	switch cfg.Build.Language {
-	case "go", "dart", "python":
+	case "go", "dart", "python", "rust":
 	default:
-		return fmt.Errorf("invalid build.language %q: expected go, dart, or python", cfg.Build.Language)
+		return fmt.Errorf("invalid build.language %q: expected go, dart, python, or rust", cfg.Build.Language)
 	}
 	if cfg.Go.CGO.CC != "" && !cfg.Go.CGO.Enabled {
 		return errors.New("invalid go.cgo.cc: requires go.cgo.enabled=true")
@@ -71,14 +71,14 @@ func Validate(cfg Config) error {
 	}
 	switch cfg.Build.Mode {
 	case "package":
-		if cfg.Build.Language != "python" {
-			return errors.New(`invalid build.mode: "package" requires build.language: "python"`)
+		if cfg.Build.Language != "python" && cfg.Build.Language != "rust" {
+			return errors.New(`invalid build.mode: "package" requires build.language: "python" or "rust"`)
 		}
 		if cfg.Build.OutputDir == "" || cfg.Build.ChecksumFile == "" {
 			return errors.New("invalid build: package mode requires outputDir and checksumFile")
 		}
 		if len(cfg.Build.Targets) != 0 {
-			return errors.New("invalid build.targets: Python package builds do not support a target matrix")
+			return errors.New("invalid build.targets: package builds do not support a target matrix")
 		}
 	case "binary":
 		if cfg.Build.OutputDir == "" {
