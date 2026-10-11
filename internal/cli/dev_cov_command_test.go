@@ -354,6 +354,7 @@ func TestRunCovDartPerTestStyleOutput(t *testing.T) {
 func TestRunCovDartIgnoresPubCacheEntries(t *testing.T) {
 	cfg := strings.Replace(perTestStyleConfig(), `language:     "go"`, `language:     "dart"`, 1)
 	_ = setupTempWorkdirWithConfig(t, cfg)
+	cachePath := filepath.Join(t.TempDir(), ".pub-cache", "hosted", "pub.dev", "test_core-0.6.12", "lib", "src", "scaffolding.dart")
 	oldRun := runCommandCapture
 	t.Cleanup(func() { runCommandCapture = oldRun })
 	runCommandCapture = func(name string, args []string, env []string) (string, string, error) {
@@ -362,7 +363,7 @@ func TestRunCovDartIgnoresPubCacheEntries(t *testing.T) {
 				return "", "", err
 			}
 			lcov := strings.Join([]string{
-				"SF:/Users/olivier/.pub-cache/hosted/pub.dev/test_core-0.6.12/lib/src/scaffolding.dart",
+				"SF:" + filepath.ToSlash(cachePath),
 				"LF:10",
 				"LH:2",
 				"end_of_record",
