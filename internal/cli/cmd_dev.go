@@ -26,6 +26,8 @@ func runTest(styleOverride, colorOverride string, failedOnly bool, stdout, stder
 	env := buildCommandEnv(cfg, stderr)
 	start := time.Now()
 	switch cfg.Build.Language {
+	case "python":
+		return runPythonTest(cfg, env, failedOnly, stdout, stderr)
 	case "go":
 		cmdOut, cmdErr, runErr := runCommandCapture("go", []string{"test", "-json", "./..."}, env)
 		report := parseGoTestReport(cmdOut)
@@ -93,6 +95,8 @@ func runFormat(stdout, stderr io.Writer) Result {
 	env := buildCommandEnv(cfg, stderr)
 	start := time.Now()
 	switch cfg.Build.Language {
+	case "python":
+		return runPythonTool(cfg, env, "format", []string{"ruff", "format", "."}, false, stdout, stderr)
 	case "go":
 		files, err := discoverGoFiles(".")
 		if err != nil {
@@ -128,6 +132,8 @@ func runLint(colorOverride string, failedOnly bool, stdout, stderr io.Writer) Re
 	}
 	start := time.Now()
 	switch cfg.Build.Language {
+	case "python":
+		return runPythonTool(cfg, env, "lint", []string{"ruff", "check", "."}, failedOnly, stdout, stderr)
 	case "go":
 		_, cmdErr, runErr := runCommandCapture("go", []string{"vet", "./..."}, env)
 		if runErr != nil {
@@ -156,6 +162,8 @@ func runCov(min *float64, colorOverride string, failedOnly bool, stdout, stderr 
 	}
 	start := time.Now()
 	switch cfg.Build.Language {
+	case "python":
+		return runPythonCov(cfg, env, min, failedOnly, stdout, stderr)
 	case "go":
 		profileDir, mkErr := os.MkdirTemp("", "gh-flarebyte-cov-")
 		if mkErr != nil {

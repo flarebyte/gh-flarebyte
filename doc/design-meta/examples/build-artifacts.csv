@@ -2,3 +2,5 @@ target,binary_name,package_format,checksum_algorithm,notes
 linux-amd64,gh-flarebyte-linux-amd64,tar.gz,sha256,Unix targets should be published as compressed archives containing the binary.
 darwin-arm64,gh-flarebyte-darwin-arm64,tar.gz,sha256,macOS targets should be published as compressed archives containing the binary.
 windows-amd64,gh-flarebyte-windows-amd64.exe,zip,sha256,Windows targets should use `.exe` binaries and zip packaging.
+python-package,<distribution>-<version>-<python>-<abi>-<platform>.whl,wheel,sha256,uv builds one wheel and source distribution in a fresh temporary directory; only fresh assets are copied and released.
+python-package,<distribution>-<version>.tar.gz,sdist,sha256,Python package builds use outputDir and checksumFile with no target suffix override or target matrix.

@@ -18,12 +18,22 @@ func runRelease(draft bool, notesFileOverride string, stdout, stderr io.Writer) 
 		_, _ = fmt.Fprintln(stderr, err.Error())
 		return Result{ExitCode: ExitUsage, Err: err}
 	}
-	buildRes := Run([]string{"build"}, io.Discard, stderr)
-	if buildRes.ExitCode != ExitOK {
-		if buildRes.ExitCode == ExitBuildFailure {
-			return buildRes
+	var pythonArtifacts []string
+	if cfg.Build.Language == "python" {
+		var err error
+		pythonArtifacts, err = buildPythonPackage(cfg, "", stderr)
+		if err != nil {
+			_, _ = fmt.Fprintln(stderr, err)
+			return Result{ExitCode: ExitBuildFailure, Err: err}
 		}
-		return Result{ExitCode: ExitReleaseFailure, Err: buildRes.Err}
+	} else {
+		buildRes := Run([]string{"build"}, io.Discard, stderr)
+		if buildRes.ExitCode != ExitOK {
+			if buildRes.ExitCode == ExitBuildFailure {
+				return buildRes
+			}
+			return Result{ExitCode: ExitReleaseFailure, Err: buildRes.Err}
+		}
 	}
 	version, err := findVersion(cfg.Release.VersionSource)
 	if err != nil {
@@ -43,7 +53,11 @@ func runRelease(draft bool, notesFileOverride string, stdout, stderr io.Writer) 
 	}
 	artifacts := make([]string, 0)
 	if cfg.Release.IncludeArtifacts {
-		artifacts, err = listReleaseArtifacts(cfg.Release.ArtifactDir, cfg.Release.IncludeChecksums, cfg.Project.Repo, cfg.Build.ArtifactTargetSuffix)
+		if cfg.Build.Language == "python" {
+			artifacts, err = stagePythonRelease(pythonArtifacts, cfg.Release.ArtifactDir, cfg.Release.IncludeChecksums)
+		} else {
+			artifacts, err = listReleaseArtifacts(cfg.Release.ArtifactDir, cfg.Release.IncludeChecksums, cfg.Project.Repo, cfg.Build.ArtifactTargetSuffix)
+		}
 		if err != nil {
 			_, _ = fmt.Fprintln(stderr, err.Error())
 			return Result{ExitCode: ExitReleaseFailure, Err: err}
@@ -79,7 +93,7 @@ func runRelease(draft bool, notesFileOverride string, stdout, stderr io.Writer) 
 	if cfg.Release.IncludeArtifacts {
 		_, _ = fmt.Fprintf(stdout, "Release %s published from %s with checksums %s.\n", tag, cfg.Release.ArtifactDir, ternary(cfg.Release.IncludeChecksums, "attached", "skipped"))
 	} else {
-		_, _ = fmt.Fprintf(stdout, "Release %s published without binary artifacts.\n", tag)
+		_, _ = fmt.Fprintf(stdout, "Release %s published without artifacts.\n", tag)
 	}
 	return Result{ExitCode: ExitOK}
 }

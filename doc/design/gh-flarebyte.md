@@ -150,13 +150,13 @@ How config fields map onto GitHub sync targets and extension-local automation se
 | repository.features.advancedSecurity | boolean | .gh-flarebyte.cue | GitHub Advanced Security. | local-to-remote |
 | repository.features.secretScanning | boolean | .gh-flarebyte.cue | Secret scanning for the repository. | local-to-remote |
 | repository.features.secretScanningPushProtection | boolean | .gh-flarebyte.cue | Secret scanning push protection. | local-to-remote |
-| build.language | enum | .gh-flarebyte.cue | Build language used by gh flarebyte build: go initially, dart later. | local-only |
-| build.mode | enum | .gh-flarebyte.cue | Build mode: `binary` for target artifacts or `library` for package compile/test verification. | local-only |
+| build.language | enum | .gh-flarebyte.cue | Supported languages: go, dart, python. Python 3 workflows use uv. | local-only |
+| build.mode | enum | .gh-flarebyte.cue | Go supports binary/library; Dart supports library; Python supports package (wheel and source distribution). Default remains binary. | local-only |
 | build.packages | list | .gh-flarebyte.cue | Package patterns used in `library` mode, defaulting to `["./..."]`. | local-only |
-| build.runTests | boolean | .gh-flarebyte.cue | Whether library mode runs `go test` after `go build`. | local-only |
+| build.runTests | boolean | .gh-flarebyte.cue | Whether library/package builds also run the language test runner. Python runs locked pytest before packaging. | local-only |
 | build.outputDir | string | .gh-flarebyte.cue | Directory for built artifacts. | local-only |
 | build.checksumFile | string | .gh-flarebyte.cue | Checksum manifest for built artifacts. | local-only |
-| build.targets | list | .gh-flarebyte.cue | Target matrix for the build command using `os-arch` strings such as `linux-amd64` or `windows-amd64`. Each project declares only the targets it supports. | local-only |
+| build.targets | list | .gh-flarebyte.cue | Go target matrix using os-arch strings. Python package builds reject target matrices and --target. | local-only |
 | go.cgo.enabled | boolean | .gh-flarebyte.cue | Explicit CGO mode for Go builds. When true build sets `CGO_ENABLED=1`; when false build sets `CGO_ENABLED=0`. | local-only |
 | go.cgo.cc | string | .gh-flarebyte.cue | Optional C compiler override for CGO builds. Requires `go.cgo.enabled: true`. | local-only |
 | go.cgo.cxx | string | .gh-flarebyte.cue | Optional C++ compiler override for CGO builds. Requires `go.cgo.enabled: true`. | local-only |
@@ -190,7 +190,7 @@ Build language selection for gh flarebyte build.
 
 #### Build Config
 
-Build orchestration is driven by a top-level `build` block in the Cue config. `gh flarebyte build` reads the configured language and uses a Go implementation initially, with Dart allowed later as a supported language. In `binary` mode the command writes per-target binaries and archives under the configured output directory and emits the checksum manifest. In `library` mode the command performs compile verification across configured packages (`go build`) and optionally runs tests (`go test`) without producing binary artifacts. Targets are expressed as `os-arch` strings such as `linux-amd64` or `windows-amd64`; in library mode `--target` maps to `GOOS/GOARCH` validation.
+Build orchestration uses the shared top-level `build` block. Go supports binary and library modes; Dart supports library validation; Python 3 with uv supports package mode. Python package builds produce a wheel and source distribution via `uv build --no-sources`, reuse outputDir/checksumFile/runTests, and reject target matrices and --target. All Python developer tools run through `uv run --locked` with a repository-local pyproject.toml and uv.lock. Python version selection and tool rules remain in pyproject.toml and optional .python-version. Go binary mode writes per-target binaries and archives with SHA-256 checksums; library mode compiles configured packages and optionally runs tests without binary artifacts. Go library --target maps to GOOS/GOARCH validation. Isolated Python build dependencies are resolved separately from uv.lock and should be pinned in build-system.requires.
 
 ### 06 Release
 
@@ -198,7 +198,7 @@ Release publication settings for gh flarebyte release.
 
 #### Release Config
 
-Release publication is driven by a top-level `release` block in the Cue config. `gh flarebyte release` uses the configured release tag prefix, source version, artifact policy, and release notes policy to publish a GitHub release. When `includeArtifacts` is true it uploads files from `artifactDir`; when false it publishes tag and notes without asset uploads. `releaseNotesFilePath` is required only when `notesMode` is `notes-file`. The implementation treats `release.versionSource` as a repository-local YAML or JSON file path containing a top-level `version` string.
+Release publication uses the shared top-level `release` block for tag prefix, version source, artifact policy, and notes. YAML/JSON version sources read top-level version; TOML reads static [project].version under the same semantic-version rule. Dynamic Python versions are rejected. Python releases stage only distributions and optional checksums returned by the fresh build into artifactDir, avoiding stale assets. Dart releases require includeArtifacts=false. No PyPI publishing or native Python wheel matrix is included.
 
 ### 07 Sync Types
 
@@ -251,6 +251,19 @@ export type BuildConfig =
 
 export type BuildTarget = `${"linux" | "darwin" | "windows"}-${"amd64" | "arm64"}`;
 
+export type GoCGOConfig = {
+  enabled: boolean;
+  cc?: string;
+  cxx?: string;
+};
+
+export type GoConfig = {
+  cacheDir?: string;
+  modCacheDir?: string;
+  toolchain?: string;
+  cgo?: GoCGOConfig;
+};
+
 export type ReleaseConfigBase = {
   versionSource: string;
   tagPrefix: string;
@@ -288,6 +301,7 @@ export type GhFlarebyteConfig = {
   project: ProjectConfig;
   sync: SyncPlan;
   repository: RepositoryConfig;
+  go?: GoConfig;
   build: BuildConfig;
   release: ReleaseConfig;
 };
@@ -323,7 +337,11 @@ User-facing extension actions and their purpose.
 
 | command | config_touchpoints | output | purpose | read_write |
 | --- | --- | --- | --- | --- |
-| gh flarebyte build | build.* -> binary artifacts or compile/test verification | language-specific build output | build the project according to the configured language and build mode | write |
+| gh flarebyte build | build.* -> binaries or library checks or Python distributions | language-specific build output | build the project according to the configured language and build mode | write |
+| gh flarebyte test | build.language and devOutput.* | Go JSON or Dart JSON or Python pytest JUnit XML | run language tests with summary or per-test output | write |
+| gh flarebyte format | build.language | Go gofmt or Dart format or Python locked Ruff format | format sources for the configured language | write |
+| gh flarebyte lint | build.language and devOutput.* | Go vet or Dart analyze or Python locked Ruff check | run static checks without fixing sources | write |
+| gh flarebyte cov | build.language and coverage.* and devOutput.* | Go coverage or Dart LCOV or Python coverage.py JSON | measure coverage and apply the shared threshold policy | write |
 | gh flarebyte release | build.* and release.* -> GitHub release with optional assets | versioned GitHub release | run build then publish a GitHub release from the configured release settings | write |
 | gh flarebyte repo init | .gh-flarebyte.cue created or seeded | initialized repo state | bootstrap a repo-local config and initial GitHub defaults | write |
 | gh flarebyte repo update | .gh-flarebyte.cue -> GitHub repo state with `--confirm-deletions` and `--accept-visibility-change-consequences` when needed | updated remote repo state | reconcile GitHub repo metadata from local config with explicit safety flags | write |
@@ -592,7 +610,7 @@ How build orchestration is driven from config.
 
 #### Build Command
 
-Build the project from the top-level `build` block. Start with Go only, but keep the config shape open for Dart so the command can grow without changing its contract. Support `build.mode: "binary"` for deterministic target artifacts and `build.mode: "library"` for package compile verification. In binary mode, target names are expressed as `os-arch` strings such as `linux-amd64` or `windows-amd64` and driven from config rather than shell scripts. Unix targets are packaged as `tar.gz`, Windows targets as `zip`, Windows binaries end in `.exe`, and checksums use SHA-256. In library mode, compile configured package patterns with `go build`, optionally run `go test`, and do not require a synthetic single executable artifact. CGO behavior is driven by `go.cgo` using camelCase fields only (`enabled`, `cc`, `cxx`): when enabled, build uses `CGO_ENABLED=1`; when disabled, it uses `CGO_ENABLED=0` and should fail with a clear policy error if CGO-backed dependencies are detected. Build output should also embed version metadata so the compiled CLI can report `version`, `commitId`, `date`, and related runtime details via `--version`, and the same metadata should be available as JSON with `--version --json`. When the command fails it should report the target or mode, effective CGO settings, failing command, and next useful action.
+Build from the shared build block: Go binary/library, Dart library, or Python package. Go targets use os-arch strings; Unix archives use tar.gz and Windows zip with .exe binaries. Go library builds compile package patterns and optionally test. Dart libraries run pub get/analyze and optional tests. Python package builds validate Python 3 and the lockfile, optionally run pytest, then build a wheel and source distribution in a fresh temporary directory and copy them to outputDir with SHA-256 checksums. --output-dir relocates artifacts and checksums. Python test, format, lint, and cov use pytest JUnit XML, Ruff, and coverage.py JSON with shared output and threshold fields. Go binary builds embed version, commitId, date, and runtime metadata for --version and --version --json. Failures identify the target or mode and failing step. Python failures preserve stdout and stderr diagnostics.
 
 #### Build Artifact Rules
 
@@ -601,6 +619,8 @@ Build the project from the top-level `build` block. Start with Go only, but keep
 | gh-flarebyte-linux-amd64 | sha256 | Unix targets should be published as compressed archives containing the binary. | tar.gz | linux-amd64 |
 | gh-flarebyte-darwin-arm64 | sha256 | macOS targets should be published as compressed archives containing the binary. | tar.gz | darwin-arm64 |
 | gh-flarebyte-windows-amd64.exe | sha256 | Windows targets should use `.exe` binaries and zip packaging. | zip | windows-amd64 |
+| <distribution>-<version>-<python>-<abi>-<platform>.whl | sha256 | uv builds one wheel and source distribution in a fresh temporary directory; only fresh assets are copied and released. | wheel | python-package |
+| <distribution>-<version>.tar.gz | sha256 | Python package builds use outputDir and checksumFile with no target suffix override or target matrix. | sdist | python-package |
 
 ### 11 Release
 
@@ -608,15 +628,15 @@ How release publication is driven from config.
 
 #### Release Command
 
-Run `gh flarebyte build` first, then publish a GitHub release from the configured release policy. Use the top-level `release` block to choose the tag, whether artifacts are included, and release note behavior, requiring `releaseNotesFilePath` when `notesMode` is `notes-file`. When `includeArtifacts` is true, upload build outputs from `artifactDir`; when false, publish tag and notes only. Resolve the version from a repository-local YAML or JSON file containing a top-level `version` string, derive the tag as `tagPrefix + version`, and fail if the target tag already exists. On failure, the CLI should distinguish between build failure, tag/version resolution failure, and release upload failure. On success it should confirm the published tag and whether assets were uploaded.
+Build first, then publish a GitHub release using the shared release policy. Resolve YAML/JSON top-level version or TOML static [project].version, derive tagPrefix + version, and fail if the tag exists. includeArtifacts controls uploads; includeChecksums controls the manifest. Python assets come only from the current build and are staged into artifactDir without scanning for stale distributions. notes-file requires releaseNotesFilePath; --draft and --notes-file keep their existing behavior. Failures distinguish build, version/tag, and publication steps.
 
 #### Release Version Resolution
 
 | behavior | on_failure | source_rule |
 | --- | --- | --- |
 | The initial implementation should read a repository-local file path rather than an arbitrary command or expression. | Fail with exit code `2` if the path is missing or unreadable. | `release.versionSource` is a file path |
-| The initial implementation should parse YAML or JSON only. | Fail with exit code `2` if the file format is unsupported. | Supported format is YAML or JSON |
-| The initial implementation should extract a single top-level string field named `version`. | Fail with exit code `2` if `version` is missing or not a string. | Top-level `version` field is required |
+| Read YAML/JSON top-level version or TOML project.version. | Fail with exit code `2` if the file format is unsupported. | Supported formats are YAML JSON and TOML |
+| TOML reads only [project].version and rejects dynamic versions; YAML/JSON use top-level version. | Fail with exit code `2` if the version is missing or invalid. | Static version field is required |
 | The extracted version should already be normalized as a semantic version string such as `1.2.3` or `1.2.3-rc.1`. | Fail with exit code `2` if the version string is invalid. | Semantic version required |
 | The release tag should be computed as `release.tagPrefix + version`. | Fail with exit code `7` if tag creation or release publication cannot proceed. | Tag derivation |
 | If the computed tag already exists the command should fail rather than mutate the existing release implicitly. | Fail with exit code `7` and explain that the tag already exists. | Existing tag conflict |
@@ -716,6 +736,7 @@ Release creation and publication flows that remain existing gh behavior.
 | gh release edit | --draft=false | write | Useful for publishing a reviewed draft. | change release state after creation |
 | gh release create --discussion-category | --discussion-category | write | Keeps release conversation attached. | open a discussion with the release |
 | gh release create --verify-tag | --verify-tag | write | Useful for protected publication flows. | require the release tag to exist already |
+| Python package release | --draft --notes-file | write | Uses shared release fields and fresh artifact paths rather than scanning stale files. No PyPI upload. | build fresh wheel and source distribution then create a GitHub release |
 
 ### 03 Search
 
@@ -780,4 +801,4 @@ What still needs agreement before the sync contract hardens.
 
 #### Open Questions
 
-Clarify the non-interactive CI story for deletion confirmation, the first Dart build contract once it lands, and whether release notes should eventually support templates beyond generated notes and a single notes file path.
+Clarify the non-interactive CI story for deletion confirmation, future Python dynamic versions, PyPI publishing, and native wheel matrices, and whether release notes should eventually support templates beyond generated notes and a single notes file path.

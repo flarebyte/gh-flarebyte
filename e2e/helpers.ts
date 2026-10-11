@@ -42,6 +42,9 @@ export async function runCLI(
   repoRoot = cwd,
   extraEnv: Record<string, string> = {},
 ): Promise<RunResult> {
+  if (args[0] === 'release' && extraEnv.GH_FLAREBYTE_FAKE_RELEASE !== '1') {
+    throw new Error('E2E release requires GH_FLAREBYTE_FAKE_RELEASE=1');
+  }
   const cmdString = `gh flarebyte ${args.join(' ')}`.trim();
   assertReadOnlyCLICommand(cmdString);
 

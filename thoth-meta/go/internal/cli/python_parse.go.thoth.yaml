@@ -1,0 +1,16 @@
+locator: internal/cli/python_parse.go
+meta:
+  function_list:
+    - parsePythonCoverage
+    - parsePythonTests
+    - pythonProjectVersion
+  import_files_list:
+    - encoding/json
+    - encoding/xml
+    - fmt
+    - github.com/pelletier/go-toml/v2
+    - io
+    - math
+    - sort
+    - strings
+  language: go

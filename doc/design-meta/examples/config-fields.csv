@@ -24,13 +24,13 @@ repository.features.allowUpdateBranch,boolean,.gh-flarebyte.cue,local-to-remote,
 repository.features.advancedSecurity,boolean,.gh-flarebyte.cue,local-to-remote,GitHub Advanced Security.
 repository.features.secretScanning,boolean,.gh-flarebyte.cue,local-to-remote,Secret scanning for the repository.
 repository.features.secretScanningPushProtection,boolean,.gh-flarebyte.cue,local-to-remote,Secret scanning push protection.
-build.language,enum,.gh-flarebyte.cue,local-only,"Build language used by gh flarebyte build: go initially, dart later."
-build.mode,enum,.gh-flarebyte.cue,local-only,"Build mode: `binary` for target artifacts or `library` for package compile/test verification."
+build.language,enum,.gh-flarebyte.cue,local-only,"Supported languages: go, dart, python. Python 3 workflows use uv."
+build.mode,enum,.gh-flarebyte.cue,local-only,"Go supports binary/library; Dart supports library; Python supports package (wheel and source distribution). Default remains binary."
 build.packages,list,.gh-flarebyte.cue,local-only,"Package patterns used in `library` mode, defaulting to `[""./...""]`."
-build.runTests,boolean,.gh-flarebyte.cue,local-only,Whether library mode runs `go test` after `go build`.
+build.runTests,boolean,.gh-flarebyte.cue,local-only,Whether library/package builds also run the language test runner. Python runs locked pytest before packaging.
 build.outputDir,string,.gh-flarebyte.cue,local-only,Directory for built artifacts.
 build.checksumFile,string,.gh-flarebyte.cue,local-only,Checksum manifest for built artifacts.
-build.targets,list,.gh-flarebyte.cue,local-only,Target matrix for the build command using `os-arch` strings such as `linux-amd64` or `windows-amd64`. Each project declares only the targets it supports.
+build.targets,list,.gh-flarebyte.cue,local-only,Go target matrix using os-arch strings. Python package builds reject target matrices and --target.
 go.cgo.enabled,boolean,.gh-flarebyte.cue,local-only,Explicit CGO mode for Go builds. When true build sets `CGO_ENABLED=1`; when false build sets `CGO_ENABLED=0`.
 go.cgo.cc,string,.gh-flarebyte.cue,local-only,Optional C compiler override for CGO builds. Requires `go.cgo.enabled: true`.
 go.cgo.cxx,string,.gh-flarebyte.cue,local-only,Optional C++ compiler override for CGO builds. Requires `go.cgo.enabled: true`.

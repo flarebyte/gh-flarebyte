@@ -1,5 +1,9 @@
 command,purpose,read_write,config_touchpoints,output
-gh flarebyte build,build the project according to the configured language and build mode,write,build.* -> binary artifacts or compile/test verification,language-specific build output
+gh flarebyte build,build the project according to the configured language and build mode,write,build.* -> binaries or library checks or Python distributions,language-specific build output
+gh flarebyte test,run language tests with summary or per-test output,write,build.language and devOutput.*,Go JSON or Dart JSON or Python pytest JUnit XML
+gh flarebyte format,format sources for the configured language,write,build.language,Go gofmt or Dart format or Python locked Ruff format
+gh flarebyte lint,run static checks without fixing sources,write,build.language and devOutput.*,Go vet or Dart analyze or Python locked Ruff check
+gh flarebyte cov,measure coverage and apply the shared threshold policy,write,build.language and coverage.* and devOutput.*,Go coverage or Dart LCOV or Python coverage.py JSON
 gh flarebyte release,run build then publish a GitHub release from the configured release settings,write,build.* and release.* -> GitHub release with optional assets,versioned GitHub release
 gh flarebyte repo init,bootstrap a repo-local config and initial GitHub defaults,write,.gh-flarebyte.cue created or seeded,initialized repo state
 gh flarebyte repo update,reconcile GitHub repo metadata from local config with explicit safety flags,write,.gh-flarebyte.cue -> GitHub repo state with `--confirm-deletions` and `--accept-visibility-change-consequences` when needed,updated remote repo state
