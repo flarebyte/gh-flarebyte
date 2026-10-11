@@ -1,0 +1,17 @@
+locator: internal/cli/rust_dev.go
+meta:
+  function_list:
+    - cargoRun
+    - runRustCov
+    - runRustTest
+    - runRustTool
+    - rustFailure
+  import_files_list:
+    - fmt
+    - github.com/flarebyte/gh-flarebyte/internal/config
+    - io
+    - os
+    - path/filepath
+    - strings
+    - time
+  language: go

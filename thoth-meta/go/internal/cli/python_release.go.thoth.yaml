@@ -1,8 +1,11 @@
 locator: internal/cli/python_release.go
 meta:
   function_list:
+    - stageFreshRelease
     - stagePythonRelease
   import_files_list:
+    - fmt
     - os
     - path/filepath
+    - strings
   language: go

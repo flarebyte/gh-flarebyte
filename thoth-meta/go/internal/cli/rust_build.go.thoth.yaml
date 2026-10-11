@@ -1,0 +1,18 @@
+locator: internal/cli/rust_build.go
+meta:
+  function_list:
+    - buildRust
+    - packageRustBinary
+    - runRustBuild
+    - rustBuildTests
+    - rustChecksums
+    - validateRustBuildTarget
+  import_files_list:
+    - fmt
+    - github.com/flarebyte/gh-flarebyte/internal/config
+    - io
+    - os
+    - path/filepath
+    - sort
+    - strings
+  language: go

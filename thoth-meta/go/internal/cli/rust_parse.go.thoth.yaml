@@ -1,0 +1,15 @@
+locator: internal/cli/rust_parse.go
+meta:
+  function_list:
+    - parseRustCoverage
+    - parseRustTests
+    - rustCompilerBinary
+  import_files_list:
+    - encoding/json
+    - fmt
+    - path/filepath
+    - regexp
+    - sort
+    - strconv
+    - strings
+  language: go

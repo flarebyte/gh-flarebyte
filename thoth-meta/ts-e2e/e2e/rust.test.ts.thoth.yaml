@@ -1,0 +1,10 @@
+locator: e2e/rust.test.ts
+meta:
+  import_files_list:
+    - ./helpers
+    - bun:test
+    - node:fs/promises
+    - node:path
+  language: typescript
+  testcase_titles_list:
+    - workspace developer commands, all build modes, and simulated releases
