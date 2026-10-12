@@ -1,0 +1,13 @@
+locator: internal/cli/build_fresh_artifacts.go
+meta:
+  function_list:
+    - packageTargetBinary
+    - writeArtifactChecksums
+  import_files_list:
+    - fmt
+    - github.com/flarebyte/gh-flarebyte/internal/config
+    - os
+    - path/filepath
+    - sort
+    - strings
+  language: go

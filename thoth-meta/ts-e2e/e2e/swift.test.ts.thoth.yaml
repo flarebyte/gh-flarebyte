@@ -1,0 +1,11 @@
+locator: e2e/swift.test.ts
+meta:
+  import_files_list:
+    - ./helpers
+    - bun:test
+    - node:fs/promises
+    - node:path
+  language: typescript
+  testcase_titles_list:
+    - developer commands, both test frameworks, builds, failures, and simulated releases
+    - resolved source-control dependencies fail without changing a stale lockfile

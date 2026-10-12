@@ -1,0 +1,14 @@
+locator: internal/cli/swift_parse.go
+meta:
+  function_list:
+    - parseSwiftCoverage
+    - parseSwiftTests
+  import_files_list:
+    - encoding/json
+    - fmt
+    - path/filepath
+    - regexp
+    - sort
+    - strconv
+    - strings
+  language: go

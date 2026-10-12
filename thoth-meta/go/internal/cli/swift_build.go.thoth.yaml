@@ -1,0 +1,16 @@
+locator: internal/cli/swift_build.go
+meta:
+  function_list:
+    - buildSwift
+    - runSwiftBuild
+    - swiftHostTarget
+    - validateSwiftTargets
+  import_files_list:
+    - encoding/json
+    - fmt
+    - github.com/flarebyte/gh-flarebyte/internal/config
+    - io
+    - os
+    - path/filepath
+    - strings
+  language: go

@@ -1,0 +1,28 @@
+locator: internal/cli/swift_test.go
+meta:
+  function_list:
+    - TestSwiftBuildAndFreshRelease
+    - TestSwiftBuildStopsBeforePackaging
+    - TestSwiftConfigModesAndDefaults
+    - TestSwiftCoverageScopeAndPolicy
+    - TestSwiftDependencyAndToolFailures
+    - TestSwiftDeveloperCommands
+    - TestSwiftHostTargetMapping
+    - TestSwiftMinimumToolchainAndManifest
+    - TestSwiftRejectsIncompleteBinaryAssets
+    - TestSwiftSelectionAndTargets
+    - TestSwiftTestReports
+    - TestSwiftWeightedCoverage
+    - setupSwift
+    - stubSwift
+    - swiftConfigCue
+  import_files_list:
+    - bytes
+    - encoding/json
+    - fmt
+    - github.com/flarebyte/gh-flarebyte/internal/config
+    - os
+    - path/filepath
+    - strings
+    - testing
+  language: go
