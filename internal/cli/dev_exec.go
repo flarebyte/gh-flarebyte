@@ -42,6 +42,8 @@ func newAllowedDevCommand(name string, args []string) (*exec.Cmd, error) {
 		return exec.Command("uv", args...), nil
 	case "cargo":
 		return exec.Command("cargo", args...), nil
+	case "swift":
+		return exec.Command("swift", args...), nil
 	case "rustc":
 		return exec.Command("rustc", args...), nil
 	default:
@@ -50,7 +52,7 @@ func newAllowedDevCommand(name string, args []string) (*exec.Cmd, error) {
 }
 
 func unsupportedLanguageResult(language string, stderr io.Writer) Result {
-	err := fmt.Errorf("build.language %q is not supported. Supported values: go, dart, python, rust", language)
+	err := fmt.Errorf("build.language %q is not supported. Supported values: go, dart, python, rust, swift", language)
 	_, _ = fmt.Fprintln(stderr, err.Error())
 	return Result{ExitCode: ExitUsage, Err: err}
 }

@@ -209,7 +209,7 @@ func parseCueConfig(raw string) (Config, error) {
 	if cfg.Build.MainPackage == "" {
 		if cfg.Build.Language == "rust" {
 			cfg.Build.MainPackage = "."
-		} else {
+		} else if cfg.Build.Language != "swift" {
 			cfg.Build.MainPackage = fmt.Sprintf("./cmd/%s", cfg.Project.Repo)
 		}
 	}

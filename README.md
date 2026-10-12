@@ -10,7 +10,7 @@ Use `gh flarebyte` to keep a GitHub repository aligned with the config checked i
 - update repo settings from config
 - audit drift between config and GitHub
 - sync topics and labels from config
-- build binary artifacts, library compile checks, Python distributions, or Rust crate packages
+- build binary artifacts, library compile checks, Python distributions, Rust crate packages, or native Swift executables
 - publish a GitHub release with or without build artifacts
 - discover repositories you contribute to in an organization
 
@@ -25,7 +25,7 @@ Use `gh flarebyte` to keep a GitHub repository aligned with the config checked i
 ### Build and release
 - `gh flarebyte build [--target <os-arch>] [--output-dir <path>]` builds the project using the language and mode defined in `.gh-flarebyte.cue`.
 - `gh flarebyte release [--draft] [--notes-file <path>]` builds first, then publishes a GitHub release from the configured release policy.
-- `build`: Go supports `binary` and `library`; Dart supports `library`; Python 3 with uv supports `package`; Rust supports all three modes.
+- `build`: Go supports `binary` and `library`; Dart supports `library`; Python 3 with uv supports `package`; Rust supports all three modes; Swift supports `binary` and `library`.
 - `release`: Dart currently supports release with `release.includeArtifacts: false`.
 
 ### Dev commands
@@ -306,6 +306,97 @@ manifest instead. Releases use fresh build assets only, preserve subdirectories 
 `release.artifactDir`, and support notes, drafts, and releases without assets. crates.io publishing
 is outside the initial scope.
 
+## Swift with Swift Package Manager
+
+Swift support requires a Swift 6+ toolchain and the matching platform SDK. On macOS,
+use Xcode or its command-line tools; Linux installations need the Swift toolchain and
+its documented system dependencies. Older `swift-tools-version` manifests can still
+be used with Swift 6. Keep language versions, compiler settings, dependencies, and
+platform requirements in `Package.swift`; keep formatter rules in `.swift-format`.
+
+Reuse the existing repository, output, coverage, and release configuration:
+
+```cue
+build: {
+  language: "swift"
+  mode: "library"
+  packages: ["./..."]
+  runTests: true
+}
+devOutput: { color: "auto", style: "summary", showPassed: true }
+coverage: { min: 80, enforceMin: true }
+release: {
+  versionSource: "main.project.yaml"
+  tagPrefix: "v"
+  notesMode: "generate-notes"
+  includeArtifacts: false
+}
+```
+
+`build.packages: ["./..."]` verifies all root-package build targets. Exact target names
+such as `["MyLibrary"]` select individual build targets; test and plugin targets are
+not valid explicit build selections. Developer commands operate on the whole root
+package, independently of build selection. `build.runTests` runs the complete package
+test suite before library or binary builds.
+
+Executable projects use the same artifact fields as Go and Rust:
+
+```cue
+build: {
+  language: "swift"
+  mode: "binary"
+  mainPackage: "my-cli"
+  targets: ["darwin-arm64"]
+  runTests: true
+  outputDir: "build"
+  checksumFile: "build/checksums.txt"
+  artifactTargetSuffix: true
+}
+release: {
+  versionSource: "main.project.yaml"
+  includeArtifacts: true
+  artifactDir: "build"
+  includeChecksums: true
+}
+```
+
+`build.mainPackage` identifies a SwiftPM executable **product**, rather than a source
+folder. Omit it when the package has exactly one executable product. Initial builds
+support the active compiler's native host on macOS or GNU/Linux with amd64 or arm64:
+`darwin-amd64`, `darwin-arm64`, `linux-amd64`, or `linux-arm64`. `build.targets` and
+`--target` must match that host. Cross-compilation and Windows builds are not included.
+Binary builds use release configuration, discover the output path through SwiftPM,
+and produce the existing executable/archive/checksum layout. `--output-dir` relocates
+artifacts and checksums. Packaging resource bundles or package-built shared libraries is not supported and fails explicitly.
+Executables depend on compatible Swift runtime libraries on their destination systems;
+archives do not bundle the Swift runtime or external system libraries.
+
+Swift requires a root `Package.swift`. Packages with remote dependencies also require
+`Package.resolved`; generate it with `swift package resolve` and commit it. Dependency-free
+and local-only packages do not need an empty lockfile. Resolving commands use
+`--force-resolved-versions` so missing or stale resolution fails instead of updating
+versions. Transitive remote dependencies are subject to the same SwiftPM enforcement.
+
+Developer commands:
+
+- `test` runs XCTest and Swift Testing. XCTest uses serial results checked against its
+  summary; Swift Testing uses JSON event schema version 0. Missing or incomplete reports
+  fail explicitly. Parameterized Swift Testing functions appear as one aggregated test.
+- `format` runs `swift format` on manifest and target-owned Swift files, excluding
+  dependencies and generated build files.
+- `lint` runs strict formatter lint, then compiles sources and test targets with Swift
+  compiler warnings treated as errors. It does not run tests or require SwiftLint.
+- `cov` runs instrumented tests in a fresh build directory and reads SwiftPM's LLVM JSON
+  export. Coverage counts production-source lines only, excluding tests, dependencies,
+  and generated sources. Totals are weighted by line counts and honor `coverage.min`,
+  `coverage.enforceMin`, `--min`, `--style`, and `--failed-only`.
+
+Release versions come from the existing YAML/JSON top-level `version` field, because
+`Package.swift` does not carry the root package's release version. Releases stage only
+fresh executable assets and optional checksums, or publish library tags and notes without
+assets. Package archives, registry publication, XCFrameworks, Xcode app projects,
+signing, and notarization are outside this initial support.
+
 ## Typical workflow
 1. Run `gh flarebyte repo init` in a repo that should be managed.
 2. Edit `.gh-flarebyte.cue` to match the desired repository state.
@@ -321,6 +412,8 @@ is outside the initial scope.
 - `make review-dart` runs `format-dart`, `test-dart`, `lint-dart`, and `coverage-dart`.
 - `make test-python-e2e` runs the real uv fixture (requires uv and an installed Python 3; may download dependencies).
 - `make test-rust-e2e` runs the real Rust workspace fixture (requires Cargo, rustfmt, Clippy, cargo-llvm-cov, and llvm-tools-preview; may access crates.io).
+
+- `make test-swift-e2e` runs the real SwiftPM fixture (requires Swift 6+ and its SDK).
 
 ## Language support snapshot
 - Go:
@@ -341,13 +434,18 @@ is outside the initial scope.
   - `release`: GitHub releases with fresh build artifacts or without assets
   - `test`, `format`, `lint`, `cov`: supported, including workspace tests, per-test output, and line coverage thresholds
 
+- Swift with SwiftPM:
+  - `build`: library verification and native macOS/Linux executables
+  - `release`: GitHub releases with fresh executables or without assets
+  - `test`, `format`, `lint`, `cov`: supported, including XCTest, Swift Testing, and coverage thresholds
+
 ## Notes
 - Topics are managed as a flat list of strings.
 - Labels are managed as structured objects with `name`, `color`, and `description`.
-- Build: Go supports `binary` and `library`; Dart supports `library`; Python supports `package`; Rust supports all three.
+- Build: Go supports `binary` and `library`; Dart supports `library`; Python supports `package`; Rust supports all three; Swift supports `binary` and `library`.
 - Release: Dart currently supports `release.includeArtifacts: false`.
-- `build.mode` defaults to `binary`. Use `library` for Go/Dart/Rust verification or `package` for Python/Rust distributions. `build.runTests` enables optional tests during builds.
-- `build.mainPackage` controls the Go main package (default `./cmd/<project.repo>`) or Rust manifest directory (default `.`) used for binary builds.
+- `build.mode` defaults to `binary`. Use `library` for Go/Dart/Rust/Swift verification or `package` for Python/Rust distributions. `build.runTests` enables optional tests during builds.
+- `build.mainPackage` controls the Go main package (default `./cmd/<project.repo>`) or Rust manifest directory (default `.`) used for binary builds. Swift uses an executable product name, inferred when unique.
 - `build.artifactTargetSuffix` controls whether artifact names include `-os-arch` suffixes.
   - when `false` with multiple targets, artifacts are written under per-target subdirectories to avoid filename collisions.
 - In `library` mode, `--target` applies `GOOS/GOARCH` cross-compile checks and does not force artifact generation.
@@ -363,4 +461,4 @@ is outside the initial scope.
 - `devOutput.style` supports `summary` and `per_test`.
 - `--color` overrides `devOutput.color` for `test`, `lint`, and `cov`.
 - `--failed-only` suppresses PASS summary output for `test`, `lint`, and `cov`.
-- In `per_test` style, `test` prints `✓/↷/✗` per test (Go, Dart, Python, and Rust) and `cov` prints `✓/✗` per coverage entry; with `--failed-only`, only failing entries are shown.
+- In `per_test` style, `test` prints `✓/↷/✗` per test (Go, Dart, Python, Rust, and Swift) and `cov` prints `✓/✗` per coverage entry; with `--failed-only`, only failing entries are shown.

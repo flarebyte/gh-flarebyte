@@ -6,3 +6,4 @@ gh release create --discussion-category,open a discussion with the release,write
 gh release create --verify-tag,require the release tag to exist already,write,--verify-tag,"Useful for protected publication flows."
 Python package release,build fresh wheel and source distribution then create a GitHub release,write,--draft --notes-file,Uses shared release fields and fresh artifact paths rather than scanning stale files. No PyPI upload.
 Rust release,build fresh target binaries or verified crate packages then create a GitHub release,write,--draft --notes-file,Uses shared release fields and fresh assets including optional checksums. Library releases have no artifacts. No crates.io upload.
+Swift release,build fresh native executable artifacts or verify a library then create a GitHub release,write,--draft --notes-file,Uses shared YAML/JSON version source and fresh asset staging. Library releases have no assets. No registry upload or signing.
