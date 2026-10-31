@@ -9,6 +9,11 @@ on:
 permissions:
   contents: read
 
+env:
+  # These CLI binaries are used only for tests; automatic Git provenance is optional.
+  # Keep Git's ownership checks enabled in the Linux containers.
+  GOFLAGS: -buildvcs=false
+
 concurrency:
   group: swift-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -30,6 +35,8 @@ jobs:
           apt-get update
           apt-get install -y --no-install-recommends make ca-certificates
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
@@ -62,6 +69,8 @@ jobs:
       DEVELOPER_DIR: /Applications/Xcode_${{ matrix.xcode }}.app/Contents/Developer
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod

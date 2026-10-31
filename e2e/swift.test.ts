@@ -123,6 +123,7 @@ let package = Package(name: "Bridge", products: [.library(name: "Bridge", target
       120_000,
     );
 
+    // Repeated isolated coverage and release builds need more time on hosted Intel Macs.
     test('developer commands, both test frameworks, builds, failures, and simulated releases', async () => {
       const repoRoot = process.cwd();
       const dir = await makeTempDir(repoRoot);
@@ -285,6 +286,6 @@ let package = Package(name: "Bridge", products: [.library(name: "Bridge", target
       });
       expect(missing.code).toBe(1);
       expect(missing.stderr).toContain('swift');
-    }, 240_000);
+    }, 600_000);
   },
 );
