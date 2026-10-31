@@ -182,12 +182,28 @@ func TestSwiftBuildAndFreshRelease(t *testing.T) {
 				if !strings.Contains(string(checksums), "gh-flarebyte-darwin-arm64.tar.gz") {
 					t.Fatal(string(checksums))
 				}
+				entries := strings.Split(strings.TrimSpace(string(checksums)), "\n")
+				if len(entries) != 2 {
+					t.Fatalf("expected archive and executable checksums: %s", checksums)
+				}
+				for _, entry := range entries {
+					parts := strings.SplitN(entry, "  ", 2)
+					if len(parts) != 2 {
+						t.Fatalf("invalid checksum entry: %s", entry)
+					}
+					sum, err := sha256File(filepath.Join("output with spaces", parts[1]))
+					if err != nil || sum != parts[0] {
+						t.Fatalf("incorrect checksum: %s (%v)", entry, err)
+					}
+				}
 				if err := os.MkdirAll("build", 0o755); err != nil {
 					t.Fatal(err)
 				}
 				if err := os.WriteFile("build/stale.tar.gz", []byte("stale"), 0o644); err != nil {
 					t.Fatal(err)
 				}
+			} else if _, err := os.Stat("output with spaces"); !os.IsNotExist(err) {
+				t.Fatalf("library verification produced artifacts: %v", err)
 			}
 			t.Setenv("GH_FLAREBYTE_FAKE_RELEASE", "1")
 			out.Reset()
@@ -227,6 +243,29 @@ func TestSwiftSelectionAndTargets(t *testing.T) {
 	}
 	if result := Run([]string{"build", "--target", "darwin-arm64"}, &out, &diag); result.ExitCode != 0 {
 		t.Fatalf("%+v %s", result, diag.String())
+	}
+}
+
+func TestSwiftInvalidTargetDoesNotRequireToolchain(t *testing.T) {
+	for _, mode := range []string{"library", "binary"} {
+		for _, target := range []string{"invalid", "windows-amd64", "linux-amd64"} {
+			if mode == "library" && target == "linux-amd64" {
+				continue // A valid native target needs toolchain host detection.
+			}
+			t.Run(mode+"/"+target, func(t *testing.T) {
+				project := setupSwift(t, mode)
+				stubSwift(t, project)
+				runCommandCapture = func(string, []string, []string) (string, string, error) {
+					t.Fatal("invalid target reached the Swift toolchain")
+					return "", "", nil
+				}
+				var out, diag bytes.Buffer
+				result := Run([]string{"build", "--target", target}, &out, &diag)
+				if result.ExitCode != ExitUsage || !strings.Contains(diag.String(), target) || out.Len() != 0 {
+					t.Fatalf("result=%+v stdout=%s stderr=%s", result, &out, &diag)
+				}
+			})
+		}
 	}
 }
 

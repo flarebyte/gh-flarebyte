@@ -389,7 +389,7 @@ Developer commands:
 - `cov` runs instrumented tests in a fresh build directory and reads SwiftPM's LLVM JSON
   export. Coverage counts production-source lines only, excluding tests, dependencies,
   and generated sources. Totals are weighted by line counts and honor `coverage.min`,
-  `coverage.enforceMin`, `--min`, `--style`, and `--failed-only`.
+  `coverage.enforceMin`, `devOutput.style`, `--min`, and `--failed-only`.
 
 Release versions come from the existing YAML/JSON top-level `version` field, because
 `Package.swift` does not carry the root package's release version. Releases stage only
@@ -465,7 +465,7 @@ to GitHub. Real Swift integration remains opt-in for local `make test` runs.
 - `build.mainPackage` controls the Go main package (default `./cmd/<project.repo>`) or Rust manifest directory (default `.`) used for binary builds. Swift uses an executable product name, inferred when unique.
 - `build.artifactTargetSuffix` controls whether artifact names include `-os-arch` suffixes.
   - when `false` with multiple targets, artifacts are written under per-target subdirectories to avoid filename collisions.
-- In `library` mode, `--target` applies `GOOS/GOARCH` cross-compile checks and does not force artifact generation.
+- In `library` mode, `--target` selects Go cross-compile checks through `GOOS/GOARCH`, a Rust target triple, or the native Swift host. Dart rejects it. Library checks do not produce release artifacts.
 - `go.cgo` uses camelCase keys only: `enabled`, `cc`, `cxx`.
 - `go.cacheDir` and `go.modCacheDir` should be project-relative (for example `./.gocache`); `gh flarebyte` resolves them to absolute paths at runtime before invoking Go.
 - Absolute `go.cacheDir` and `go.modCacheDir` values still work, but emit portability warnings.

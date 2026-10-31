@@ -128,7 +128,7 @@ func newTestCobraCommand(stdout, stderr io.Writer) *cobra.Command {
 	}
 	cmd.Flags().StringVar(&style, "style", "", "Override output style: summary or per_test")
 	cmd.Flags().StringVar(&color, "color", "", "Override color mode: auto, true, or false")
-	cmd.Flags().BoolVar(&failedOnly, "failed-only", false, "With per_test style, print only failed tests")
+	cmd.Flags().BoolVar(&failedOnly, "failed-only", false, "Suppress passing summaries; with per_test style, print only failed tests")
 	return cmd
 }
 

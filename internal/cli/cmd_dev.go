@@ -55,7 +55,9 @@ func runTest(styleOverride, colorOverride string, failedOnly bool, stdout, stder
 			printDevSummary(stderr, cfg, devSummary{Kind: "test", Status: "FAIL", Duration: time.Since(start), Details: details})
 			return Result{ExitCode: ExitFailure, Err: commandError(runErr, cmdErr)}
 		}
-		printDevSummary(stdout, cfg, devSummary{Kind: "test", Status: "PASS", Duration: time.Since(start), Details: formatGoTestDetails(report.Tests, report.Failed, report.Skipped, "PASS")})
+		if !failedOnly {
+			printDevSummary(stdout, cfg, devSummary{Kind: "test", Status: "PASS", Duration: time.Since(start), Details: formatGoTestDetails(report.Tests, report.Failed, report.Skipped, "PASS")})
+		}
 		return Result{ExitCode: ExitOK}
 	case "dart":
 		testArgs := []string{"test"}
@@ -84,7 +86,9 @@ func runTest(styleOverride, colorOverride string, failedOnly bool, stdout, stder
 		if report.Tests > 0 {
 			details = fmt.Sprintf("tests=%d failed=0 skipped=%d", report.Tests, report.Skipped)
 		}
-		printDevSummary(stdout, cfg, devSummary{Kind: "test", Status: "PASS", Duration: time.Since(start), Details: details})
+		if !failedOnly {
+			printDevSummary(stdout, cfg, devSummary{Kind: "test", Status: "PASS", Duration: time.Since(start), Details: details})
+		}
 		return Result{ExitCode: ExitOK}
 	default:
 		return unsupportedLanguageResult(cfg.Build.Language, stderr)

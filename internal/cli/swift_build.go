@@ -47,15 +47,15 @@ func swiftHostTarget(env []string) (string, error) {
 }
 
 func validateSwiftTargets(cfg config.Config, target, host string) error {
+	if err := validateSwiftBuildTarget(cfg, target); err != nil {
+		return err
+	}
 	targets := []string{target}
 	if target == "" {
 		targets = nil
 		if cfg.Build.Mode == "binary" {
 			targets = cfg.Build.Targets
 		}
-	}
-	if cfg.Build.Mode == "binary" && target != "" && !contains(cfg.Build.Targets, target) {
-		return fmt.Errorf("invalid --target %q: not present in build.targets", target)
 	}
 	for _, candidate := range targets {
 		if candidate != host {
@@ -65,7 +65,26 @@ func validateSwiftTargets(cfg config.Config, target, host string) error {
 	return nil
 }
 
+// Reject invalid requests before consulting an installed toolchain, like Rust,
+// Python, Dart, and Go build argument validation.
+func validateSwiftBuildTarget(cfg config.Config, target string) error {
+	if target == "" {
+		return nil
+	}
+	if !contains([]string{"darwin-amd64", "darwin-arm64", "linux-amd64", "linux-arm64"}, target) {
+		return fmt.Errorf("unsupported Swift target %q: use native macOS or GNU/Linux on amd64/arm64", target)
+	}
+	if cfg.Build.Mode == "binary" && !contains(cfg.Build.Targets, target) {
+		return fmt.Errorf("invalid --target %q: not present in build.targets", target)
+	}
+	return nil
+}
+
 func runSwiftBuild(cfg config.Config, target, output string, stdout, stderr io.Writer) Result {
+	if err := validateSwiftBuildTarget(cfg, target); err != nil {
+		_, _ = fmt.Fprintln(stderr, err)
+		return Result{ExitCode: ExitUsage, Err: err}
+	}
 	env := buildCommandEnv(cfg, stderr)
 	host, err := swiftHostTarget(env)
 	if err != nil {
@@ -91,6 +110,9 @@ func runSwiftBuild(cfg config.Config, target, output string, stdout, stderr io.W
 }
 
 func buildSwift(cfg config.Config, target, outputOverride string, stderr io.Writer) ([]string, error) {
+	if err := validateSwiftBuildTarget(cfg, target); err != nil {
+		return nil, err
+	}
 	env := buildCommandEnv(cfg, stderr)
 	project, err := loadSwiftProject(env)
 	if err != nil {
