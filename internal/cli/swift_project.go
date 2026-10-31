@@ -47,25 +47,16 @@ func loadSwiftProject(env []string) (swiftProject, error) {
 	if !regexp.MustCompile(`Swift version ([6-9]|[1-9][0-9]+)\.`).MatchString(version) {
 		return project, fmt.Errorf("Swift support requires a Swift 6+ toolchain")
 	}
-	// Evaluating the manifest does not resolve dependencies or rewrite Package.resolved.
-	out, _, err := swiftRun([]string{"package", "dump-package"}, env)
-	if err != nil {
-		return project, err
-	}
-	var manifest struct {
-		Dependencies []map[string]json.RawMessage `json:"dependencies"`
-	}
-	if err := json.Unmarshal([]byte(out), &manifest); err != nil {
-		return project, fmt.Errorf("invalid Swift manifest JSON: %w", err)
-	}
-	for _, dependency := range manifest.Dependencies {
-		if _, local := dependency["fileSystem"]; !local {
-			if info, err := os.Stat("Package.resolved"); err != nil || !info.Mode().IsRegular() {
-				return project, fmt.Errorf("Swift remote dependencies require Package.resolved; run swift package resolve and commit it")
-			}
+	if info, err := os.Stat("Package.resolved"); err != nil || !info.Mode().IsRegular() {
+		remote, err := swiftHasRemoteDependencies(".", env, map[string]bool{})
+		if err != nil {
+			return project, err
+		}
+		if remote {
+			return project, fmt.Errorf("Swift remote dependencies require Package.resolved; run swift package resolve and commit it")
 		}
 	}
-	out, _, err = swiftRun([]string{"package", "--force-resolved-versions", "describe", "--type", "json"}, env)
+	out, _, err := swiftRun([]string{"package", "--force-resolved-versions", "describe", "--type", "json"}, env)
 	if err != nil {
 		return project, err
 	}
@@ -76,6 +67,64 @@ func loadSwiftProject(env []string) (swiftProject, error) {
 		return project, fmt.Errorf("Swift package description has no root path or targets")
 	}
 	return project, nil
+}
+
+// Inspect local manifests before resolution: SwiftPM can reuse cached transitive
+// checkouts without rejecting a missing root lockfile, even with forced versions.
+func swiftHasRemoteDependencies(path string, env []string, visited map[string]bool) (bool, error) {
+	root, err := filepath.Abs(path)
+	if err != nil {
+		return false, err
+	}
+	root, err = filepath.EvalSymlinks(root)
+	if err != nil {
+		return false, err
+	}
+	if visited[root] {
+		return false, nil
+	}
+	visited[root] = true
+	args := []string{"package", "dump-package"}
+	if path != "." {
+		args = append(args, "--package-path", root)
+	}
+	// dump-package evaluates a manifest without resolving or updating lockfiles.
+	out, _, err := swiftRun(args, env)
+	if err != nil {
+		return false, err
+	}
+	var manifest struct {
+		Dependencies []map[string]json.RawMessage `json:"dependencies"`
+	}
+	if err := json.Unmarshal([]byte(out), &manifest); err != nil {
+		return false, fmt.Errorf("invalid Swift manifest JSON: %w", err)
+	}
+	for _, dependency := range manifest.Dependencies {
+		local, ok := dependency["fileSystem"]
+		if !ok {
+			return true, nil
+		}
+		var locations []struct {
+			Path string `json:"path"`
+		}
+		if err := json.Unmarshal(local, &locations); err != nil || len(locations) == 0 {
+			return false, fmt.Errorf("invalid Swift local dependency in %s", root)
+		}
+		for _, location := range locations {
+			if location.Path == "" {
+				return false, fmt.Errorf("missing Swift local dependency path in %s", root)
+			}
+			child := location.Path
+			if !filepath.IsAbs(child) {
+				child = filepath.Join(root, child)
+			}
+			remote, err := swiftHasRemoteDependencies(child, env, visited)
+			if err != nil || remote {
+				return remote, err
+			}
+		}
+	}
+	return false, nil
 }
 
 func swiftSelectedTargets(project swiftProject, selections []string) ([]string, error) {

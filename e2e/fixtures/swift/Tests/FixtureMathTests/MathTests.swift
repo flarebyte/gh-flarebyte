@@ -16,6 +16,10 @@ final class MathTests: XCTestCase {
   #expect(add(-2, -3) == -5)
 }
 
+@Test(arguments: [1, 2, 3]) func parameterizedAddition(value: Int) {
+  #expect(add(value, 1) == value + 1)
+}
+
 @Test(.disabled("Fixture skip")) func modernSkipped() {
   #expect(Bool(false))
 }

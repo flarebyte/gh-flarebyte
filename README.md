@@ -397,6 +397,17 @@ fresh executable assets and optional checksums, or publish library tags and note
 assets. Package archives, registry publication, XCFrameworks, Xcode app projects,
 signing, and notarization are outside this initial support.
 
+Swift compatibility checks run through `.github/workflows/swift.yml` on pull requests,
+pushes to `main`, and manual dispatch. The matrix covers native macOS and GNU/Linux
+on amd64 and arm64. Linux uses official Swift 6.0.3 and 6.2.4 containers; macOS uses
+Xcode 16.2 (Swift 6.0.3) and Xcode 26.2. Each job reports its actual toolchain and host,
+runs the Go tests, and runs `make test-swift-e2e`. Hosted matrix results are available
+after the workflow is pushed and run; a local pass validates only the local host.
+The fixture checks both test frameworks, aggregated parameterized test successes and
+failures, coverage thresholds, direct and transitive dependency lock enforcement,
+executable packaging, and simulated releases. Releases in this suite never publish
+to GitHub. Real Swift integration remains opt-in for local `make test` runs.
+
 ## Typical workflow
 1. Run `gh flarebyte repo init` in a repo that should be managed.
 2. Edit `.gh-flarebyte.cue` to match the desired repository state.
@@ -409,7 +420,13 @@ signing, and notarization are outside this initial support.
 - `make build-go` builds the local CLI binary at `.e2e-bin/gh-flarebyte`.
 - `make release` runs `.e2e-bin/gh-flarebyte release` (it depends on `build-go`).
 - `GH_FLAREBYTE_FAKE_RELEASE=1 make release` runs the release flow in fake mode (no GitHub mutation).
-- `make review-dart` runs `format-dart`, `test-dart`, `lint-dart`, and `coverage-dart`.
+- `make review` finishes formatting before running tests and lint, including with `make -j`.
+- `make e2e` aliases the default smoke and stub-tool suite; `make test-dart-e2e` runs the Dart stub fixture alone.
+- `make test-integrations` runs all real Python, Rust, and Swift fixtures; these remain opt-in.
+- `make e2e-deps` installs dependencies from `bun.lock`; formatting and lint use the locked local Biome.
+- The legacy `*-dart` shortcuts and `review-dart` follow the root `.gh-flarebyte.cue`; they do not select Dart. This repository configures Go.
+- `make check-tools` reports executable availability; `biome` checks the local installation and `npx` is the launcher used for jscpd.
+- `make doc-decision` is a legacy target whose generation script is currently absent.
 - `make test-python-e2e` runs the real uv fixture (requires uv and an installed Python 3; may download dependencies).
 - `make test-rust-e2e` runs the real Rust workspace fixture (requires Cargo, rustfmt, Clippy, cargo-llvm-cov, and llvm-tools-preview; may access crates.io).
 

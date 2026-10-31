@@ -1,81 +1,127 @@
 import { describe, expect, test } from 'bun:test';
-import { cp, mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
+import {
+  cp,
+  mkdir,
+  readFile,
+  readdir,
+  unlink,
+  writeFile,
+} from 'node:fs/promises';
 import { join } from 'node:path';
 import { makeTempDir, runCLI } from './helpers';
 
 describe.skipIf(process.env.GH_FLAREBYTE_SWIFT_E2E !== '1')(
   'gh-flarebyte SwiftPM',
   () => {
-    test('resolved source-control dependencies fail without changing a stale lockfile', async () => {
-      const repoRoot = process.cwd();
-      const dir = await makeTempDir(repoRoot);
-      const dependency = await makeTempDir(repoRoot);
-      await cp(join(repoRoot, 'e2e/fixtures/swift'), dir, { recursive: true });
-      await mkdir(join(dependency, 'Sources/Dependency'), { recursive: true });
-      await writeFile(
-        join(dependency, 'Package.swift'),
-        `// swift-tools-version: 6.0
+    test.each(['direct', 'transitive'])(
+      '%s source-control dependencies fail without changing a stale lockfile',
+      async (dependencyKind) => {
+        const repoRoot = process.cwd();
+        const dir = await makeTempDir(repoRoot);
+        const dependency = await makeTempDir(repoRoot);
+        await cp(join(repoRoot, 'e2e/fixtures/swift'), dir, {
+          recursive: true,
+        });
+        await mkdir(join(dependency, 'Sources/Dependency'), {
+          recursive: true,
+        });
+        await writeFile(
+          join(dependency, 'Package.swift'),
+          `// swift-tools-version: 6.0
 import PackageDescription
 let package = Package(name: "Dependency", products: [.library(name: "Dependency", targets: ["Dependency"])], targets: [.target(name: "Dependency")])
 `,
-      );
-      await writeFile(
-        join(dependency, 'Sources/Dependency/Dependency.swift'),
-        'public let value = 1\n',
-      );
-      const command = async (argv: string[], cwd: string) => {
-        const proc = Bun.spawn(argv, { cwd, stdout: 'pipe', stderr: 'pipe' });
-        const output = Promise.all([
-          new Response(proc.stdout).text(),
-          new Response(proc.stderr).text(),
-        ]);
-        const code = await proc.exited;
-        const [stdout, stderr] = await output;
-        expect(code, `${stdout}\n${stderr}`).toBe(0);
-      };
-      for (const args of [
-        ['init', '--quiet'],
-        ['add', '.'],
-        [
-          '-c',
-          'user.name=Fixture',
-          '-c',
-          'user.email=fixture@example.invalid',
-          'commit',
-          '--quiet',
-          '-m',
-          'Fixture',
-        ],
-        ['tag', '1.0.0'],
-        ['tag', '1.1.0'],
-      ])
-        await command(['git', ...args], dependency);
-      const manifestPath = join(dir, 'Package.swift');
-      const manifest = (await readFile(manifestPath, 'utf8'))
-        .replace(
-          'targets: [\n    .target',
-          `dependencies: [.package(url: "file://${dependency}", exact: "1.0.0")],\n  targets: [\n    .target`,
-        )
-        .replace(
-          'dependencies: ["FixtureMath"]',
-          `dependencies: ["FixtureMath", .product(name: "Dependency", package: "${dependency.split('/').at(-1)}")]`,
         );
-      await writeFile(manifestPath, manifest);
-      await command(['swift', 'package', 'resolve'], dir);
-      const lockPath = join(dir, 'Package.resolved');
-      const lock = await readFile(lockPath, 'utf8');
-      const passing = await runCLI(['test'], dir, repoRoot);
-      expect(passing.code, passing.stderr).toBe(0);
-      expect(await readFile(lockPath, 'utf8')).toBe(lock);
-      await writeFile(
-        manifestPath,
-        manifest.replace('exact: "1.0.0"', 'exact: "1.1.0"'),
-      );
-      const stale = await runCLI(['test'], dir, repoRoot);
-      expect(stale.code).toBe(1);
-      expect(stale.stderr).toContain('resolved');
-      expect(await readFile(lockPath, 'utf8')).toBe(lock);
-    }, 120_000);
+        await writeFile(
+          join(dependency, 'Sources/Dependency/Dependency.swift'),
+          'public let value = 1\n',
+        );
+        const command = async (argv: string[], cwd: string) => {
+          const proc = Bun.spawn(argv, { cwd, stdout: 'pipe', stderr: 'pipe' });
+          const output = Promise.all([
+            new Response(proc.stdout).text(),
+            new Response(proc.stderr).text(),
+          ]);
+          const code = await proc.exited;
+          const [stdout, stderr] = await output;
+          expect(code, `${stdout}\n${stderr}`).toBe(0);
+        };
+        for (const args of [
+          ['init', '--quiet'],
+          ['add', '.'],
+          [
+            '-c',
+            'user.name=Fixture',
+            '-c',
+            'user.email=fixture@example.invalid',
+            'commit',
+            '--quiet',
+            '-m',
+            'Fixture',
+          ],
+          ['tag', '1.0.0'],
+          ['tag', '1.1.0'],
+        ])
+          await command(['git', ...args], dependency);
+        let dependencyManifestPath = join(dir, 'Package.swift');
+        let packageDependency = `.package(url: "file://${dependency}", exact: "1.0.0")`;
+        let productDependency = `.product(name: "Dependency", package: "${dependency.split('/').at(-1)}")`;
+        if (dependencyKind === 'transitive') {
+          const bridge = await makeTempDir(repoRoot);
+          await mkdir(join(bridge, 'Sources/Bridge'), { recursive: true });
+          dependencyManifestPath = join(bridge, 'Package.swift');
+          await writeFile(
+            dependencyManifestPath,
+            `// swift-tools-version: 6.0
+import PackageDescription
+let package = Package(name: "Bridge", products: [.library(name: "Bridge", targets: ["Bridge"])], dependencies: [${packageDependency}], targets: [.target(name: "Bridge", dependencies: [${productDependency}])])
+`,
+          );
+          await writeFile(
+            join(bridge, 'Sources/Bridge/Bridge.swift'),
+            'import Dependency\npublic let bridgeValue = value\n',
+          );
+          packageDependency = `.package(path: "${bridge}")`;
+          productDependency = `.product(name: "Bridge", package: "${bridge.split('/').at(-1)}")`;
+        }
+        const manifestPath = join(dir, 'Package.swift');
+        const manifest = (await readFile(manifestPath, 'utf8'))
+          .replace(
+            'targets: [\n    .target',
+            `dependencies: [${packageDependency}],\n  targets: [\n    .target`,
+          )
+          .replace(
+            'dependencies: ["FixtureMath"]',
+            `dependencies: ["FixtureMath", ${productDependency}]`,
+          );
+        await writeFile(manifestPath, manifest);
+        await command(['swift', 'package', 'resolve'], dir);
+        const lockPath = join(dir, 'Package.resolved');
+        const lock = await readFile(lockPath, 'utf8');
+        const passing = await runCLI(['test'], dir, repoRoot);
+        expect(passing.code, passing.stderr).toBe(0);
+        expect(await readFile(lockPath, 'utf8')).toBe(lock);
+        await unlink(lockPath);
+        const missing = await runCLI(['test'], dir, repoRoot);
+        expect(missing.code).toBe(1);
+        expect(missing.stderr).toContain('resolved');
+        expect(await Bun.file(lockPath).exists()).toBe(false);
+        await writeFile(lockPath, lock);
+        const dependencyManifest = await readFile(
+          dependencyManifestPath,
+          'utf8',
+        );
+        await writeFile(
+          dependencyManifestPath,
+          dependencyManifest.replace('exact: "1.0.0"', 'exact: "1.1.0"'),
+        );
+        const stale = await runCLI(['test'], dir, repoRoot);
+        expect(stale.code).toBe(1);
+        expect(stale.stderr).toContain('resolved');
+        expect(await readFile(lockPath, 'utf8')).toBe(lock);
+      },
+      120_000,
+    );
 
     test('developer commands, both test frameworks, builds, failures, and simulated releases', async () => {
       const repoRoot = process.cwd();
@@ -95,7 +141,9 @@ let package = Package(name: "Dependency", products: [.library(name: "Dependency"
       expect(report.stdout).toContain('↷');
       expect(report.stdout).toContain('modernSkipped');
       expect(report.stdout).toContain('testSkipped');
-      expect(report.stdout).toContain('tests=4');
+      expect(report.stdout).toContain('tests=5');
+      // Parameterized cases are reported as one aggregate function.
+      expect(report.stdout.match(/parameterizedAddition/g)).toHaveLength(1);
       expect((await run(['test', '--failed-only'])).stdout).toBe('');
       const cov = await run(['cov', '--min', '100']);
       expect(cov.code).toBe(1);
@@ -148,6 +196,23 @@ let package = Package(name: "Dependency", products: [.library(name: "Dependency"
       await writeFile(configPath, config);
       const testsPath = join(dir, 'Tests/FixtureMathTests/MathTests.swift');
       const tests = await readFile(testsPath, 'utf8');
+      await writeFile(
+        testsPath,
+        tests.replace('value + 1)', '(value == 2 ? 99 : value + 1))'),
+      );
+      const parameterizedFailure = await run([
+        'test',
+        '--style',
+        'per_test',
+        '--failed-only',
+      ]);
+      expect(parameterizedFailure.code).toBe(1);
+      expect(parameterizedFailure.stdout).toContain('parameterizedAddition');
+      expect(
+        parameterizedFailure.stdout.match(/parameterizedAddition/g),
+      ).toHaveLength(1);
+      expect(parameterizedFailure.stdout).toContain('✗');
+      expect(parameterizedFailure.stdout).not.toContain('✓');
       await writeFile(
         testsPath,
         `${tests}\n@Test func deliberateFailure() { #expect(1 == 2) }\n`,

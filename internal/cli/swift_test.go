@@ -286,6 +286,61 @@ func TestSwiftDependencyAndToolFailures(t *testing.T) {
 	}
 }
 
+func TestSwiftLocalDependencyLockPreflight(t *testing.T) {
+	for _, tc := range []struct {
+		name, childManifest, wantError string
+	}{
+		{"local only", `{"dependencies":[]}`, ""},
+		{"transitive remote", `{"dependencies":[{"sourceControl":[]}]}`, "Package.resolved"},
+		{"local cycle", `{"dependencies":[{"fileSystem":[{"path":".."}]}]}`, ""},
+		{"malformed local", `{"dependencies":[{"fileSystem":[{}]}]}`, "missing Swift local dependency path"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			project := setupSwift(t, "library")
+			if err := os.Mkdir("Bridge", 0o755); err != nil {
+				t.Fatal(err)
+			}
+			bridgePath, err := filepath.EvalSymlinks(filepath.Join(project.Path, "Bridge"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			stubSwift(t, project)
+			original := runCommandCapture
+			dumps, describes := 0, 0
+			runCommandCapture = func(name string, args, env []string) (string, string, error) {
+				if contains(args, "dump-package") {
+					dumps++
+					if dumps > 2 {
+						t.Fatal("local dependency traversal did not stop at a visited package")
+					}
+					if contains(args, "--package-path") {
+						if args[len(args)-1] != bridgePath {
+							t.Fatalf("unexpected local manifest path: %v", args)
+						}
+						return tc.childManifest, "", nil
+					}
+					return `{"dependencies":[{"fileSystem":[{"path":"Bridge"}]}]}`, "", nil
+				}
+				if contains(args, "describe") {
+					describes++
+				}
+				return original(name, args, env)
+			}
+			_, err = loadSwiftProject(os.Environ())
+			if tc.wantError == "" {
+				if err != nil || describes != 1 {
+					t.Fatalf("local project rejected: %v (describe calls %d)", err, describes)
+				}
+			} else if err == nil || !strings.Contains(err.Error(), tc.wantError) || describes != 0 {
+				t.Fatalf("expected preflight error %q, got %v (describe calls %d)", tc.wantError, err, describes)
+			}
+			if _, err := os.Stat("Package.resolved"); !os.IsNotExist(err) {
+				t.Fatal("preflight created a lockfile")
+			}
+		})
+	}
+}
+
 func TestSwiftBuildStopsBeforePackaging(t *testing.T) {
 	project := setupSwift(t, "binary")
 	calls := stubSwift(t, project)

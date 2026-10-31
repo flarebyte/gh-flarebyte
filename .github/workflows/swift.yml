@@ -1,0 +1,82 @@
+name: Swift compatibility
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: swift-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  linux:
+    name: Linux / ${{ matrix.runner }} / Swift ${{ matrix.swift }}
+    runs-on: ${{ matrix.runner }}
+    container: swift:${{ matrix.swift }}-noble
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-24.04, ubuntu-24.04-arm]
+        swift: ['6.0.3', '6.2.4']
+    steps:
+      - name: Install build tools
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends make ca-certificates
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: false
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.3.6'
+      - name: Report toolchains
+        run: |
+          swift --version
+          swift -print-target-info
+          go version
+          bun --version
+      - name: Go tests
+        run: go test ./...
+      - name: Real Swift integration
+        run: make test-swift-e2e
+
+  macos:
+    name: macOS / ${{ matrix.runner }} / Xcode ${{ matrix.xcode }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [macos-15, macos-15-intel]
+        # Xcode 16.2 supplies Swift 6.0.3; 26.2 exercises a newer Swift 6 toolchain.
+        xcode: ['16.2', '26.2']
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_${{ matrix.xcode }}.app/Contents/Developer
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: false
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.3.6'
+      - name: Report toolchains
+        run: |
+          xcodebuild -version
+          swift --version
+          swift -print-target-info
+          go version
+          bun --version
+      - name: Go tests
+        run: go test ./...
+      - name: Real Swift integration
+        run: make test-swift-e2e
