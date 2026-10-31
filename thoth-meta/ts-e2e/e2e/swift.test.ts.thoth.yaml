@@ -8,4 +8,3 @@ meta:
   language: typescript
   testcase_titles_list:
     - developer commands, both test frameworks, builds, failures, and simulated releases
-    - resolved source-control dependencies fail without changing a stale lockfile

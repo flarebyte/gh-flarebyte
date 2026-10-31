@@ -8,6 +8,7 @@ meta:
     - TestSwiftDependencyAndToolFailures
     - TestSwiftDeveloperCommands
     - TestSwiftHostTargetMapping
+    - TestSwiftLocalDependencyLockPreflight
     - TestSwiftMinimumToolchainAndManifest
     - TestSwiftRejectsIncompleteBinaryAssets
     - TestSwiftSelectionAndTargets

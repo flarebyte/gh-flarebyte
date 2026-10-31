@@ -3,6 +3,7 @@ meta:
   function_list:
     - loadSwiftProject
     - swiftExecutable
+    - swiftHasRemoteDependencies
     - swiftRun
     - swiftSelectedTargets
     - swiftSourceFiles
