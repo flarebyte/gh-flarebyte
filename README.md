@@ -435,16 +435,38 @@ fresh executable assets and optional checksums, or publish library tags and note
 assets. Package archives, registry publication, XCFrameworks, Xcode app projects,
 signing, and notarization are outside this initial support.
 
-Swift compatibility checks run through `.github/workflows/swift.yml` on pull requests,
-pushes to `main`, and manual dispatch. The matrix covers native macOS and GNU/Linux
-on amd64 and arm64. Linux uses official Swift 6.0.3 and 6.2.4 containers; macOS uses
-Xcode 16.2 (Swift 6.0.3) and Xcode 26.2. Each job reports its actual toolchain and host,
-runs the Go tests, and runs `make test-swift-e2e`. Hosted matrix results are available
-after the workflow is pushed and run; a local pass validates only the local host.
+Swift compatibility checks run through `.github/workflows/swift.yml`. They prioritize
+macOS arm64 development with Xcode 16.2 (Swift 6.0.3) and Xcode 26.2, plus one GNU/Linux
+amd64 pipeline check using the official Swift 6.2.4 container. Each job reports its
+actual toolchain and host and runs `make test-swift-e2e`. Hosted matrix results are
+available after the workflow is pushed and run; a local pass validates only the local host.
 The fixture checks both test frameworks, aggregated parameterized test successes and
 failures, coverage thresholds, direct and transitive dependency lock enforcement,
 executable packaging, and simulated releases. Releases in this suite never publish
 to GitHub. Real Swift integration remains opt-in for local `make test` runs.
+
+## CI coverage budget
+
+Both compatibility workflows run on pull requests, pushes to `main`, and manual dispatch.
+There are **7 jobs per PR/push: 5 macOS and 2 Linux**, within a budget of at most 8.
+Go tests run once in the core job, including the shared contracts for all five languages.
+
+| Checks | macOS arm64 | Linux amd64 | Jobs |
+|---|---|---|---|
+| Swift integration | Xcode 16.2 and 26.2 | Swift 6.2.4 | 3 |
+| Rust integration | Stable Rust | Stable Rust | 2 |
+| Python integration | Python 3.12 with uv | — | 1 |
+| Core Go and default E2E | Go from `go.mod`; includes Dart stub tests | — | 1 |
+| **Total** | **5** | **2** | **7** |
+
+`.github/workflows/languages.yml` owns the Go/default E2E, Python, and Rust jobs;
+`.github/workflows/swift.yml` owns the three Swift jobs. Each integration job runs the
+existing Makefile fixture with simulated releases. Dart currently has stub coverage;
+this matrix does not claim real Dart SDK integration. Swift Intel macOS, Linux arm64,
+and a full OS/toolchain cross-product are outside this routine CI selection.
+The count measures platform/toolchain jobs; each job contains multiple assertions.
+Test CLI builds omit optional Go VCS stamping, checkout credentials are not persisted,
+and repository permissions remain read-only.
 
 ## Typical workflow
 

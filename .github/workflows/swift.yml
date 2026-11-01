@@ -20,15 +20,10 @@ concurrency:
 
 jobs:
   linux:
-    name: Linux / ${{ matrix.runner }} / Swift ${{ matrix.swift }}
-    runs-on: ${{ matrix.runner }}
-    container: swift:${{ matrix.swift }}-noble
+    name: Linux amd64 / Swift 6.2.4
+    runs-on: ubuntu-24.04
+    container: swift:6.2.4-noble
     timeout-minutes: 20
-    strategy:
-      fail-fast: false
-      matrix:
-        runner: [ubuntu-24.04, ubuntu-24.04-arm]
-        swift: ['6.0.3', '6.2.4']
     steps:
       - name: Install build tools
         run: |
@@ -50,19 +45,16 @@ jobs:
           swift -print-target-info
           go version
           bun --version
-      - name: Go tests
-        run: go test ./...
       - name: Real Swift integration
         run: make test-swift-e2e
 
   macos:
-    name: macOS / ${{ matrix.runner }} / Xcode ${{ matrix.xcode }}
-    runs-on: ${{ matrix.runner }}
+    name: macOS arm64 / Xcode ${{ matrix.xcode }}
+    runs-on: macos-15
     timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
-        runner: [macos-15, macos-15-intel]
         # Xcode 16.2 supplies Swift 6.0.3; 26.2 exercises a newer Swift 6 toolchain.
         xcode: ['16.2', '26.2']
     env:
@@ -85,7 +77,5 @@ jobs:
           swift -print-target-info
           go version
           bun --version
-      - name: Go tests
-        run: go test ./...
       - name: Real Swift integration
         run: make test-swift-e2e
