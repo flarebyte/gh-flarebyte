@@ -98,3 +98,7 @@ __pycache__/
 
 # Rust build outputs
 target/
+
+# SwiftPM build outputs
+.build/
+.swiftpm/

@@ -56,9 +56,9 @@ func Validate(cfg Config) error {
 		}
 	}
 	switch cfg.Build.Language {
-	case "go", "dart", "python", "rust":
+	case "go", "dart", "python", "rust", "swift":
 	default:
-		return fmt.Errorf("invalid build.language %q: expected go, dart, python, or rust", cfg.Build.Language)
+		return fmt.Errorf("invalid build.language %q: expected go, dart, python, rust, or swift", cfg.Build.Language)
 	}
 	if cfg.Go.CGO.CC != "" && !cfg.Go.CGO.Enabled {
 		return errors.New("invalid go.cgo.cc: requires go.cgo.enabled=true")

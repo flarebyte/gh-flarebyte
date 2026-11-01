@@ -1,0 +1,112 @@
+name: Manual release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version in main.project.yaml, without the tag prefix
+        required: true
+        type: string
+      draft:
+        description: Create a draft instead of publishing immediately
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    name: Preflight, lint, tests, and release artifacts
+    runs-on: macos-15
+    timeout-minutes: 20
+    outputs:
+      tag: ${{ steps.preflight.outputs.tag }}
+      commit: ${{ steps.preflight.outputs.commit }}
+      artifact_dir: ${{ steps.preflight.outputs.artifact_dir }}
+      checksum_name: ${{ steps.preflight.outputs.checksum_name }}
+    steps:
+      - name: Require the default branch
+        env:
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: test "$GITHUB_REF" = "refs/heads/$DEFAULT_BRANCH"
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.3.6'
+      - name: Test the release preflight
+        run: python -m unittest discover -s script -p 'test_*.py'
+      - name: Check version availability before building
+        id: preflight
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: python script/release_preflight.py --expected-version "$RELEASE_VERSION" --github-output "$GITHUB_OUTPUT"
+      - name: Lint and test
+        run: make lint test
+      - name: Build configured release artifacts
+        env:
+          ARTIFACT_DIR: ${{ steps.preflight.outputs.artifact_dir }}
+        run: .e2e-bin/gh-flarebyte build --output-dir "$ARTIFACT_DIR"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-assets
+          path: ${{ steps.preflight.outputs.artifact_dir }}/
+          if-no-files-found: error
+          retention-days: 1
+
+  publish:
+    name: Create GitHub release
+    needs: verify
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    env:
+      ARTIFACT_DIR: ${{ needs.verify.outputs.artifact_dir }}
+      RELEASE_TAG: ${{ needs.verify.outputs.tag }}
+      RELEASE_COMMIT: ${{ needs.verify.outputs.commit }}
+      RELEASE_VERSION: ${{ inputs.version }}
+      RELEASE_DRAFT: ${{ inputs.draft }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.verify.outputs.commit }}
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-assets
+          path: ${{ needs.verify.outputs.artifact_dir }}
+      - name: Recheck version and verify downloaded artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python script/release_preflight.py --expected-version "$RELEASE_VERSION" --expected-commit "$RELEASE_COMMIT" --check-artifacts
+      - name: Create release from the tested commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mapfile -d '' assets < <(find "$ARTIFACT_DIR" -type f -print0)
+          test "${#assets[@]}" -gt 0
+          # Creating a new ref is atomic: a competing existing tag causes failure.
+          gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" \
+            -f "ref=refs/tags/$RELEASE_TAG" -f "sha=$RELEASE_COMMIT" --silent
+          gh release create "$RELEASE_TAG" "${assets[@]}" \
+            --repo "$GITHUB_REPOSITORY" --target "$RELEASE_COMMIT" \
+            --verify-tag --generate-notes --draft="$RELEASE_DRAFT"

@@ -19,9 +19,11 @@ func runRelease(draft bool, notesFileOverride string, stdout, stderr io.Writer) 
 		return Result{ExitCode: ExitUsage, Err: err}
 	}
 	var freshArtifacts []string
-	if cfg.Build.Language == "python" || cfg.Build.Language == "rust" {
+	if cfg.Build.Language == "python" || cfg.Build.Language == "rust" || cfg.Build.Language == "swift" {
 		var err error
-		if cfg.Build.Language == "rust" {
+		if cfg.Build.Language == "swift" {
+			freshArtifacts, err = buildSwift(cfg, "", "", stderr)
+		} else if cfg.Build.Language == "rust" {
 			freshArtifacts, err = buildRust(cfg, "", "", stderr)
 		} else {
 			freshArtifacts, err = buildPythonPackage(cfg, "", stderr)
@@ -57,7 +59,7 @@ func runRelease(draft bool, notesFileOverride string, stdout, stderr io.Writer) 
 	}
 	artifacts := make([]string, 0)
 	if cfg.Release.IncludeArtifacts {
-		if cfg.Build.Language == "python" || cfg.Build.Language == "rust" {
+		if cfg.Build.Language == "python" || cfg.Build.Language == "rust" || cfg.Build.Language == "swift" {
 			artifacts, err = stageFreshRelease(freshArtifacts, cfg.Build.OutputDir, cfg.Release.ArtifactDir, cfg.Release.IncludeChecksums)
 		} else {
 			artifacts, err = listReleaseArtifacts(cfg.Release.ArtifactDir, cfg.Release.IncludeChecksums, cfg.Project.Repo, cfg.Build.ArtifactTargetSuffix)

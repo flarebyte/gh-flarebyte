@@ -1,0 +1,110 @@
+name: Language compatibility
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  # Test CLI binaries do not need automatic Git provenance.
+  GOFLAGS: -buildvcs=false
+
+concurrency:
+  group: languages-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Four jobs here plus three in swift.yml = seven combinations per PR/push.
+jobs:
+  core:
+    name: Go and Dart stub tests / macOS arm64
+    runs-on: macos-15
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: false
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.3.6'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Release preflight unit tests
+        run: python -m unittest discover -s script -p 'test_*.py'
+      - name: Go tests and default E2E suite
+        run: make test
+
+  python:
+    name: Python 3.12 with uv / macOS arm64
+    runs-on: macos-15
+    timeout-minutes: 15
+    env:
+      UV_PYTHON_PREFERENCE: only-managed
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: false
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.3.6'
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: '3.12'
+          enable-cache: false
+      - name: Install Python and report toolchains
+        run: |
+          uv python install 3.12
+          uv --version
+          uv python find
+          go version
+          bun --version
+      - name: Real Python integration
+        run: make test-python-e2e
+
+  rust:
+    name: Rust stable / ${{ matrix.runner }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [macos-15, ubuntu-24.04]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: false
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.3.6'
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy, llvm-tools-preview
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-llvm-cov
+          fallback: none
+      - name: Report toolchains
+        run: |
+          rustc --version
+          cargo --version
+          cargo llvm-cov --version
+          go version
+          bun --version
+      - name: Real Rust integration
+        run: make test-rust-e2e

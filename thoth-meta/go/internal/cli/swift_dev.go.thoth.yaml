@@ -1,0 +1,17 @@
+locator: internal/cli/swift_dev.go
+meta:
+  function_list:
+    - runSwiftCov
+    - runSwiftTest
+    - runSwiftTool
+    - swiftFailure
+  import_files_list:
+    - fmt
+    - github.com/flarebyte/gh-flarebyte/internal/config
+    - io
+    - os
+    - path/filepath
+    - sort
+    - strings
+    - time
+  language: go

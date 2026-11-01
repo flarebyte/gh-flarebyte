@@ -6,7 +6,7 @@
     "test:e2e": "bun test ./e2e"
   },
   "devDependencies": {
-    "@biomejs/biome": "^1.9.4",
-    "@types/bun": "latest"
+    "@biomejs/biome": "^2.6.4",
+    "@types/bun": "^1.4.4"
   }
 }

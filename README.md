@@ -1,46 +1,57 @@
 # gh-flarebyte
+
 Use `gh flarebyte` to keep a GitHub repository aligned with the config checked into the repo.
 
 ![gh-flarebyte illustration](doc/gh-flarebyte-hero.png)
 
 ## What it does
+
 `gh-flarebyte` is a GitHub CLI extension for managing a repository from a local `.gh-flarebyte.cue` file. It helps you:
 
 - bootstrap a repository config
 - update repo settings from config
 - audit drift between config and GitHub
 - sync topics and labels from config
-- build binary artifacts, library compile checks, Python distributions, or Rust crate packages
+- build binary artifacts, library compile checks, Python distributions, Rust crate packages, or native Swift executables
 - publish a GitHub release with or without build artifacts
 - discover repositories you contribute to in an organization
 
 ## Commands
 
 ### Repo sync
+
 - `gh flarebyte repo init --repo <owner/name> [--overwrite]` creates or seeds `.gh-flarebyte.cue` for a repository.
 - `gh flarebyte repo update [--repo <owner/name>] [--confirm-deletions] [--accept-visibility-change-consequences]` applies the repo config to GitHub.
 - `gh flarebyte repo audit [--repo <owner/name>] [--json]` compares the local config with the live GitHub repository.
-- `gh flarebyte repos mine --org <org>` lists repositories you contribute to in an organization.
+- `gh flarebyte repos mine --org <org> [--json]` lists repositories you contribute to in an organization.
 
 ### Build and release
+
 - `gh flarebyte build [--target <os-arch>] [--output-dir <path>]` builds the project using the language and mode defined in `.gh-flarebyte.cue`.
 - `gh flarebyte release [--draft] [--notes-file <path>]` builds first, then publishes a GitHub release from the configured release policy.
-- `build`: Go supports `binary` and `library`; Dart supports `library`; Python 3 with uv supports `package`; Rust supports all three modes.
+- `build`: Go supports `binary` and `library`; Dart supports `library`; Python 3 with uv supports `package`; Rust supports all three modes; Swift supports `binary` and `library`.
 - `release`: Dart currently supports release with `release.includeArtifacts: false`.
 
 ### Dev commands
+
 - `gh flarebyte test [--style summary|per_test] [--color auto|true|false] [--failed-only]` runs tests for the configured build language, with optional per-invocation output overrides.
 - `gh flarebyte format` formats source files for the configured build language.
 - `gh flarebyte lint [--color auto|true|false] [--failed-only]` runs lint/static checks for the configured build language.
 - `gh flarebyte cov [--min <percent>] [--color auto|true|false] [--failed-only]` computes coverage and can fail below a threshold.
 
 ### Runtime info
+
 - `gh flarebyte --version` prints the CLI version metadata, including version, commit id, build date, OS/arch, and Go runtime version.
 - `gh flarebyte --version --json` prints the same version metadata in a machine-readable JSON shape.
+
+### Configuration checks
+
+- `gh flarebyte config validate [--config <path>]` validates the local configuration without updating GitHub.
 
 Use `gh flarebyte --help` for command usage. Error output is designed to include the failing config field or target and a practical next step.
 
 ## Config
+
 The repo config lives in `.gh-flarebyte.cue` and is the source of truth for:
 
 - repository metadata such as description, homepage, visibility, and template status
@@ -55,17 +66,24 @@ The repo config lives in `.gh-flarebyte.cue` and is the source of truth for:
 - release settings
 - additional repository feature fields may exist in config but are not yet enforced by `repo update` / `repo audit`
 
-Example:
+Complete configuration example:
 
 ```cue
+package ghflarebyte
+
 project: {
   org:  "flarebyte"
   repo: "gh-flarebyte"
 }
 
+sync: { mode: "push" }
+
 repository: {
   description: "CLI for landing your git commands right"
   defaultBranch: "main"
+  homepage: "https://github.com/flarebyte/gh-flarebyte"
+  visibility: "public"
+  template: false
   topics: ["gh-extension", "github-cli", "git", "flarebyte"]
   labels: [
     {
@@ -90,9 +108,7 @@ go: {
   modCacheDir: "./.gomodcache"
   toolchain: "local"
   cgo: {
-    enabled: true
-    cc: "clang"
-    cxx: "clang++"
+    enabled: false
   }
 }
 
@@ -117,7 +133,20 @@ release: {
 }
 ```
 
-Go library example:
+This example expects `main.project.yaml` to contain a top-level `version`, such as
+`version: 1.2.3`. Run `gh flarebyte config validate` after editing the configuration.
+Configuration validation checks fields and combinations; builds and developer commands
+also check the installed toolchain and project files.
+
+## Language workflows
+
+The following examples replace the corresponding top-level blocks in the complete
+configuration above. Keep the shared `project`, `sync`, and `repository` blocks.
+The `go` block configures Go tooling and can be omitted for other languages.
+
+### Go
+
+Library verification:
 
 ```cue
 build: {
@@ -135,7 +164,9 @@ release: {
 }
 ```
 
-Dart library example:
+### Dart
+
+Library validation:
 
 ```cue
 build: {
@@ -158,7 +189,9 @@ release: {
 }
 ```
 
-Python package example (reuse the same repository configuration as Go or Dart):
+### Python with uv
+
+Package distributions:
 
 ```cue
 build: {
@@ -214,7 +247,9 @@ so `build.artifactTargetSuffix` does not apply. TOML version sources require a s
 `[project].version` following the existing semantic-version rule (for example `1.2.3`).
 Dynamic versions and Python-specific versions such as `1.2.3rc1` are not supported yet.
 
-Rust library example (reuse the same repository configuration and output/coverage settings):
+### Rust with Cargo
+
+Library verification:
 
 ```cue
 build: {
@@ -306,61 +341,236 @@ manifest instead. Releases use fresh build assets only, preserve subdirectories 
 `release.artifactDir`, and support notes, drafts, and releases without assets. crates.io publishing
 is outside the initial scope.
 
+### Swift with Swift Package Manager
+
+Swift support requires a Swift 6+ toolchain and the matching platform SDK. On macOS,
+use Xcode or its command-line tools; Linux installations need the Swift toolchain and
+its documented system dependencies. Older `swift-tools-version` manifests can still
+be used with Swift 6. Keep language versions, compiler settings, dependencies, and
+platform requirements in `Package.swift`; keep formatter rules in `.swift-format`.
+
+Reuse the existing repository, output, coverage, and release configuration:
+
+```cue
+build: {
+  language: "swift"
+  mode: "library"
+  packages: ["./..."]
+  runTests: true
+}
+devOutput: { color: "auto", style: "summary", showPassed: true }
+coverage: { min: 80, enforceMin: true }
+release: {
+  versionSource: "main.project.yaml"
+  tagPrefix: "v"
+  notesMode: "generate-notes"
+  includeArtifacts: false
+}
+```
+
+`build.packages: ["./..."]` verifies all root-package build targets. Exact target names
+such as `["MyLibrary"]` select individual build targets; test and plugin targets are
+not valid explicit build selections. Developer commands operate on the whole root
+package, independently of build selection. `build.runTests` runs the complete package
+test suite before library or binary builds.
+
+Executable projects use the same artifact fields as Go and Rust:
+
+```cue
+build: {
+  language: "swift"
+  mode: "binary"
+  mainPackage: "my-cli"
+  targets: ["darwin-arm64"]
+  runTests: true
+  outputDir: "build"
+  checksumFile: "build/checksums.txt"
+  artifactTargetSuffix: true
+}
+release: {
+  versionSource: "main.project.yaml"
+  tagPrefix: "v"
+  notesMode: "generate-notes"
+  includeArtifacts: true
+  artifactDir: "build"
+  includeChecksums: true
+}
+```
+
+`build.mainPackage` identifies a SwiftPM executable **product**, rather than a source
+folder. Omit it when the package has exactly one executable product. Initial builds
+support the active compiler's native host on macOS or GNU/Linux with amd64 or arm64:
+`darwin-amd64`, `darwin-arm64`, `linux-amd64`, or `linux-arm64`. `build.targets` and
+`--target` must match that host. Cross-compilation and Windows builds are not included.
+Binary builds use release configuration, discover the output path through SwiftPM,
+and produce the existing executable/archive/checksum layout. `--output-dir` relocates
+artifacts and checksums. Packaging resource bundles or package-built shared libraries is not supported and fails explicitly.
+Executables depend on compatible Swift runtime libraries on their destination systems;
+archives do not bundle the Swift runtime or external system libraries.
+
+Swift requires a root `Package.swift`. Packages with remote dependencies also require
+`Package.resolved`; generate it with `swift package resolve` and commit it. Dependency-free
+and local-only packages do not need an empty lockfile. Resolving commands use
+`--force-resolved-versions` so missing or stale resolution fails instead of updating
+versions. A preflight check also inspects local dependency manifests so transitive
+remote dependencies require the root lockfile before SwiftPM runs resolution.
+
+Developer commands:
+
+- `test` runs XCTest and Swift Testing. XCTest uses serial results checked against its
+  summary; Swift Testing uses JSON event schema version 0. Missing or incomplete reports
+  fail explicitly. Parameterized Swift Testing functions appear as one aggregated test.
+- `format` runs `swift format` on manifest and target-owned Swift files, excluding
+  dependencies and generated build files.
+- `lint` runs strict formatter lint, then compiles sources and test targets with Swift
+  compiler warnings treated as errors. It does not run tests or require SwiftLint.
+- `cov` runs instrumented tests in a fresh build directory and reads SwiftPM's LLVM JSON
+  export. Coverage counts production-source lines only, excluding tests, dependencies,
+  and generated sources. Totals are weighted by line counts and honor `coverage.min`,
+  `coverage.enforceMin`, `devOutput.style`, `--min`, and `--failed-only`.
+
+Release versions come from the existing YAML/JSON top-level `version` field, because
+`Package.swift` does not carry the root package's release version. Releases stage only
+fresh executable assets and optional checksums, or publish library tags and notes without
+assets. Package archives, registry publication, XCFrameworks, Xcode app projects,
+signing, and notarization are outside this initial support.
+
+Swift compatibility checks run through `.github/workflows/swift.yml`. They prioritize
+macOS arm64 development with Xcode 16.2 (Swift 6.0.3) and Xcode 26.2, plus one GNU/Linux
+amd64 pipeline check using the official Swift 6.2.4 container. Each job reports its
+actual toolchain and host and runs `make test-swift-e2e`. Hosted matrix results are
+available after the workflow is pushed and run; a local pass validates only the local host.
+The fixture checks both test frameworks, aggregated parameterized test successes and
+failures, coverage thresholds, direct and transitive dependency lock enforcement,
+executable packaging, and simulated releases. Releases in this suite never publish
+to GitHub. Real Swift integration remains opt-in for local `make test` runs.
+
+## CI coverage budget
+
+Both compatibility workflows run on pull requests, pushes to `main`, and manual dispatch.
+There are **7 jobs per PR/push: 5 macOS and 2 Linux**, within a budget of at most 8.
+Go tests run once in the core job, including the shared contracts for all five languages.
+The core job also runs the Python release-preflight unit tests.
+
+| Checks | macOS arm64 | Linux amd64 | Jobs |
+|---|---|---|---|
+| Swift integration | Xcode 16.2 and 26.2 | Swift 6.2.4 | 3 |
+| Rust integration | Stable Rust | Stable Rust | 2 |
+| Python integration | Python 3.12 with uv | — | 1 |
+| Core Go and default E2E | Go from `go.mod`; includes Dart stub tests | — | 1 |
+| **Total** | **5** | **2** | **7** |
+
+`.github/workflows/languages.yml` owns the Go/default E2E, Python, and Rust jobs;
+`.github/workflows/swift.yml` owns the three Swift jobs. Each integration job runs the
+existing Makefile fixture with simulated releases. Dart currently has stub coverage;
+this matrix does not claim real Dart SDK integration. Swift Intel macOS, Linux arm64,
+and a full OS/toolchain cross-product are outside this routine CI selection.
+The count measures platform/toolchain jobs; each job contains multiple assertions.
+Test CLI builds omit optional Go VCS stamping, checkout credentials are not persisted,
+and repository permissions remain read-only.
+
+## Manual GitHub releases
+
+`.github/workflows/release.yml` runs only through **Actions → Manual release → Run workflow**.
+Select the default branch and enter the exact version from `main.project.yaml`, without
+the `v` prefix. The current file uses `tags.version`; the release preflight reads that
+same version scalar as the CLI. Bump and commit the version before starting a new release.
+The workflow must first be present on the default branch to appear in the Actions UI.
+
+The workflow runs these stages in order:
+
+1. Run the release-preflight unit tests, then check that the requested version matches `.gh-flarebyte.cue`'s `release.versionSource`
+   and that the configured tag and visible GitHub releases do not already exist.
+2. Run `make lint test`. Any failure blocks the release.
+3. Build the configured CLI targets and checksums through `gh-flarebyte build`.
+4. Transfer those artifacts to a separate publishing job, check availability again,
+   verify checksums and unique asset filenames, reserve a new tag at the tested SHA,
+   then create the release using that tag. An existing tag cannot be overwritten.
+
+**Create a draft** defaults to enabled. Clear it to publish immediately. An existing tag,
+published release, or draft visible to the publishing token blocks reuse of that version.
+The final availability check uses the publishing job's credentials so it can also see
+draft releases. API authentication, rate-limit, and network failures stop the workflow;
+they are never interpreted as an unused version. If publication leaves a tag or partial
+draft, inspect it manually before retrying; the workflow does not overwrite existing releases.
+
+This repository publishes GitHub Release binaries and checksums. It does not publish
+to PyPI, crates.io, or another package registry. Builds use the existing release policy;
+the manual workflow currently requires generated release notes, artifacts, and checksums.
+Only the publishing job has `contents: write`, checkout credentials are not retained,
+and concurrent release attempts are serialized. These two manual jobs are separate from
+the seven automatic compatibility jobs and add no jobs to pull-request or push runs.
+
+The standard-library Python preflight can also be run read-only locally with Python 3.11+:
+
+```sh
+python3 script/release_preflight.py --repository flarebyte/gh-flarebyte
+python3 -m unittest discover -s script -p 'test_*.py'
+```
+
+Set `GH_TOKEN` or `GITHUB_TOKEN` to inspect private or draft releases permitted by that
+token. Without a token, only public API data is checked. The script never creates a tag,
+release, or upload; publication is a separate, final workflow step.
+
 ## Typical workflow
-1. Run `gh flarebyte repo init` in a repo that should be managed.
+
+1. Run `gh flarebyte repo init --repo <owner/name>` in a repo that should be managed.
 2. Edit `.gh-flarebyte.cue` to match the desired repository state.
-3. Run `gh flarebyte repo update` to sync the repo.
-4. Run `gh flarebyte repo audit` to check for drift.
-5. Run `gh flarebyte build` and `gh flarebyte release` when you are ready to ship.
-6. Run `gh flarebyte test`, `format`, `lint`, and `cov` for local quality checks.
+3. Run `gh flarebyte config validate` to check the configuration.
+4. Run `gh flarebyte repo update` to sync the repo, then `gh flarebyte repo audit` to check for drift.
+5. Run `gh flarebyte test`, `gh flarebyte format`, `gh flarebyte lint`, and `gh flarebyte cov` for local quality checks.
+6. Run `gh flarebyte build` and `gh flarebyte release` when you are ready to ship.
 
 ## Makefile shortcuts
+
 - `make build-go` builds the local CLI binary at `.e2e-bin/gh-flarebyte`.
 - `make release` runs `.e2e-bin/gh-flarebyte release` (it depends on `build-go`).
 - `GH_FLAREBYTE_FAKE_RELEASE=1 make release` runs the release flow in fake mode (no GitHub mutation).
-- `make review-dart` runs `format-dart`, `test-dart`, `lint-dart`, and `coverage-dart`.
+- `make review` finishes formatting before running tests and lint, including with `make -j`.
+- `make e2e` aliases the default smoke and stub-tool suite; `make test-dart-e2e` runs the Dart stub fixture alone.
+- `make test-integrations` runs all real Python, Rust, and Swift fixtures; these remain opt-in.
+- `make e2e-deps` installs dependencies from `bun.lock`; formatting and lint use the locked local Biome.
+- The legacy `*-dart` shortcuts and `review-dart` follow the root `.gh-flarebyte.cue`; they do not select Dart. This repository configures Go.
+- `make check-tools` reports executable availability; `biome` checks the local installation and `npx` is the launcher used for jscpd.
+- `make doc-decision` is a legacy target whose generation script is currently absent.
 - `make test-python-e2e` runs the real uv fixture (requires uv and an installed Python 3; may download dependencies).
 - `make test-rust-e2e` runs the real Rust workspace fixture (requires Cargo, rustfmt, Clippy, cargo-llvm-cov, and llvm-tools-preview; may access crates.io).
+- `make test-swift-e2e` runs the real SwiftPM fixture (requires Swift 6+ and its SDK).
 
 ## Language support snapshot
-- Go:
-  - `build` and `release`: supported
-  - dev commands (`test`, `format`, `lint`, `cov`): supported
-- Dart:
-  - `build`: supported in `library` mode only
-  - `release`: supported with `release.includeArtifacts: false`
-  - dev commands: supported
-  - `test --style per_test`: supported (uses Dart JSON reporter)
-  - `cov` threshold enforcement: supported (reads `.dart_tool/coverage/lcov.info`)
-- Python 3 with uv:
-  - `build`: wheel and source distribution in `package` mode, with checksums and optional tests
-  - `release`: GitHub releases with or without package artifacts
-  - `test`, `format`, `lint`, `cov`: supported, including per-test output and coverage thresholds
-- Rust with Cargo:
-  - `build`: library verification, target binaries, and verified `.crate` packages
-  - `release`: GitHub releases with fresh build artifacts or without assets
-  - `test`, `format`, `lint`, `cov`: supported, including workspace tests, per-test output, and line coverage thresholds
+
+| Language | Build modes | Release artifacts | Developer commands |
+|---|---|---|---|
+| Go | `binary`, `library` | Executables, archives, checksums; library releases have no assets | `test`, `format`, `lint`, `cov` |
+| Dart | `library` | No assets; requires `release.includeArtifacts: false` | `test`, `format`, `lint`, `cov` |
+| Python 3 with uv | `package` | Wheels, source distributions, checksums | `test`, `format`, `lint`, `cov` |
+| Rust with Cargo | `binary`, `library`, `package` | Executables, archives, `.crate` packages, checksums; library releases have no assets | `test`, `format`, `lint`, `cov` |
+| Swift with SwiftPM | `binary`, `library` | Native macOS/Linux executables, archives, checksums; library releases have no assets | `test`, `format`, `lint`, `cov` |
+
+All languages support per-test output and coverage thresholds. Artifact-producing builds
+can release without assets by setting `release.includeArtifacts: false`. Language-specific
+toolchains, target restrictions, and test-report limitations are described above.
 
 ## Notes
+
 - Topics are managed as a flat list of strings.
 - Labels are managed as structured objects with `name`, `color`, and `description`.
-- Build: Go supports `binary` and `library`; Dart supports `library`; Python supports `package`; Rust supports all three.
+- Build: Go supports `binary` and `library`; Dart supports `library`; Python supports `package`; Rust supports all three; Swift supports `binary` and `library`.
 - Release: Dart currently supports `release.includeArtifacts: false`.
-- `build.mode` defaults to `binary`. Use `library` for Go/Dart/Rust verification or `package` for Python/Rust distributions. `build.runTests` enables optional tests during builds.
-- `build.mainPackage` controls the Go main package (default `./cmd/<project.repo>`) or Rust manifest directory (default `.`) used for binary builds.
-- `build.artifactTargetSuffix` controls whether artifact names include `-os-arch` suffixes.
-  - when `false` with multiple targets, artifacts are written under per-target subdirectories to avoid filename collisions.
-- In `library` mode, `--target` applies `GOOS/GOARCH` cross-compile checks and does not force artifact generation.
+- `build.mode` defaults to `binary`. Use `library` for Go/Dart/Rust/Swift verification or `package` for Python/Rust distributions. `build.runTests` applies to Go/Dart library builds, Python package builds, and every Rust/Swift build mode.
+- `build.mainPackage` controls the Go main package (default `./cmd/<project.repo>`) or Rust manifest directory (default `.`) used for binary builds. Swift uses an executable product name, inferred when unique.
+- For Go/Rust/Swift binary builds with one target, `build.artifactTargetSuffix: false` removes the target suffix from the archive name. Multiple-target archive names always include the target; setting this field to `false` also places each target's assets in its own subdirectory. Standalone executable asset names always include `-os-arch`.
+- In `library` mode, `--target` selects Go cross-compile checks through `GOOS/GOARCH`, a Rust target triple, or the native Swift host. Dart rejects it. Library checks do not produce release artifacts.
 - `go.cgo` uses camelCase keys only: `enabled`, `cc`, `cxx`.
 - `go.cacheDir` and `go.modCacheDir` should be project-relative (for example `./.gocache`); `gh flarebyte` resolves them to absolute paths at runtime before invoking Go.
 - Absolute `go.cacheDir` and `go.modCacheDir` values still work, but emit portability warnings.
 - When `go.cgo.enabled: true`, `gh flarebyte build` sets `CGO_ENABLED=1` (and applies `CC`/`CXX` when configured).
 - When `go.cgo.enabled: false`, the build keeps `CGO_ENABLED=0` and fails with a policy error if CGO-backed dependencies are detected.
-- `release.includeArtifacts` defaults to `true`. Set it to `false` to publish tag and notes without uploading binaries or checksums.
+- `release.includeArtifacts` defaults to `true`. Set it to `false` to publish tag and notes without uploading release assets.
 - `gh flarebyte cov --min 90` overrides config coverage threshold for that invocation.
 - For Dart projects, `cov` computes total line coverage from `.dart_tool/coverage/lcov.info` and enforces `coverage.min` / `--min` when `coverage.enforceMin` is enabled.
 - If `.dart_tool/coverage/lcov.info` is missing after `dart test --coverage`, `cov` attempts to generate it via `coverage:format_coverage`.
 - `devOutput.style` supports `summary` and `per_test`.
 - `--color` overrides `devOutput.color` for `test`, `lint`, and `cov`.
 - `--failed-only` suppresses PASS summary output for `test`, `lint`, and `cov`.
-- In `per_test` style, `test` prints `✓/↷/✗` per test (Go, Dart, Python, and Rust) and `cov` prints `✓/✗` per coverage entry; with `--failed-only`, only failing entries are shown.
+- In `per_test` style, `test` prints `✓/↷/✗` per test (Go, Dart, Python, Rust, and Swift) and `cov` prints `✓/✗` per coverage entry; with `--failed-only`, only failing entries are shown.

@@ -6,3 +6,4 @@ python-package,<distribution>-<version>-<python>-<abi>-<platform>.whl,wheel,sha2
 python-package,<distribution>-<version>.tar.gz,sdist,sha256,Python package builds use outputDir and checksumFile with no target suffix override or target matrix.
 rust-package,<crate>-<version>.crate,crate,sha256,Cargo package verification stays enabled; only selected crates produced in the fresh target directory are copied and released. No crates.io publication.
 rust-binary,<repo>-<os-arch>,tar.gz or zip,sha256,Rust binaries reuse Go naming and archive policies. Cargo compiler JSON identifies executables. Windows binary assets end in .exe.
+swift-binary,<repo>-<os-arch>,tar.gz,sha256,Native macOS or GNU/Linux only; SwiftPM release executable path is discovered with --show-bin-path. Fresh assets reuse Rust/Go naming. Resource bundles and package-built shared libraries are rejected. Runtime libraries are not bundled.

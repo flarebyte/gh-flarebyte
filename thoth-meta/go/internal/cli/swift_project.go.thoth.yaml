@@ -1,0 +1,17 @@
+locator: internal/cli/swift_project.go
+meta:
+  function_list:
+    - loadSwiftProject
+    - swiftExecutable
+    - swiftHasRemoteDependencies
+    - swiftRun
+    - swiftSelectedTargets
+    - swiftSourceFiles
+  import_files_list:
+    - encoding/json
+    - fmt
+    - os
+    - path/filepath
+    - regexp
+    - strings
+  language: go

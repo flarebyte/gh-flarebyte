@@ -4,7 +4,7 @@
 	lint lint-go lint-dart lint-e2e format format-go format-dart format-e2e review review-dart coverage coverage-go coverage-dart \
 	doc-design doc-decision dup complexity release sec \
 	thoth-meta thoth-meta-go thoth-meta-go-test thoth-meta-ts-e2e \
-	check-tools install-tools-help help test-python-e2e test-rust-e2e
+	check-tools install-tools-help help e2e e2e-deps test-dart-e2e test-python-e2e test-rust-e2e test-swift-e2e test-integrations
 
 GO := go
 BUN := bun
@@ -15,137 +15,156 @@ GO_MOD_CACHE_DIR := $(ROOT_DIR)/.gomodcache
 E2E_BIN_DIR := $(ROOT_DIR)/.e2e-bin
 CLI_BIN := $(E2E_BIN_DIR)/gh-flarebyte
 GO_PACKAGES := ./...
-GO_ENV := GOTOOLCHAIN=local GOCACHE=$(GO_CACHE_DIR) GOMODCACHE=$(GO_MOD_CACHE_DIR)
-BUN_ENV := TMPDIR=$(TMP_DIR)
-BIOME := $(BUN_ENV) $(BUN)x @biomejs/biome
+GO_ENV := GOTOOLCHAIN=local GOCACHE="$(GO_CACHE_DIR)" GOMODCACHE="$(GO_MOD_CACHE_DIR)"
+BUN_ENV := TMPDIR="$(TMP_DIR)"
+BIOME := $(BUN_ENV) "$(ROOT_DIR)/node_modules/.bin/biome"
 THOTH := thoth
 FLYB := flyb
 VERSION ?= dev
 COMMIT ?= unknown
 BUILD_DATE ?= unknown
 GO_VERSION ?= $(shell $(GO) version | awk '{print $$3}')
-GO_LDFLAGS := -X github.com/flarebyte/gh-flarebyte/internal/buildinfo.Version=$(VERSION) -X github.com/flarebyte/gh-flarebyte/internal/buildinfo.CommitID=$(COMMIT) -X github.com/flarebyte/gh-flarebyte/internal/buildinfo.Date=$(BUILD_DATE) -X github.com/flarebyte/gh-flarebyte/internal/buildinfo.GoVersion=$(GO_VERSION)
+# Query Go build metadata only for build recipes, so help/tool checks work without Go.
+GO_LDFLAGS = -X github.com/flarebyte/gh-flarebyte/internal/buildinfo.Version=$(VERSION) -X github.com/flarebyte/gh-flarebyte/internal/buildinfo.CommitID=$(COMMIT) -X github.com/flarebyte/gh-flarebyte/internal/buildinfo.Date=$(BUILD_DATE) -X github.com/flarebyte/gh-flarebyte/internal/buildinfo.GoVersion=$(GO_VERSION)
 
-build: build-dist
+# Build and distribution
+build: build-dist ## Build the CLI and configured distribution artifacts.
 
-build-go:
-	mkdir -p $(TMP_DIR)
-	mkdir -p $(E2E_BIN_DIR)
-	$(GO_ENV) $(GO) build -ldflags "$(GO_LDFLAGS)" -o $(CLI_BIN) ./cmd/gh-flarebyte
+build-go: ## Build the Go CLI into .e2e-bin/.
+	mkdir -p "$(TMP_DIR)"
+	mkdir -p "$(E2E_BIN_DIR)"
+	$(GO_ENV) $(GO) build -ldflags "$(GO_LDFLAGS)" -o "$(CLI_BIN)" ./cmd/gh-flarebyte
 
-build-dist: build-go
-	mkdir -p $(TMP_DIR)
-	$(CLI_BIN) build
+build-dist: build-go ## Build artifacts using the root .gh-flarebyte.cue.
+	mkdir -p "$(TMP_DIR)"
+	"$(CLI_BIN)" build
 
-test: test-go test-e2e
+# Tests and optional integrations
+test: test-go test-e2e ## Run Go tests and default E2E tests; real integrations are opt-in.
 
-test-go: test-unit
+test-go: test-unit ## Alias for configured unit tests (Go in this repository).
 
-test-dart: build-go
-	mkdir -p $(TMP_DIR)
-	$(CLI_BIN) test --style per_test
+# Compatibility aliases follow build.language in the root config; they do not select Dart.
+test-dart: test-unit ## Compatibility alias for configured tests; does not select Dart.
 
-test-unit: build-go
-	mkdir -p $(TMP_DIR)
-	$(CLI_BIN) test --style per_test
+test-unit: build-go ## Run configured tests with per-test output.
+	mkdir -p "$(TMP_DIR)"
+	"$(CLI_BIN)" test --style per_test
 
-test-race:
-	mkdir -p $(TMP_DIR)
+test-race: ## Run Go tests with the race detector.
+	mkdir -p "$(TMP_DIR)"
 	$(GO_ENV) $(GO) test -race $(GO_PACKAGES)
 
-coverage: coverage-go
+coverage: coverage-go ## Run configured coverage checks.
 
-coverage-go: build-go
-	mkdir -p $(TMP_DIR)
-	$(CLI_BIN) cov
+coverage-go: build-go ## Run coverage using the root configuration (Go here).
+	mkdir -p "$(TMP_DIR)"
+	"$(CLI_BIN)" cov
 
-coverage-dart: build-go
-	mkdir -p $(TMP_DIR)
-	$(CLI_BIN) cov
+coverage-dart: coverage-go ## Compatibility alias for configured coverage; does not select Dart.
 
-test-e2e: build-go
-	mkdir -p $(TMP_DIR)
+# Default E2E uses stub tools; real Python/Rust/Swift integrations remain opt-in.
+e2e: test-e2e ## Alias for the default E2E suite.
+
+test-dart-e2e: build-go ## Run the Dart command fixture using a stub Dart executable.
+	mkdir -p "$(TMP_DIR)"
+	$(BUN_ENV) $(BUN) test ./e2e/dart.test.ts
+
+test-integrations: test-python-e2e test-rust-e2e test-swift-e2e ## Run all real Python, Rust, and Swift fixtures (requires toolchains).
+
+e2e-deps: ## Install locked dependencies for Biome and TypeScript tooling.
+	mkdir -p "$(TMP_DIR)"
+	$(BUN_ENV) $(BUN) install --frozen-lockfile
+
+test-e2e: build-go ## Run smoke and stub-tool E2E tests.
+	mkdir -p "$(TMP_DIR)"
 	$(BUN_ENV) $(BUN) test ./e2e
 
-test-python-e2e: build-go
-	mkdir -p $(TMP_DIR)
+test-python-e2e: build-go ## Run the real Python/uv integration fixture.
+	mkdir -p "$(TMP_DIR)"
 	GH_FLAREBYTE_PYTHON_E2E=1 $(BUN_ENV) $(BUN) test ./e2e/python.test.ts
 
-test-rust-e2e: build-go
-	mkdir -p $(TMP_DIR)
+test-rust-e2e: build-go ## Run the real Rust/Cargo integration fixture.
+	mkdir -p "$(TMP_DIR)"
 	GH_FLAREBYTE_RUST_E2E=1 $(BUN_ENV) $(BUN) test ./e2e/rust.test.ts
 
-lint: lint-go lint-e2e
+test-swift-e2e: build-go ## Run the real SwiftPM integration fixture.
+	mkdir -p "$(TMP_DIR)"
+	GH_FLAREBYTE_SWIFT_E2E=1 $(BUN_ENV) $(BUN) test ./e2e/swift.test.ts
 
-lint-go: build-go
-	mkdir -p $(TMP_DIR)
-	$(CLI_BIN) lint
+# Formatting, lint, and review
+lint: lint-go lint-e2e ## Run configured Go lint and Biome checks.
 
-lint-dart: build-go
-	mkdir -p $(TMP_DIR)
-	$(CLI_BIN) lint
+lint-go: build-go ## Run lint using the root configuration (Go here).
+	mkdir -p "$(TMP_DIR)"
+	"$(CLI_BIN)" lint
 
-lint-e2e:
-	mkdir -p $(TMP_DIR)
-	$(BUN_ENV) $(BUN) install
+lint-dart: lint-go ## Compatibility alias for configured lint; does not select Dart.
+
+lint-e2e: e2e-deps ## Run locked local Biome checks.
 	$(BIOME) check .
 
-format: format-go format-e2e
+format: format-go format-e2e ## Format configured Go sources and Biome-managed files.
 
-review: format test lint
+review: ## Finish formatting before running tests and lint, including with -j.
+	$(MAKE) format
+	$(MAKE) test lint
 
-format-go: build-go
-	mkdir -p $(TMP_DIR)
-	$(CLI_BIN) format
+format-go: build-go ## Format sources using the root configuration (Go here).
+	mkdir -p "$(TMP_DIR)"
+	"$(CLI_BIN)" format
 
-format-dart: build-go
-	mkdir -p $(TMP_DIR)
-	$(CLI_BIN) format
+format-dart: format-go ## Compatibility alias for configured formatting; does not select Dart.
 
-review-dart: format-dart test-dart lint-dart coverage-dart
+review-dart: ## Compatibility review for the root config, including coverage.
+	$(MAKE) format-dart
+	$(MAKE) test-dart lint-dart coverage-dart
 
-format-e2e:
-	mkdir -p $(TMP_DIR)
-	$(BUN_ENV) $(BUN) install
+format-e2e: e2e-deps ## Format Biome-managed files using locked local tooling.
 	$(BIOME) format --write .
 
-doc-design:
+# Documentation and repository maintenance
+doc-design: ## Validate design inputs and regenerate Markdown with flyb.
 	mkdir -p doc/design
 	$(FLYB) validate --config doc/design-meta/app.cue
 	$(FLYB) generate markdown --config doc/design-meta/app.cue
 
-doc-decision: build-go
+doc-decision: build-go ## Legacy decision-doc workflow; requires the missing generation script.
+	@test -f ./script/generate-decision-docs.sh || { printf "%s\n" "doc-decision unavailable: script/generate-decision-docs.sh is missing." >&2; exit 1; }
 	mkdir -p doc/decision-meta
 	mkdir -p doc/decision
-	SEER_BIN=$(CLI_BIN) sh ./script/generate-decision-docs.sh
+	SEER_BIN="$(CLI_BIN)" sh ./script/generate-decision-docs.sh
 
-dup:
+dup: ## Run Go and TypeScript duplication checks through npx jscpd.
 	npx jscpd --format go --min-lines 10 --ignore "**/.gomodcache/**,**/.gocache/**,**/.e2e-bin/**,**/node_modules/**,**/dist/**" --gitignore .
 	npx jscpd --format typescript --min-lines 10 --gitignore .
 
-complexity:
+complexity: ## Show top Go and TypeScript files by complexity.
 	scc --sort complexity --by-file -i go . | head -n 15
 	scc --sort complexity --by-file -i ts . | head -n 15
 
-release: build-go
-	mkdir -p $(TMP_DIR)
-	GH_FLAREBYTE_FAKE_RELEASE=$${GH_FLAREBYTE_FAKE_RELEASE:-0} $(CLI_BIN) release
+release: build-go ## Build the CLI and run the configured release workflow.
+	mkdir -p "$(TMP_DIR)"
+	GH_FLAREBYTE_FAKE_RELEASE=$${GH_FLAREBYTE_FAKE_RELEASE:-0} "$(CLI_BIN)" release
 
-sec:
+sec: ## Run Semgrep security scanning.
 	semgrep scan --config auto
 
-thoth-meta: thoth-meta-go thoth-meta-go-test thoth-meta-ts-e2e
+thoth-meta: thoth-meta-go thoth-meta-go-test thoth-meta-ts-e2e ## Refresh Go, Go test, and E2E TypeScript metadata.
 
-thoth-meta-go:
+thoth-meta-go: ## Refresh Go source metadata.
 	$(THOTH) run --config ./pipeline-go-maat.thoth.cue
 
-thoth-meta-go-test:
+thoth-meta-go-test: ## Refresh Go test metadata.
 	$(THOTH) run --config ./pipeline-go-test-maat.thoth.cue
 
-thoth-meta-ts-e2e:
+thoth-meta-ts-e2e: ## Refresh E2E TypeScript metadata.
 	$(THOTH) run --config ./pipeline-ts-e2e-maat.thoth.cue
 
-check-tools:
+# Tool discovery and help
+check-tools: ## Report command/local-tool availability as key=value pairs.
+	@printf "biome=%s\n" "$$(test -x "$(ROOT_DIR)/node_modules/.bin/biome" && printf true || printf false)"
+	@printf "swift=%s\n" "$$(command -v swift >/dev/null 2>&1 && printf true || printf false)"
 	@printf "cargo=%s\n" "$$(command -v cargo >/dev/null 2>&1 && printf true || printf false)"
 	@printf "cargo-llvm-cov=%s\n" "$$(command -v cargo-llvm-cov >/dev/null 2>&1 && printf true || printf false)"
 	@printf "uv=%s\n" "$$(command -v uv >/dev/null 2>&1 && printf true || printf false)"
@@ -155,53 +174,22 @@ check-tools:
 	@printf "thoth=%s\n" "$$(command -v $(THOTH) >/dev/null 2>&1 && printf true || printf false)"
 	@printf "semgrep=%s\n" "$$(command -v semgrep >/dev/null 2>&1 && printf true || printf false)"
 	@printf "scc=%s\n" "$$(command -v scc >/dev/null 2>&1 && printf true || printf false)"
-	@printf "jscpd=%s\n" "$$(command -v npx >/dev/null 2>&1 && printf true || printf false)"
+	@printf "npx=%s\n" "$$(command -v npx >/dev/null 2>&1 && printf true || printf false)"
 
-install-tools-help:
-	@printf "Install required tools:\n"
+install-tools-help: ## Show core and optional tool installation guidance.
+	@printf "Core tools and optional workflow tools:\n"
+	@printf "  Swift (optional integration): Swift 6+ via Xcode or https://www.swift.org/install/\n"
 	@printf "  Rust (optional integration): https://rustup.rs; components rustfmt, clippy, llvm-tools-preview; cargo install cargo-llvm-cov --locked\n"
 	@printf "  uv (optional Python integration): https://docs.astral.sh/uv/getting-started/installation/\n"
 	@printf "  go: https://go.dev/doc/install\n"
 	@printf "  bun: https://bun.sh/docs/installation\n"
+	@printf "  biome: make e2e-deps installs the version pinned by bun.lock.\n"
 	@printf "  flyb: install the flyb CLI used for doc generation.\n"
 	@printf "  thoth: install the thoth CLI used for metadata pipelines.\n"
 	@printf "  semgrep: https://semgrep.dev/docs/getting-started/cli\n"
 	@printf "  scc: https://github.com/boyter/scc\n"
 	@printf "  jscpd: available via npx jscpd once Node/npm tooling is installed.\n"
 
-help:
+help: ## Show available targets.
 	@printf "Targets:\n"
-	@printf "  test-rust-e2e Run the real Rust/Cargo integration fixture (requires Rust and coverage tools).\n"
-	@printf "  test-python-e2e Run the real Python 3/uv integration fixture (requires uv and Python 3).\n"
-	@printf "  build        Build the E2E binary and release artifacts.\n"
-	@printf "  build-go     Build the Go CLI into .e2e-bin/ for local and E2E use.\n"
-	@printf "  build-dist   Build artifacts via local gh-flarebyte build config.\n"
-	@printf "  test         Run Go tests and Bun E2E tests.\n"
-	@printf "  test-go      Run Go test targets.\n"
-	@printf "  test-dart    Run Dart test target via gh flarebyte test.\n"
-	@printf "  test-unit    Run tests via gh flarebyte test (per-test output).\n"
-	@printf "  test-race    Run Go tests with the race detector.\n"
-	@printf "  test-e2e     Build the CLI and run Bun E2E tests.\n"
-	@printf "  coverage     Run coverage checks via gh flarebyte cov.\n"
-	@printf "  coverage-go  Run coverage checks via gh flarebyte cov.\n"
-	@printf "  coverage-dart Run coverage checks for Dart via gh flarebyte cov.\n"
-	@printf "  lint         Run Go linting and Biome checks.\n"
-	@printf "  lint-go      Run lint checks via gh flarebyte lint.\n"
-	@printf "  lint-dart    Run lint checks for Dart via gh flarebyte lint.\n"
-	@printf "  lint-e2e     Run Biome checks for TypeScript and tooling files.\n"
-	@printf "  format       Format Go and Biome-managed files.\n"
-	@printf "  format-go    Format Go sources via gh flarebyte format.\n"
-	@printf "  format-dart  Format Dart sources via gh flarebyte format.\n"
-	@printf "  format-e2e   Format TypeScript and tooling files with Biome.\n"
-	@printf "  review       Run format, test, and lint using existing targets.\n"
-	@printf "  review-dart  Run format, test, lint, and coverage for Dart targets.\n"
-	@printf "  doc-design   Regenerate design docs from flyb configs.\n"
-	@printf "  doc-decision Validate decision configs and regenerate markdown decision reports.\n"
-	@printf "  dup          Run duplicate code detection.\n"
-	@printf "  complexity   Show top Go and TypeScript files by complexity.\n"
-	@printf "  release      Build CLI then run local gh-flarebyte release.\n"
-	@printf "  sec          Run Semgrep security scan.\n"
-	@printf "  thoth-meta   Refresh thoth metadata for Go, Go tests, and E2E TypeScript.\n"
-	@printf "  check-tools  Report required tool availability as key=value pairs.\n"
-	@printf "  install-tools-help  Show how to install required tools.\n"
-	@printf "  help         Show this help message.\n"
+	@awk 'BEGIN {FS = ":.*## "} /^[a-zA-Z0-9_.-]+:.*## / {printf "  %-22s %s\n", $$1, $$2}' "$(firstword $(MAKEFILE_LIST))"
