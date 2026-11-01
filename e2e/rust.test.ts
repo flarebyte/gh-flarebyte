@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { cp, mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
+import { cp, mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { makeTempDir, runCLI } from './helpers';
 

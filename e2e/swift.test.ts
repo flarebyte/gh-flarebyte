@@ -2,8 +2,8 @@ import { describe, expect, test } from 'bun:test';
 import {
   cp,
   mkdir,
-  readFile,
   readdir,
+  readFile,
   unlink,
   writeFile,
 } from 'node:fs/promises';
