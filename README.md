@@ -450,6 +450,7 @@ to GitHub. Real Swift integration remains opt-in for local `make test` runs.
 Both compatibility workflows run on pull requests, pushes to `main`, and manual dispatch.
 There are **7 jobs per PR/push: 5 macOS and 2 Linux**, within a budget of at most 8.
 Go tests run once in the core job, including the shared contracts for all five languages.
+The core job also runs the Python release-preflight unit tests.
 
 | Checks | macOS arm64 | Linux amd64 | Jobs |
 |---|---|---|---|
@@ -467,6 +468,49 @@ and a full OS/toolchain cross-product are outside this routine CI selection.
 The count measures platform/toolchain jobs; each job contains multiple assertions.
 Test CLI builds omit optional Go VCS stamping, checkout credentials are not persisted,
 and repository permissions remain read-only.
+
+## Manual GitHub releases
+
+`.github/workflows/release.yml` runs only through **Actions → Manual release → Run workflow**.
+Select the default branch and enter the exact version from `main.project.yaml`, without
+the `v` prefix. The current file uses `tags.version`; the release preflight reads that
+same version scalar as the CLI. Bump and commit the version before starting a new release.
+The workflow must first be present on the default branch to appear in the Actions UI.
+
+The workflow runs these stages in order:
+
+1. Run the release-preflight unit tests, then check that the requested version matches `.gh-flarebyte.cue`'s `release.versionSource`
+   and that the configured tag and visible GitHub releases do not already exist.
+2. Run `make lint test`. Any failure blocks the release.
+3. Build the configured CLI targets and checksums through `gh-flarebyte build`.
+4. Transfer those artifacts to a separate publishing job, check availability again,
+   verify checksums and unique asset filenames, reserve a new tag at the tested SHA,
+   then create the release using that tag. An existing tag cannot be overwritten.
+
+**Create a draft** defaults to enabled. Clear it to publish immediately. An existing tag,
+published release, or draft visible to the publishing token blocks reuse of that version.
+The final availability check uses the publishing job's credentials so it can also see
+draft releases. API authentication, rate-limit, and network failures stop the workflow;
+they are never interpreted as an unused version. If publication leaves a tag or partial
+draft, inspect it manually before retrying; the workflow does not overwrite existing releases.
+
+This repository publishes GitHub Release binaries and checksums. It does not publish
+to PyPI, crates.io, or another package registry. Builds use the existing release policy;
+the manual workflow currently requires generated release notes, artifacts, and checksums.
+Only the publishing job has `contents: write`, checkout credentials are not retained,
+and concurrent release attempts are serialized. These two manual jobs are separate from
+the seven automatic compatibility jobs and add no jobs to pull-request or push runs.
+
+The standard-library Python preflight can also be run read-only locally with Python 3.11+:
+
+```sh
+python3 script/release_preflight.py --repository flarebyte/gh-flarebyte
+python3 -m unittest discover -s script -p 'test_*.py'
+```
+
+Set `GH_TOKEN` or `GITHUB_TOKEN` to inspect private or draft releases permitted by that
+token. Without a token, only public API data is checked. The script never creates a tag,
+release, or upload; publication is a separate, final workflow step.
 
 ## Typical workflow
 
