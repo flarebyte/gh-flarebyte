@@ -454,6 +454,11 @@ with `bun install --frozen-lockfile --ignore-scripts`, then execute only project
 tools with Bun's automatic dependency installation disabled. Missing or stale lockfiles
 fail without being rewritten; lifecycle scripts are not run.
 
+For a new Bun project, install the local tools with
+`bun add --dev typescript @biomejs/biome @types/bun`, create the root TypeScript and
+Biome configurations, and commit `bun.lock`. The CUE snippets below replace the
+`build` and `release` sections in an otherwise complete `.gh-flarebyte.cue`.
+
 **Libraries** use verification mode. This checks types without emitting JavaScript,
 declarations, binaries, or release assets. `build.runTests` optionally runs the test suite.
 
@@ -527,9 +532,17 @@ an explicit failure. Import it in tests or deliberately exclude it using
 `test.coveragePathIgnorePatterns`; gh-flarebyte does not invent executable line counts
 or silently accept an inflated percentage. c8 targets Node/V8 and is not used for Bun tests.
 
-Both library and CLI releases read `package.json`'s existing top-level `version`.
+Both library and CLI releases read the configured `release.versionSource`; the examples
+use `package.json`'s existing top-level `version`. YAML version sources also work.
 Library releases contain tags and notes without assets; CLI releases stage only fresh
 executables, archives, and optional checksums. No npm publishing occurs.
+
+Run `gh flarebyte format`, `gh flarebyte lint`, `gh flarebyte test`, and
+`gh flarebyte cov --min 80` from the project root, then `gh flarebyte build`.
+For this repository's real Bun integration checks, run `make test-typescript-e2e`.
+That fixture exercises library verification and native CLI execution, coverage policies,
+failure handling, checksums, and simulated releases. It runs on macOS in CI; local passes
+validate the local host, while hosted results are available after the workflow runs.
 
 ## CI coverage budget
 
