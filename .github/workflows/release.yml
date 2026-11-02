@@ -2,15 +2,6 @@ name: Manual release
 
 on:
   workflow_dispatch:
-    inputs:
-      version:
-        description: Version in main.project.yaml, without the tag prefix
-        required: true
-        type: string
-      draft:
-        description: Create a draft instead of publishing immediately
-        type: boolean
-        default: true
 
 permissions:
   contents: read
@@ -25,6 +16,7 @@ jobs:
     runs-on: macos-15
     timeout-minutes: 20
     outputs:
+      version: ${{ steps.preflight.outputs.version }}
       tag: ${{ steps.preflight.outputs.tag }}
       commit: ${{ steps.preflight.outputs.commit }}
       artifact_dir: ${{ steps.preflight.outputs.artifact_dir }}
@@ -54,8 +46,7 @@ jobs:
         id: preflight
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_VERSION: ${{ inputs.version }}
-        run: python script/release_preflight.py --expected-version "$RELEASE_VERSION" --github-output "$GITHUB_OUTPUT"
+        run: python script/release_preflight.py --github-output "$GITHUB_OUTPUT"
       - name: Lint and test
         run: make lint test
       - name: Build configured release artifacts
@@ -80,8 +71,7 @@ jobs:
       ARTIFACT_DIR: ${{ needs.verify.outputs.artifact_dir }}
       RELEASE_TAG: ${{ needs.verify.outputs.tag }}
       RELEASE_COMMIT: ${{ needs.verify.outputs.commit }}
-      RELEASE_VERSION: ${{ inputs.version }}
-      RELEASE_DRAFT: ${{ inputs.draft }}
+      RELEASE_VERSION: ${{ needs.verify.outputs.version }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -109,4 +99,4 @@ jobs:
             -f "ref=refs/tags/$RELEASE_TAG" -f "sha=$RELEASE_COMMIT" --silent
           gh release create "$RELEASE_TAG" "${assets[@]}" \
             --repo "$GITHUB_REPOSITORY" --target "$RELEASE_COMMIT" \
-            --verify-tag --generate-notes --draft="$RELEASE_DRAFT"
+            --verify-tag --generate-notes

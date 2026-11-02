@@ -12,6 +12,7 @@ from release_preflight import (
     PreflightError,
     check_artifacts,
     check_available,
+    main,
     release_metadata,
 )
 
@@ -85,7 +86,8 @@ release: {
             (root / '.gh-flarebyte.cue').write_text(config)
             (root / 'version.yaml').write_text('tags:\n  version: 1.2.3\n')
             with patch('release_preflight.subprocess.check_output', return_value='a' * 40):
-                metadata = release_metadata(root, '1.2.3')
+                metadata = release_metadata(root)
+                self.assertEqual(metadata['version'], '1.2.3')
                 self.assertEqual(metadata['tag'], 'v1.2.3')
                 self.assertEqual(metadata['commit'], 'a' * 40)
                 with self.assertRaisesRegex(PreflightError, 'differs from configured'):
@@ -96,6 +98,33 @@ release: {
                 (root / '.gh-flarebyte.cue').write_text(config.replace('version.yaml', 'version.json'))
                 (root / 'version.json').write_text(json.dumps({'version': '1.2.3'}))
                 self.assertEqual(release_metadata(root)['version'], '1.2.3')
+
+    def test_preflight_resolves_version_without_input_and_exports_it_for_publish(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            output = root / 'github-output'
+            (root / '.gh-flarebyte.cue').write_text('''build: { checksumFile: "build/checksums.txt" }
+release: {
+ versionSource: "main.project.yaml"
+ tagPrefix: "v"
+ artifactDir: "build"
+ notesMode: "generate-notes"
+}
+''')
+            (root / 'main.project.yaml').write_text('tags:\n  version: 2.3.4\n')
+            with (
+                patch('release_preflight.Path.cwd', return_value=root),
+                patch('release_preflight.subprocess.check_output', return_value='a' * 40),
+                patch('release_preflight.GitHub', return_value=FakeGitHub()),
+                patch('sys.stdout', new_callable=io.StringIO) as stdout,
+                patch('sys.argv', ['release_preflight.py', '--repository', 'flarebyte/gh-flarebyte', '--github-output', str(output)]),
+            ):
+                self.assertEqual(main(), 0)
+            self.assertEqual(json.loads(stdout.getvalue())['version'], '2.3.4')
+            outputs = dict(line.split('=', 1) for line in output.read_text().splitlines())
+            self.assertEqual(outputs['version'], '2.3.4')
+            self.assertEqual(outputs['tag'], 'v2.3.4')
+            self.assertEqual(outputs['commit'], 'a' * 40)
 
     def test_downloaded_artifacts_must_match_checksums_and_have_unique_names(self):
         with tempfile.TemporaryDirectory() as directory:

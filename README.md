@@ -559,23 +559,25 @@ and repository permissions remain read-only.
 ## Manual GitHub releases
 
 `.github/workflows/release.yml` runs only through **Actions → Manual release → Run workflow**.
-Select the default branch and enter the exact version from `main.project.yaml`, without
-the `v` prefix. The current file uses `tags.version`; the release preflight reads that
-same version scalar as the CLI. Bump and commit the version before starting a new release.
+Select the default branch; there are no version or draft inputs. Bump and commit
+`tags.version` in `main.project.yaml` before starting a new release. The preflight reads
+that version through `.gh-flarebyte.cue`'s `release.versionSource`, just like the CLI,
+and adds the configured tag prefix automatically.
 The workflow must first be present on the default branch to appear in the Actions UI.
 
 The workflow runs these stages in order:
 
-1. Run the release-preflight unit tests, then check that the requested version matches `.gh-flarebyte.cue`'s `release.versionSource`
-   and that the configured tag and visible GitHub releases do not already exist.
+1. Run the release-preflight unit tests, resolve the version from the configured file,
+   and check that the configured tag and visible GitHub releases do not already exist.
 2. Run `make lint test`. Any failure blocks the release.
 3. Build the configured CLI targets and checksums through `gh-flarebyte build`.
-4. Transfer those artifacts to a separate publishing job, check availability again,
-   verify checksums and unique asset filenames, reserve a new tag at the tested SHA,
-   then create the release using that tag. An existing tag cannot be overwritten.
+4. Transfer those artifacts to a separate publishing job, recheck the resolved version,
+   tested commit, and availability, then verify checksums and unique asset filenames.
+   Reserve a new tag at the tested SHA and publish the release using that tag.
+   An existing tag cannot be overwritten.
 
-**Create a draft** defaults to enabled. Clear it to publish immediately. An existing tag,
-published release, or draft visible to the publishing token blocks reuse of that version.
+The workflow publishes immediately after all checks pass; it does not create a draft.
+An existing tag, published release, or draft visible to the publishing token blocks reuse of that version.
 The final availability check uses the publishing job's credentials so it can also see
 draft releases. API authentication, rate-limit, and network failures stop the workflow;
 they are never interpreted as an unused version. If publication leaves a tag or partial
