@@ -1,11 +1,11 @@
 import hashlib
 import io
 import json
+import ssl
 from pathlib import Path
 import tempfile
 import unittest
 from unittest.mock import patch
-from urllib.error import HTTPError
 
 from release_preflight import (
     GitHub,
@@ -33,6 +33,12 @@ class FakeGitHub:
 
 
 class ReleasePreflightTests(unittest.TestCase):
+    @staticmethod
+    def response(status=200, body='{}'):
+        response = io.StringIO(body)
+        response.status = status
+        return response
+
     def test_available_version_is_read_only(self):
         api = FakeGitHub()
         check_available(api, 'flarebyte/gh-flarebyte', 'v1.2.3')
@@ -53,24 +59,66 @@ class ReleasePreflightTests(unittest.TestCase):
 
     def test_api_errors_do_not_count_as_available(self):
         api = GitHub()
-        for status in (401, 403, 429, 500):
-            error = HTTPError('https://api.github.com', status, 'error', {}, None)
-            with self.subTest(status=status), patch('release_preflight.urlopen', side_effect=error):
+        for status in (301, 302, 307, 308, 401, 403, 429, 500):
+            with self.subTest(status=status), patch('release_preflight.HTTPSConnection') as connection:
+                connection.return_value.getresponse.return_value = self.response(status)
                 with self.assertRaisesRegex(PreflightError, f'HTTP {status}'):
                     api.get('/repos/flarebyte/gh-flarebyte/git/ref/tags/v1.2.3', missing_ok=True)
-        error = HTTPError('https://api.github.com', 404, 'missing', {}, None)
-        with patch('release_preflight.urlopen', side_effect=error):
+                connection.return_value.request.assert_called_once()
+                connection.return_value.close.assert_called_once()
+        with patch('release_preflight.HTTPSConnection') as connection:
+            connection.return_value.getresponse.side_effect = [self.response(404), self.response(404)]
             with self.assertRaisesRegex(PreflightError, 'HTTP 404'):
                 api.get('/repos/flarebyte/gh-flarebyte')
             self.assertIsNone(api.get('/repos/flarebyte/gh-flarebyte/git/ref/tags/v1.2.3', missing_ok=True))
 
     def test_invalid_json_and_release_records_fail_closed(self):
-        with patch('release_preflight.urlopen', return_value=io.StringIO('invalid json')):
+        with patch('release_preflight.HTTPSConnection') as connection:
+            connection.return_value.getresponse.return_value = self.response(body='invalid json')
             with self.assertRaises(PreflightError):
                 GitHub().get('/repos/flarebyte/gh-flarebyte')
         for invalid in ({'message': 'error'}, [{}]):
             with self.subTest(invalid=invalid), self.assertRaises(PreflightError):
                 check_available(FakeGitHub(pages=[invalid]), 'flarebyte/gh-flarebyte', 'v1.2.3')
+
+    def test_api_destination_is_fixed_and_token_is_only_sent_over_https(self):
+        for base in ('file:///etc/passwd', 'http://api.github.com', 'https://evil.example',
+                     'https://api.github.com.evil.example', 'https://api.github.com@evil.example',
+                     'https://api.github.com/path', 'https://api.github.com?host=evil'):
+            with self.subTest(base=base), patch.dict('os.environ', {'GITHUB_API_URL': base}):
+                with self.assertRaisesRegex(PreflightError, 'requires https://api.github.com'):
+                    GitHub()
+        with patch.dict('os.environ', {'GITHUB_API_URL': 'https://api.github.com', 'GH_TOKEN': 'test-token'}):
+            api = GitHub()
+        with patch('release_preflight.HTTPSConnection') as connection:
+            connection.return_value.getresponse.return_value = self.response(body='{"ok": true}')
+            self.assertEqual(api.get('/repos/flarebyte/gh-flarebyte'), {'ok': True})
+            connection.assert_called_once()
+            connection_args, connection_kwargs = connection.call_args
+            self.assertEqual(connection_args, ('api.github.com',))
+            self.assertEqual(connection_kwargs['timeout'], 30)
+            context = connection_kwargs['context']
+            self.assertIsInstance(context, ssl.SSLContext)
+            self.assertEqual(context.verify_mode, ssl.CERT_REQUIRED)
+            self.assertTrue(context.check_hostname)
+            self.assertGreater(context.cert_store_stats()['x509_ca'], 0)
+            args, kwargs = connection.return_value.request.call_args
+            self.assertEqual(args, ('GET', '/repos/flarebyte/gh-flarebyte'))
+            self.assertEqual(kwargs['headers']['Authorization'], 'Bearer test-token')
+            connection.return_value.close.assert_called_once()
+        for endpoint in ('file:///etc/passwd', '//evil.example/path', '/repos/owner/repo\r\nInjected: yes'):
+            with self.subTest(endpoint=endpoint), patch('release_preflight.HTTPSConnection') as connection:
+                with self.assertRaisesRegex(PreflightError, 'Invalid GitHub API endpoint'):
+                    api.get(endpoint)
+                connection.assert_not_called()
+
+    def test_network_failures_stop_preflight_and_close_connection(self):
+        for error in (TimeoutError('timed out'), ssl.SSLCertVerificationError('untrusted certificate')):
+            with self.subTest(error=error), patch('release_preflight.HTTPSConnection') as connection:
+                connection.return_value.request.side_effect = error
+                with self.assertRaisesRegex(PreflightError, 'GitHub check failed'):
+                    GitHub().get('/repos/flarebyte/gh-flarebyte')
+                connection.return_value.close.assert_called_once()
 
     def test_version_source_matches_existing_nested_yaml_and_json(self):
         with tempfile.TemporaryDirectory() as directory:

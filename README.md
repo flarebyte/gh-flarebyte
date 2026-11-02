@@ -568,6 +568,8 @@ and a full OS/toolchain cross-product are outside this routine CI selection.
 The count measures platform/toolchain jobs; each job contains multiple assertions.
 Test CLI builds omit optional Go VCS stamping, checkout credentials are not persisted,
 and repository permissions remain read-only.
+All workflow actions are pinned to full commit SHAs, with their original version or
+branch noted in comments. Updating an action requires verifying and updating its SHA.
 
 ## Manual GitHub releases
 
@@ -613,6 +615,8 @@ python3 -m unittest discover -s script -p 'test_*.py'
 Set `GH_TOKEN` or `GITHUB_TOKEN` to inspect private or draft releases permitted by that
 token. Without a token, only public API data is checked. The script never creates a tag,
 release, or upload; publication is a separate, final workflow step.
+The preflight connects only to `https://api.github.com` and rejects redirects and other
+API hosts; this repository's manual release workflow targets GitHub.com.
 
 ## Typical workflow
 
