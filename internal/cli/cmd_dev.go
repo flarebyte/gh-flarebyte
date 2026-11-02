@@ -26,6 +26,8 @@ func runTest(styleOverride, colorOverride string, failedOnly bool, stdout, stder
 	env := buildCommandEnv(cfg, stderr)
 	start := time.Now()
 	switch cfg.Build.Language {
+	case "typescript":
+		return runTypeScriptDev(cfg, env, "test", nil, failedOnly, stdout, stderr)
 	case "swift":
 		return runSwiftTest(cfg, env, failedOnly, stdout, stderr)
 	case "rust":
@@ -103,6 +105,8 @@ func runFormat(stdout, stderr io.Writer) Result {
 	env := buildCommandEnv(cfg, stderr)
 	start := time.Now()
 	switch cfg.Build.Language {
+	case "typescript":
+		return runTypeScriptDev(cfg, env, "format", nil, false, stdout, stderr)
 	case "swift":
 		return runSwiftTool(cfg, env, "format", false, stdout, stderr)
 	case "rust":
@@ -144,6 +148,8 @@ func runLint(colorOverride string, failedOnly bool, stdout, stderr io.Writer) Re
 	}
 	start := time.Now()
 	switch cfg.Build.Language {
+	case "typescript":
+		return runTypeScriptDev(cfg, env, "lint", nil, failedOnly, stdout, stderr)
 	case "swift":
 		return runSwiftTool(cfg, env, "lint", failedOnly, stdout, stderr)
 	case "rust":
@@ -178,6 +184,8 @@ func runCov(min *float64, colorOverride string, failedOnly bool, stdout, stderr 
 	}
 	start := time.Now()
 	switch cfg.Build.Language {
+	case "typescript":
+		return runTypeScriptDev(cfg, env, "cov", min, failedOnly, stdout, stderr)
 	case "swift":
 		return runSwiftCov(cfg, env, min, failedOnly, stdout, stderr)
 	case "rust":

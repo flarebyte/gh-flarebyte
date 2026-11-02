@@ -29,7 +29,7 @@ Use `gh flarebyte` to keep a GitHub repository aligned with the config checked i
 
 - `gh flarebyte build [--target <os-arch>] [--output-dir <path>]` builds the project using the language and mode defined in `.gh-flarebyte.cue`.
 - `gh flarebyte release [--draft] [--notes-file <path>]` builds first, then publishes a GitHub release from the configured release policy.
-- `build`: Go supports `binary` and `library`; Dart supports `library`; Python 3 with uv supports `package`; Rust supports all three modes; Swift supports `binary` and `library`.
+- `build`: Go supports `binary` and `library`; Dart supports `library`; Python 3 with uv supports `package`; Rust supports all three modes; Swift supports `binary` and `library`; TypeScript supports `library` verification and `binary` CLI builds.
 - `release`: Dart currently supports release with `release.includeArtifacts: false`.
 
 ### Dev commands
@@ -445,11 +445,97 @@ failures, coverage thresholds, direct and transitive dependency lock enforcement
 executable packaging, and simulated releases. Releases in this suite never publish
 to GitHub. Real Swift integration remains opt-in for local `make test` runs.
 
+### TypeScript with Bun
+
+TypeScript support uses Bun 1.3.6+, a committed `bun.lock`, a root `package.json`,
+`tsconfig.json`, and `biome.json` or `biome.jsonc`. Add `typescript`, `@biomejs/biome`,
+and your runtime type definitions to the project's dev dependencies. Commands install
+with `bun install --frozen-lockfile --ignore-scripts`, then execute only project-local
+tools with Bun's automatic dependency installation disabled. Missing or stale lockfiles
+fail without being rewritten; lifecycle scripts are not run.
+
+**Libraries** use verification mode. This checks types without emitting JavaScript,
+declarations, binaries, or release assets. `build.runTests` optionally runs the test suite.
+
+```cue
+build: {
+  language: "typescript"
+  mode: "library"
+  packages: ["./..."]
+  runTests: true
+}
+release: {
+  versionSource: "package.json"
+  tagPrefix: "v"
+  notesMode: "generate-notes"
+  includeArtifacts: false
+}
+```
+
+**CLIs** use binary mode with an explicit source entry point included in `tsconfig.json`.
+The build first checks types, optionally runs tests, then uses `bun build --compile` to
+produce a standalone executable with Bun's runtime embedded. It reuses the existing
+archive, executable naming, checksum, `--output-dir`, and fresh release asset policies.
+
+```cue
+build: {
+  language: "typescript"
+  mode: "binary"
+  mainPackage: "src/cli.ts"
+  targets: ["darwin-arm64"]
+  runTests: true
+  outputDir: "build"
+  checksumFile: "build/checksums.txt"
+}
+release: {
+  versionSource: "package.json"
+  tagPrefix: "v"
+  notesMode: "generate-notes"
+  includeArtifacts: true
+  artifactDir: "build"
+  includeChecksums: true
+}
+```
+
+CLI targets must match the active Bun host: native macOS or GNU/Linux on amd64/arm64.
+Library builds reject `mainPackage`, target matrices, and `--target`; they do not silently
+become CLI builds. Initial support covers one root package with `packages: ["./..."]`.
+Workspaces, TypeScript project references, Windows, cross-compilation, npm package
+archives/publication, and automatic copying of external runtime resources are outside
+this initial scope. Compiled CLIs disable automatic runtime loading of `.env` and Bun config.
+
+Developer commands operate on the root project:
+
+| Command | Behavior |
+|---|---|
+| `format` | Project-local Biome `format --write .` |
+| `lint` | Biome `check .` without fixes, followed by `tsc --project tsconfig.json --noEmit` |
+| `test` | Bun tests with validated JUnit XML and shared summary/per-test output |
+| `cov` | Bun tests with source-mapped LCOV production line coverage |
+
+Keep compiler settings in `tsconfig.json`, lint/format rules in Biome, and test discovery,
+preloads, and coverage exclusions in `bunfig.toml`. Reports use fresh temporary directories.
+A private Bun configuration preserves the project settings while disabling Bun's own
+coverage thresholds, so `coverage.min`, `coverage.enforceMin`, and `--min` remain authoritative.
+The project's `bunfig.toml` is never modified. `--color`, `--failed-only`, `showPassed`, and
+`devOutput.style` follow the same policies as the other languages.
+
+Coverage excludes test files/directories, declaration files, dependencies, generated
+sources, and build outputs. Totals are weighted by executable line counts. Bun only
+reports loaded modules: an omitted production file selected by `tsconfig.json` causes
+an explicit failure. Import it in tests or deliberately exclude it using
+`test.coveragePathIgnorePatterns`; gh-flarebyte does not invent executable line counts
+or silently accept an inflated percentage. c8 targets Node/V8 and is not used for Bun tests.
+
+Both library and CLI releases read `package.json`'s existing top-level `version`.
+Library releases contain tags and notes without assets; CLI releases stage only fresh
+executables, archives, and optional checksums. No npm publishing occurs.
+
 ## CI coverage budget
 
 Both compatibility workflows run on pull requests, pushes to `main`, and manual dispatch.
-There are **7 jobs per PR/push: 5 macOS and 2 Linux**, within a budget of at most 8.
-Go tests run once in the core job, including the shared contracts for all five languages.
+There are **8 jobs per PR/push: 6 macOS and 2 Linux**, within the budget of at most 8.
+Go tests run once in the core job, including the shared contracts for all six languages.
 The core job also runs the Python release-preflight unit tests.
 
 | Checks | macOS arm64 | Linux amd64 | Jobs |
@@ -457,10 +543,11 @@ The core job also runs the Python release-preflight unit tests.
 | Swift integration | Xcode 16.2 and 26.2 | Swift 6.2.4 | 3 |
 | Rust integration | Stable Rust | Stable Rust | 2 |
 | Python integration | Python 3.12 with uv | — | 1 |
+| TypeScript integration | Bun library and native CLI | — | 1 |
 | Core Go and default E2E | Go from `go.mod`; includes Dart stub tests | — | 1 |
-| **Total** | **5** | **2** | **7** |
+| **Total** | **6** | **2** | **8** |
 
-`.github/workflows/languages.yml` owns the Go/default E2E, Python, and Rust jobs;
+`.github/workflows/languages.yml` owns the Go/default E2E, Python, Rust, and TypeScript jobs;
 `.github/workflows/swift.yml` owns the three Swift jobs. Each integration job runs the
 existing Makefile fixture with simulated releases. Dart currently has stub coverage;
 this matrix does not claim real Dart SDK integration. Swift Intel macOS, Linux arm64,
@@ -499,7 +586,7 @@ to PyPI, crates.io, or another package registry. Builds use the existing release
 the manual workflow currently requires generated release notes, artifacts, and checksums.
 Only the publishing job has `contents: write`, checkout credentials are not retained,
 and concurrent release attempts are serialized. These two manual jobs are separate from
-the seven automatic compatibility jobs and add no jobs to pull-request or push runs.
+the eight automatic compatibility jobs and add no jobs to pull-request or push runs.
 
 The standard-library Python preflight can also be run read-only locally with Python 3.11+:
 
@@ -528,7 +615,7 @@ release, or upload; publication is a separate, final workflow step.
 - `GH_FLAREBYTE_FAKE_RELEASE=1 make release` runs the release flow in fake mode (no GitHub mutation).
 - `make review` finishes formatting before running tests and lint, including with `make -j`.
 - `make e2e` aliases the default smoke and stub-tool suite; `make test-dart-e2e` runs the Dart stub fixture alone.
-- `make test-integrations` runs all real Python, Rust, and Swift fixtures; these remain opt-in.
+- `make test-integrations` runs all real Python, Rust, Swift, and TypeScript fixtures; these remain opt-in.
 - `make e2e-deps` installs dependencies from `bun.lock`; formatting and lint use the locked local Biome.
 - The legacy `*-dart` shortcuts and `review-dart` follow the root `.gh-flarebyte.cue`; they do not select Dart. This repository configures Go.
 - `make check-tools` reports executable availability; `biome` checks the local installation and `npx` is the launcher used for jscpd.
@@ -536,6 +623,7 @@ release, or upload; publication is a separate, final workflow step.
 - `make test-python-e2e` runs the real uv fixture (requires uv and an installed Python 3; may download dependencies).
 - `make test-rust-e2e` runs the real Rust workspace fixture (requires Cargo, rustfmt, Clippy, cargo-llvm-cov, and llvm-tools-preview; may access crates.io).
 - `make test-swift-e2e` runs the real SwiftPM fixture (requires Swift 6+ and its SDK).
+- `make test-typescript-e2e` runs the real TypeScript library and CLI fixture (requires Bun 1.3.6+ and may download locked dependencies).
 
 ## Language support snapshot
 
@@ -546,6 +634,7 @@ release, or upload; publication is a separate, final workflow step.
 | Python 3 with uv | `package` | Wheels, source distributions, checksums | `test`, `format`, `lint`, `cov` |
 | Rust with Cargo | `binary`, `library`, `package` | Executables, archives, `.crate` packages, checksums; library releases have no assets | `test`, `format`, `lint`, `cov` |
 | Swift with SwiftPM | `binary`, `library` | Native macOS/Linux executables, archives, checksums; library releases have no assets | `test`, `format`, `lint`, `cov` |
+| TypeScript with Bun | `binary` CLI, `library` verification | Native macOS/Linux standalone CLIs, archives, checksums; library releases have no assets | `test`, `format`, `lint`, `cov` |
 
 All languages support per-test output and coverage thresholds. Artifact-producing builds
 can release without assets by setting `release.includeArtifacts: false`. Language-specific
@@ -555,12 +644,12 @@ toolchains, target restrictions, and test-report limitations are described above
 
 - Topics are managed as a flat list of strings.
 - Labels are managed as structured objects with `name`, `color`, and `description`.
-- Build: Go supports `binary` and `library`; Dart supports `library`; Python supports `package`; Rust supports all three; Swift supports `binary` and `library`.
+- Build: Go supports `binary` and `library`; Dart supports `library`; Python supports `package`; Rust supports all three; Swift supports `binary` and `library`; TypeScript supports `library` verification and `binary` CLI builds.
 - Release: Dart currently supports `release.includeArtifacts: false`.
-- `build.mode` defaults to `binary`. Use `library` for Go/Dart/Rust/Swift verification or `package` for Python/Rust distributions. `build.runTests` applies to Go/Dart library builds, Python package builds, and every Rust/Swift build mode.
-- `build.mainPackage` controls the Go main package (default `./cmd/<project.repo>`) or Rust manifest directory (default `.`) used for binary builds. Swift uses an executable product name, inferred when unique.
-- For Go/Rust/Swift binary builds with one target, `build.artifactTargetSuffix: false` removes the target suffix from the archive name. Multiple-target archive names always include the target; setting this field to `false` also places each target's assets in its own subdirectory. Standalone executable asset names always include `-os-arch`.
-- In `library` mode, `--target` selects Go cross-compile checks through `GOOS/GOARCH`, a Rust target triple, or the native Swift host. Dart rejects it. Library checks do not produce release artifacts.
+- `build.mode` defaults to `binary`. Use `library` for Go/Dart/Rust/Swift/TypeScript verification or `package` for Python/Rust distributions. `build.runTests` applies to Go/Dart library builds, Python package builds, and every Rust/Swift/TypeScript build mode.
+- `build.mainPackage` controls the Go main package (default `./cmd/<project.repo>`) or Rust manifest directory (default `.`) used for binary builds. Swift uses an executable product name, inferred when unique. TypeScript CLI builds require an explicit source entry point; library builds reject it.
+- For Go/Rust/Swift/TypeScript binary builds with one target, `build.artifactTargetSuffix: false` removes the target suffix from the archive name. Multiple-target archive names always include the target; setting this field to `false` also places each target's assets in its own subdirectory. Standalone executable asset names always include `-os-arch`.
+- In `library` mode, `--target` selects Go cross-compile checks through `GOOS/GOARCH`, a Rust target triple, or the native Swift host. Dart and TypeScript reject it. Library checks do not produce release artifacts.
 - `go.cgo` uses camelCase keys only: `enabled`, `cc`, `cxx`.
 - `go.cacheDir` and `go.modCacheDir` should be project-relative (for example `./.gocache`); `gh flarebyte` resolves them to absolute paths at runtime before invoking Go.
 - Absolute `go.cacheDir` and `go.modCacheDir` values still work, but emit portability warnings.
@@ -573,4 +662,4 @@ toolchains, target restrictions, and test-report limitations are described above
 - `devOutput.style` supports `summary` and `per_test`.
 - `--color` overrides `devOutput.color` for `test`, `lint`, and `cov`.
 - `--failed-only` suppresses PASS summary output for `test`, `lint`, and `cov`.
-- In `per_test` style, `test` prints `✓/↷/✗` per test (Go, Dart, Python, Rust, and Swift) and `cov` prints `✓/✗` per coverage entry; with `--failed-only`, only failing entries are shown.
+- In `per_test` style, `test` prints `✓/↷/✗` per test for all six languages and `cov` prints `✓/✗` per coverage entry; with `--failed-only`, only failing entries are shown.

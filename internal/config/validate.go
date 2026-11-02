@@ -56,9 +56,9 @@ func Validate(cfg Config) error {
 		}
 	}
 	switch cfg.Build.Language {
-	case "go", "dart", "python", "rust", "swift":
+	case "go", "dart", "python", "rust", "swift", "typescript":
 	default:
-		return fmt.Errorf("invalid build.language %q: expected go, dart, python, rust, or swift", cfg.Build.Language)
+		return fmt.Errorf("invalid build.language %q: expected go, dart, python, rust, swift, or typescript", cfg.Build.Language)
 	}
 	if cfg.Go.CGO.CC != "" && !cfg.Go.CGO.Enabled {
 		return errors.New("invalid go.cgo.cc: requires go.cgo.enabled=true")
@@ -68,6 +68,20 @@ func Validate(cfg Config) error {
 	}
 	if cfg.Build.Language == "python" && cfg.Build.Mode != "package" {
 		return errors.New(`invalid build.mode: Python supports "package" mode only`)
+	}
+	if cfg.Build.Language == "typescript" {
+		if cfg.Build.Mode != "library" && cfg.Build.Mode != "binary" {
+			return errors.New(`invalid build.mode: TypeScript supports "library" verification or "binary" CLI builds`)
+		}
+		if len(cfg.Build.Packages) != 1 || cfg.Build.Packages[0] != "./..." {
+			return errors.New(`invalid build.packages: TypeScript initially supports ["./..."] for one root tsconfig.json project`)
+		}
+		if cfg.Build.Mode == "binary" && cfg.Build.MainPackage == "" {
+			return errors.New(`invalid build.mainPackage: TypeScript CLI builds require a source entry point such as "src/cli.ts"`)
+		}
+		if cfg.Build.Mode == "library" && (cfg.Build.MainPackage != "" || len(cfg.Build.Targets) != 0) {
+			return errors.New(`invalid build: TypeScript library verification does not use mainPackage or targets`)
+		}
 	}
 	switch cfg.Build.Mode {
 	case "package":
