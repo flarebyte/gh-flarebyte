@@ -10,7 +10,8 @@
       "**/e2e/**/*.ts",
       "**/package.json",
       "**/tsconfig.json",
-      "**/biome.json"
+      "**/biome.json",
+      "!!**/e2e/fixtures"
     ],
     "ignoreUnknown": false
   },

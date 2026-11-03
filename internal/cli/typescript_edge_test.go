@@ -1,0 +1,298 @@
+// purpose: Cover TypeScript validation, reporting, and build failures that must fail closed.
+package cli
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+)
+
+func TestTypeScriptProjectValidation(t *testing.T) {
+	for _, tc := range []struct {
+		name, path, data, command, reply, want string
+	}{
+		{name: "invalid manifest", path: "package.json", data: "{", want: "invalid TypeScript package.json"},
+		{name: "missing biome", path: "biome.json", want: "requires biome.json"},
+		{name: "missing compiler", path: typescriptCompiler, want: "project-local tool"},
+		{name: "invalid bunfig", path: "bunfig.toml", data: "[", want: "invalid bunfig.toml"},
+		{name: "old patch", command: "--version", reply: "1.3.5", want: "requires Bun 1.3.6+"},
+		{name: "old minor", command: "--version", reply: "1.2.99", want: "requires Bun 1.3.6+"},
+		{name: "old major", command: "--version", reply: "0.9.99", want: "requires Bun 1.3.6+"},
+		{name: "unknown version", command: "--version", reply: "unknown", want: "cannot determine Bun version"},
+		{name: "invalid compiler output", command: typescriptCompiler, reply: "{", want: "invalid TypeScript project configuration"},
+		{name: "references", command: typescriptCompiler, reply: `{"files":["src/math.ts"],"references":[{"path":"../other"}]}`, want: "project references"},
+		{name: "empty project", command: typescriptCompiler, reply: `{"files":[]}`, want: "contains no source files"},
+		{name: "missing source", command: typescriptCompiler, reply: `{"files":["src/missing.ts"]}`, want: "missing.ts"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			setupTypeScript(t, "library")
+			stubTypeScript(t)
+			if tc.path != "" {
+				if tc.data == "" {
+					if err := os.Remove(tc.path); err != nil {
+						t.Fatal(err)
+					}
+				} else if err := os.WriteFile(tc.path, []byte(tc.data), 0o644); err != nil {
+					t.Fatal(err)
+				}
+			}
+			base := runCommandCapture
+			runCommandCapture = func(name string, args, env []string) (string, string, error) {
+				if len(args) > 1 && args[1] == tc.command {
+					return tc.reply, "", nil
+				}
+				return base(name, args, env)
+			}
+			if _, err := prepareTypeScript(os.Environ()); err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("expected %q, got %v", tc.want, err)
+			}
+		})
+	}
+	t.Run("source symlink outside package", func(t *testing.T) {
+		setupTypeScript(t, "library")
+		stubTypeScript(t)
+		outside := filepath.Join(t.TempDir(), "external.ts")
+		if err := os.WriteFile(outside, []byte("export {};"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Remove("src/math.ts"); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Symlink(outside, "src/math.ts"); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := prepareTypeScript(os.Environ()); err == nil || !strings.Contains(err.Error(), "outside the root package") {
+			t.Fatalf("external source accepted: %v", err)
+		}
+	})
+	t.Run("jsonc and newer Bun", func(t *testing.T) {
+		setupTypeScript(t, "library")
+		stubTypeScript(t)
+		if err := os.Rename("biome.json", "biome.jsonc"); err != nil {
+			t.Fatal(err)
+		}
+		base := runCommandCapture
+		runCommandCapture = func(name string, args, env []string) (string, string, error) {
+			if args[1] == "--version" {
+				return "2.0.0", "", nil
+			}
+			return base(name, args, env)
+		}
+		if _, err := prepareTypeScript(os.Environ()); err != nil {
+			t.Fatal(err)
+		}
+	})
+}
+
+func TestTypeScriptCoverageSourceSelection(t *testing.T) {
+	for _, tc := range []struct {
+		name, reply, want string
+		pattern           any
+	}{
+		{name: "string pattern", pattern: "src/cli.ts", reply: `{"selected":"src/math.ts"}`},
+		{name: "array patterns", pattern: []string{"src/cli.ts"}, reply: `{"selected":"src/math.ts"}`},
+		{name: "invalid selector response", pattern: "src/*", reply: "{", want: "invalid Bun coverage source selection"},
+		{name: "selector failure", pattern: "src/*", want: "glob failed"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			setupTypeScript(t, "library")
+			stubTypeScript(t)
+			project, err := prepareTypeScript(os.Environ())
+			if err != nil {
+				t.Fatal(err)
+			}
+			project.Bunfig["test"] = map[string]any{"coveragePathIgnorePatterns": tc.pattern}
+			runCommandCapture = func(name string, args, env []string) (string, string, error) {
+				var payload struct {
+					Files    map[string]string
+					Patterns []string
+				}
+				if err := json.Unmarshal([]byte(args[len(args)-1]), &payload); err != nil {
+					t.Fatal(err)
+				}
+				if len(payload.Files) != 2 || len(payload.Patterns) != 1 {
+					t.Fatalf("incorrect source selection: %+v", payload)
+				}
+				if tc.reply == "" {
+					return "", "glob failed", fmt.Errorf("invalid glob")
+				}
+				return tc.reply, "", nil
+			}
+			selected, err := project.coverageFiles(os.Environ())
+			if tc.want != "" {
+				if err == nil || !strings.Contains(err.Error(), tc.want) {
+					t.Fatalf("expected %q, got %v", tc.want, err)
+				}
+			} else if err != nil || len(selected) != 1 || selected["selected"] != "src/math.ts" {
+				t.Fatalf("%v %v", selected, err)
+			}
+		})
+	}
+	for name, want := range map[string]bool{
+		"src/code.ts": true, "src/view.tsx": true, "src/module.mts": true, "src/plain.js": true,
+		"src/types.d.ts": false, "src/types.d.mts": false, "src/types.d.cts": false,
+		"test/a.ts": false, "src/a.test.ts": false, "src/a.spec.ts": false,
+		"node_modules/pkg/a.ts": false, "dist/a.js": false, "generated/a.ts": false, "README.md": false,
+	} {
+		if got := typescriptProductionFile(name); got != want {
+			t.Errorf("%s: got %v, want %v", name, got, want)
+		}
+	}
+}
+
+func TestTypeScriptJUnitFailureAndTotals(t *testing.T) {
+	data := `<testsuites tests="3" failures="1" errors="1" skipped="1"><testsuite file="outer.ts" tests="3" failures="1" errors="1" skipped="1"><testcase name="assertion" classname="nested" file="inner.ts"><failure>bad assertion</failure></testcase><testcase name="runtime"><error>exception</error></testcase><testcase name="pending"><skipped/></testcase></testsuite></testsuites>`
+	report, err := parseTypeScriptTests([]byte(data))
+	if err != nil || report.Tests != 3 || report.Failed != 2 || report.Skipped != 1 {
+		t.Fatalf("%+v %v", report, err)
+	}
+	if report.Events[0].Test != "inner.ts::nested::assertion" || report.Events[0].Action != "fail" || report.Events[1].Test != "outer.ts::runtime" {
+		t.Fatalf("incorrect events: %+v", report.Events)
+	}
+	for _, invalid := range []string{
+		strings.Replace(data, `name="runtime"`, `name=""`, 1),
+		strings.Replace(data, `tests="3"`, `tests="4"`, 2),
+		strings.Replace(data, `errors="1"`, `errors="0"`, 2),
+		strings.Replace(data, ` skipped="1"`, "", 2),
+	} {
+		if _, err := parseTypeScriptTests([]byte(invalid)); err == nil {
+			t.Fatalf("accepted invalid JUnit: %s", invalid)
+		}
+	}
+}
+
+func TestTypeScriptRejectsMalformedCoverage(t *testing.T) {
+	root := t.TempDir()
+	allowed := map[string]string{filepath.Join(root, "a.ts"): "a.ts"}
+	valid := typescriptLCOV("a.ts", 2, 1)
+	for name, data := range map[string]string{
+		"nested record": "SF:a.ts\n" + valid,
+		"orphan totals": "LF:1\n", "negative total": "SF:a.ts\nLF:-1\n", "invalid total": "SF:a.ts\nLH:x\n",
+		"duplicate LF": strings.Replace(valid, "LF:2", "LF:2\nLF:2", 1),
+		"duplicate LH": strings.Replace(valid, "LH:1", "LH:1\nLH:1", 1),
+		"orphan line":  "DA:1,1\n", "incomplete line": "SF:a.ts\nDA:1\n",
+		"negative line":       strings.Replace(valid, "DA:1,1", "DA:-1,1", 1),
+		"invalid hit count":   strings.Replace(valid, "DA:1,1", "DA:1,no", 1),
+		"duplicate line":      strings.Replace(valid, "DA:1,1", "DA:1,1\nDA:1,1", 1),
+		"hits exceed lines":   strings.Replace(valid, "LH:1", "LH:3", 1),
+		"no executable lines": typescriptLCOV("a.ts", 0, 0),
+	} {
+		t.Run(name, func(t *testing.T) {
+			if _, _, err := parseTypeScriptCoverage(data, root, allowed); err == nil {
+				t.Fatalf("accepted invalid coverage: %s", data)
+			}
+		})
+	}
+}
+
+func TestTypeScriptBuildFailureGates(t *testing.T) {
+	for _, tc := range []struct {
+		name, command, reply, want string
+		target                     string
+		code                       int
+	}{
+		{name: "foreign host", command: "--eval", reply: "darwin-arm64", want: "differs from the active Bun host", code: ExitUsage},
+		{name: "missing entry", want: "must be a source file", code: ExitBuildFailure},
+		{name: "compiler fails", command: "build", want: "compile failed", code: ExitBuildFailure},
+		{name: "compiler produces no executable", command: "build", reply: "no output", want: "did not produce", code: ExitBuildFailure},
+		{name: "tests fail", command: "test", want: "compile failed", code: ExitBuildFailure},
+		{name: "unsupported target", target: "windows-amd64", want: "unsupported TypeScript target", code: ExitUsage},
+		{name: "unknown target", target: "darwin-amd64", want: "not present in build.targets", code: ExitUsage},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			setupTypeScript(t, "binary")
+			calls := stubTypeScript(t)
+			if tc.name == "tests fail" {
+				data, err := os.ReadFile(".gh-flarebyte.cue")
+				if err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(".gh-flarebyte.cue", bytes.Replace(data, []byte("build: {"), []byte("build: {\n runTests: true"), 1), 0o644); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if tc.name == "missing entry" {
+				if err := os.Remove("src/cli.ts"); err != nil {
+					t.Fatal(err)
+				}
+				// Keep the compiler's resolved source list valid so entry validation runs.
+			}
+			base := runCommandCapture
+			runCommandCapture = func(name string, args, env []string) (string, string, error) {
+				if tc.name == "missing entry" && args[1] == typescriptCompiler && contains(args, "--showConfig") {
+					return `{"files":["src/math.ts"]}`, "", nil
+				}
+				if args[1] == tc.command {
+					if tc.reply == "" {
+						return "", "compile failed", fmt.Errorf("tool failed")
+					}
+					return tc.reply, "", nil
+				}
+				return base(name, args, env)
+			}
+			if tc.name == "unsupported target" {
+				data, err := os.ReadFile(".gh-flarebyte.cue")
+				if err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(".gh-flarebyte.cue", bytes.ReplaceAll(data, []byte("linux-amd64"), []byte(tc.target)), 0o644); err != nil {
+					t.Fatal(err)
+				}
+			}
+			args := []string{"build"}
+			if tc.target != "" {
+				args = append(args, "--target", tc.target)
+			}
+			var out, diagnostics bytes.Buffer
+			result := Run(args, &out, &diagnostics)
+			if result.ExitCode != tc.code || !strings.Contains(diagnostics.String(), tc.want) {
+				t.Fatalf("%+v %s", result, &diagnostics)
+			}
+			if _, err := os.Stat("build/checksums.txt"); !os.IsNotExist(err) {
+				t.Fatal("failed build packaged assets")
+			}
+			for _, call := range *calls {
+				if call[0] == "build" {
+					t.Fatal("build proceeded after a validation failure")
+				}
+			}
+		})
+	}
+}
+
+func TestTypeScriptTestReportGates(t *testing.T) {
+	for _, tc := range []struct{ name, data, want string }{
+		{name: "missing report", want: "JUnit report missing"},
+		{name: "malformed report", data: "<", want: "invalid Bun JUnit report"},
+		{name: "zero tests", data: `<testsuite tests="0" failures="0" skipped="0"/>`, want: "expected passing tests"},
+		{name: "failure despite successful exit", data: `<testsuite tests="1" failures="1" skipped="0"><testcase name="failed"><failure/></testcase></testsuite>`, want: "expected passing tests"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			setupTypeScript(t, "library")
+			stubTypeScript(t)
+			project, err := prepareTypeScript(os.Environ())
+			if err != nil {
+				t.Fatal(err)
+			}
+			runCommandCapture = func(name string, args, env []string) (string, string, error) {
+				if tc.data != "" {
+					for _, arg := range args {
+						if strings.HasPrefix(arg, "--reporter-outfile=") {
+							if err := os.WriteFile(strings.TrimPrefix(arg, "--reporter-outfile="), []byte(tc.data), 0o600); err != nil {
+								t.Fatal(err)
+							}
+						}
+					}
+				}
+				return "", "", nil
+			}
+			if _, err := typescriptTest(project, os.Environ(), false, t.TempDir()); err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("expected %q, got %v", tc.want, err)
+			}
+		})
+	}
+}

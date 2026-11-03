@@ -4,7 +4,7 @@
 	lint lint-go lint-dart lint-e2e format format-go format-dart format-e2e review review-dart coverage coverage-go coverage-dart \
 	doc-design doc-decision dup complexity release sec \
 	thoth-meta thoth-meta-go thoth-meta-go-test thoth-meta-ts-e2e \
-	check-tools install-tools-help help e2e e2e-deps test-dart-e2e test-python-e2e test-rust-e2e test-swift-e2e test-integrations
+	check-tools install-tools-help help e2e e2e-deps test-dart-e2e test-python-e2e test-rust-e2e test-swift-e2e test-typescript-e2e test-integrations
 
 GO := go
 BUN := bun
@@ -63,14 +63,14 @@ coverage-go: build-go ## Run coverage using the root configuration (Go here).
 
 coverage-dart: coverage-go ## Compatibility alias for configured coverage; does not select Dart.
 
-# Default E2E uses stub tools; real Python/Rust/Swift integrations remain opt-in.
+# Default E2E uses stub tools and pure Bun tests; real language integrations remain opt-in.
 e2e: test-e2e ## Alias for the default E2E suite.
 
 test-dart-e2e: build-go ## Run the Dart command fixture using a stub Dart executable.
 	mkdir -p "$(TMP_DIR)"
 	$(BUN_ENV) $(BUN) test ./e2e/dart.test.ts
 
-test-integrations: test-python-e2e test-rust-e2e test-swift-e2e ## Run all real Python, Rust, and Swift fixtures (requires toolchains).
+test-integrations: test-python-e2e test-rust-e2e test-swift-e2e test-typescript-e2e ## Run all real Python, Rust, Swift, and TypeScript fixtures.
 
 e2e-deps: ## Install locked dependencies for Biome and TypeScript tooling.
 	mkdir -p "$(TMP_DIR)"
@@ -91,6 +91,10 @@ test-rust-e2e: build-go ## Run the real Rust/Cargo integration fixture.
 test-swift-e2e: build-go ## Run the real SwiftPM integration fixture.
 	mkdir -p "$(TMP_DIR)"
 	GH_FLAREBYTE_SWIFT_E2E=1 $(BUN_ENV) $(BUN) test ./e2e/swift.test.ts
+
+test-typescript-e2e: build-go ## Run the real Bun TypeScript library and CLI fixture.
+	mkdir -p "$(TMP_DIR)"
+	GH_FLAREBYTE_TYPESCRIPT_E2E=1 $(BUN_ENV) $(BUN) test ./e2e/typescript.test.ts
 
 # Formatting, lint, and review
 lint: lint-go lint-e2e ## Run configured Go lint and Biome checks.
@@ -179,6 +183,7 @@ check-tools: ## Report command/local-tool availability as key=value pairs.
 install-tools-help: ## Show core and optional tool installation guidance.
 	@printf "Core tools and optional workflow tools:\n"
 	@printf "  Swift (optional integration): Swift 6+ via Xcode or https://www.swift.org/install/\n"
+	@printf "  TypeScript (optional integration): Bun 1.3.6+; the fixture installs locked TypeScript and Biome tools.\n"
 	@printf "  Rust (optional integration): https://rustup.rs; components rustfmt, clippy, llvm-tools-preview; cargo install cargo-llvm-cov --locked\n"
 	@printf "  uv (optional Python integration): https://docs.astral.sh/uv/getting-started/installation/\n"
 	@printf "  go: https://go.dev/doc/install\n"

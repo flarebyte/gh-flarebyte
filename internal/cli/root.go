@@ -161,8 +161,8 @@ Usage:
   gh flarebyte config validate [--config path]
 
 Notes:
-  build: Go supports binary/library; Dart supports library; Python 3 with uv supports package; Rust supports binary/library/package; Swift supports binary/library.
-  release: Python, Rust, and Swift support fresh build artifacts; Dart requires includeArtifacts=false.
+  build: Go supports binary/library; Dart supports library; Python 3 with uv supports package; Rust supports binary/library/package; Swift supports binary/library; TypeScript supports library verification and binary CLI builds.
+  release: Python, Rust, Swift, and TypeScript support fresh build artifacts; library releases and Dart require includeArtifacts=false.
 `)
 }
 

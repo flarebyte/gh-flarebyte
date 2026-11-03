@@ -3,15 +3,15 @@
 
 import argparse
 import hashlib
+from http.client import HTTPSConnection, HTTPException
 import json
 import os
 from pathlib import Path
 import re
+import ssl
 import subprocess
 import sys
-from urllib.error import HTTPError, URLError
 from urllib.parse import quote
-from urllib.request import Request, urlopen
 
 
 class PreflightError(Exception):
@@ -84,26 +84,35 @@ def release_metadata(root, expected_version=None):
 
 class GitHub:
     def __init__(self):
-        self.base = os.environ.get('GITHUB_API_URL', 'https://api.github.com').rstrip('/')
-        if not self.base.startswith('https://'):
-            raise PreflightError('GitHub API must use HTTPS')
+        # This repository releases on GitHub.com. Never send its token to a
+        # configurable host, and do not follow redirects to another destination.
+        if os.environ.get('GITHUB_API_URL', 'https://api.github.com').rstrip('/') != 'https://api.github.com':
+            raise PreflightError('Release preflight requires https://api.github.com')
         self.token = os.environ.get('GH_TOKEN') or os.environ.get('GITHUB_TOKEN')
 
     def get(self, endpoint, missing_ok=False):
         headers = {'Accept': 'application/vnd.github+json', 'User-Agent': 'gh-flarebyte-release-preflight'}
         if self.token:
             headers['Authorization'] = 'Bearer ' + self.token
-        request = Request(self.base + endpoint, headers=headers)
+        if not endpoint.startswith('/repos/') or any(ord(char) < 32 for char in endpoint):
+            raise PreflightError('Invalid GitHub API endpoint')
+        # Explicit certificate-chain and hostname verification on Python 3.11+.
+        context = ssl.create_default_context()
+        # Audited: fixed host, verified TLS context, no redirects; covered by tests.
+        # nosemgrep: python.lang.security.audit.httpsconnection-detected.httpsconnection-detected
+        connection = HTTPSConnection('api.github.com', timeout=30, context=context)
         try:
-            with urlopen(request, timeout=30) as response:
+            connection.request('GET', endpoint, headers=headers)
+            with connection.getresponse() as response:
+                if response.status == 404 and missing_ok:
+                    return None
+                if response.status != 200:
+                    raise PreflightError(f'GitHub check failed with HTTP {response.status} for {endpoint}')
                 return json.load(response)
-        except HTTPError as error:
-            error.close()
-            if error.code == 404 and missing_ok:
-                return None
-            raise PreflightError(f'GitHub check failed with HTTP {error.code} for {endpoint}') from error
-        except (URLError, TimeoutError, ValueError) as error:
+        except (OSError, HTTPException, ValueError) as error:
             raise PreflightError(f'GitHub check failed for {endpoint}: {error}') from error
+        finally:
+            connection.close()
 
 
 def check_available(api, repository, tag):

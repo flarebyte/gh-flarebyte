@@ -14,6 +14,9 @@ import (
 func setupLanguageContract(t *testing.T, language string) {
 	t.Helper()
 	switch language {
+	case "typescript":
+		setupTypeScript(t, "library")
+		stubTypeScript(t)
 	case "swift":
 		stubSwift(t, setupSwift(t, "library"))
 	case "rust":
@@ -59,7 +62,7 @@ func setupLanguageContract(t *testing.T, language string) {
 }
 
 func TestLanguageDeveloperContract(t *testing.T) {
-	for _, language := range []string{"go", "dart", "python", "rust", "swift"} {
+	for _, language := range []string{"go", "dart", "python", "rust", "swift", "typescript"} {
 		for _, tc := range []struct {
 			name, extraConfig string
 			devFields         string

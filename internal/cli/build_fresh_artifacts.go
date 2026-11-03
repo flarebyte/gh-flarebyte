@@ -1,4 +1,4 @@
-// purpose: Package target executables and checksum only fresh Rust and Swift build assets.
+// purpose: Package target executables and checksum only fresh Rust, Swift, and TypeScript build assets.
 package cli
 
 import (

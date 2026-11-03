@@ -1,0 +1,6 @@
+[test]
+root = "./test"
+preload = ["./test/setup.ts"]
+# gh-flarebyte owns thresholds and reporting without changing this file.
+coverageThreshold = 1.0
+coverageReporter = ["text"]
