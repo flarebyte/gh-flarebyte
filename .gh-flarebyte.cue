@@ -116,3 +116,11 @@ release: {
 	artifactDir:      "build"
 	includeChecksums: true
 }
+
+// Tooling runtimes are independent of the Go application.
+e2e: {
+ runtime: "bun"
+}
+script: {
+ runtime: "python3"
+}

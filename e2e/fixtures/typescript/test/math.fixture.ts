@@ -1,11 +1,12 @@
-import { expect, test } from 'bun:test';
+import assert from 'node:assert/strict';
+import { test } from 'node:test';
 import { answer } from '../src/cli';
 import { add } from '../src/math';
 
 test('adds numbers', () => {
-  expect(process.env.TYPESCRIPT_FIXTURE_PRELOAD).toBe('loaded');
-  expect(add(2, 3)).toBe(5);
-  expect(answer()).toBe(5);
+  assert.equal(process.env.TYPESCRIPT_FIXTURE_PRELOAD, 'loaded');
+  assert.equal(add(2, 3), 5);
+  assert.equal(answer(), 5);
 });
 
 test.skip('skipped test', () => {});

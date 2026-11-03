@@ -150,6 +150,8 @@ Usage:
   gh flarebyte --version [--json]
   gh flarebyte build [--target os-arch] [--output-dir path]
   gh flarebyte test
+  gh flarebyte e2e
+  gh flarebyte script <file> -- [args...]
   gh flarebyte format
   gh flarebyte lint
   gh flarebyte cov [--min percent]

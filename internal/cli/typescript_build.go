@@ -66,7 +66,7 @@ func buildTypeScript(cfg config.Config, target, outputOverride string, stderr io
 	}
 	host, entry := "", ""
 	if cfg.Build.Mode == "binary" {
-		host, err = typescriptRun([]string{"--eval", `process.stdout.write(process.platform + "-" + process.arch)`}, env)
+		host, err = bunRun([]string{"--eval", `process.stdout.write(process.platform + "-" + process.arch)`}, env)
 		if err != nil {
 			return nil, err
 		}
@@ -105,7 +105,7 @@ func buildTypeScript(cfg config.Config, target, outputOverride string, stderr io
 		return nil, nil
 	}
 	binary := filepath.Join(dir, cfg.Project.Repo)
-	if _, err := typescriptRun([]string{"build", "--compile", entry, "--outfile", binary, "--no-compile-autoload-dotenv", "--no-compile-autoload-bunfig"}, env); err != nil {
+	if _, err := bunRun([]string{"build", "--compile", entry, "--outfile", binary, "--no-compile-autoload-dotenv", "--no-compile-autoload-bunfig"}, env); err != nil {
 		return nil, err
 	}
 	if info, err := os.Stat(binary); err != nil || !info.Mode().IsRegular() {

@@ -13,3 +13,4 @@ gh flarebyte repo update,--confirm-deletions,boolean,required when topic or labe
 gh flarebyte repo update,--accept-visibility-change-consequences,boolean,required when repository visibility changes,safety-gate,Allow visibility transitions that need explicit acknowledgement.
 gh flarebyte repo audit,--json,boolean,optional,script-friendly,Emit the audit report as stable machine-readable JSON.
 gh flarebyte repos mine,--json,boolean,optional,script-friendly,Emit discovered repositories as stable machine-readable JSON.
+gh flarebyte script,--,separator,optional,script-friendly,Forward subsequent arguments unchanged to the configured script file.

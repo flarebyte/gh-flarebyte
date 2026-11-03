@@ -46,6 +46,12 @@ func newAllowedDevCommand(name string, args []string) (*exec.Cmd, error) {
 		return exec.Command("swift", args...), nil
 	case "rustc":
 		return exec.Command("rustc", args...), nil
+	case "npm":
+		return exec.Command("npm", args...), nil
+	case "node":
+		return exec.Command("node", args...), nil
+	case "python3":
+		return exec.Command("python3", args...), nil
 	case "bun":
 		return exec.Command("bun", args...), nil
 	default:

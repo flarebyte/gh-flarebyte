@@ -42,3 +42,11 @@ release.releaseNotesFilePath,string,.gh-flarebyte.cue,local-only,Path required w
 release.includeArtifacts,boolean,.gh-flarebyte.cue,local-only,Whether release uploads build artifacts or publishes tag/notes only.
 release.artifactDir,string,.gh-flarebyte.cue,local-only,Release asset directory. Go scans matching assets; Python/Rust stage only current build outputs and preserve relative artifact paths. Swift stages only fresh executable assets and checksums. TypeScript CLI releases stage only fresh executable assets and checksums.
 release.includeChecksums,boolean,.gh-flarebyte.cue,local-only,Whether to include the checksum manifest as a release asset.
+e2e.runtime,string,.gh-flarebyte.cue,local-only,Optional independent e2e runtime: bun or python3.
+e2e.root,string,.gh-flarebyte.cue,local-only,Repository-relative suite folder; defaults to e2e.
+e2e.dependencies.manager,string,.gh-flarebyte.cue,local-only,Optional dependency preparation: bun or npm for Bun; uv for Python. Defaults to bun for Bun.
+e2e.dependencies.root,string,.gh-flarebyte.cue,local-only,Dependency files at repository root (.) or suite root; defaults to repository root.
+script.runtime,string,.gh-flarebyte.cue,local-only,Optional independent script runtime: bun or python3.
+script.root,string,.gh-flarebyte.cue,local-only,Repository-relative script folder; defaults to script.
+script.dependencies.manager,string,.gh-flarebyte.cue,local-only,Optional dependency preparation: bun or npm for Bun; uv for Python.
+script.dependencies.root,string,.gh-flarebyte.cue,local-only,Dependency root defaults to .; matching JavaScript roots share one manager.

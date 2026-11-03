@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -28,9 +29,9 @@ func setupTypeScript(t *testing.T, mode string) string {
 	t.Helper()
 	root := setupTempWorkdirWithConfig(t, typescriptConfigCue(mode))
 	for name, data := range map[string]string{
-		"package.json": `{"name":"fixture","version":"1.2.3"}`, "bun.lock": "locked", "tsconfig.json": "{}", "biome.json": "{}",
+		"package.json": `{"name":"fixture","version":"1.2.3"}`, "package-lock.json": "locked", "tsconfig.json": "{}", "biome.json": "{}",
 		"src/math.ts": "export const add = 1;", "src/cli.ts": "console.log(1);", "test/math.test.ts": "test('adds', () => {});",
-		typescriptCompiler: "", typescriptBiome: "",
+		typescriptCompiler: "", typescriptBiome: "", "node_modules/c8/bin/c8.js": "",
 	} {
 		if err := os.MkdirAll(filepath.Dir(name), 0o755); err != nil {
 			t.Fatal(err)
@@ -61,10 +62,12 @@ func stubTypeScript(t *testing.T) *[][]string {
 	t.Cleanup(func() { runCommandCapture = old })
 	var calls [][]string
 	runCommandCapture = func(name string, args, env []string) (string, string, error) {
-		if name != "bun" || args[0] != "--no-install" {
+		if name != "bun" && name != "node" && name != "npm" {
 			t.Fatalf("unexpected TypeScript command: %s %v", name, args)
 		}
-		args = args[1:]
+		if name == "bun" {
+			args = args[1:]
+		}
 		calls = append(calls, append([]string(nil), args...))
 		flag := func(key string) string {
 			for i, value := range args {
@@ -80,8 +83,8 @@ func stubTypeScript(t *testing.T) *[][]string {
 		switch args[0] {
 		case "--version":
 			return "1.3.6", "", nil
-		case "install":
-			if !contains(args, "--frozen-lockfile") || !contains(args, "--ignore-scripts") {
+		case "ci":
+			if !contains(args, "--ignore-scripts") {
 				t.Fatalf("unlocked or script-enabled installation: %v", args)
 			}
 		case typescriptCompiler:
@@ -91,18 +94,25 @@ func stubTypeScript(t *testing.T) *[][]string {
 		case typescriptBiome:
 		case "--eval":
 			return "linux-x64", "", nil
-		case "test":
-			if err := os.WriteFile(flag("--reporter-outfile"), []byte(typescriptJUnitFixture), 0o644); err != nil {
+		case "test", "./node_modules/c8/bin/c8.js":
+			reportPath := ""
+			for _, value := range env {
+				if strings.HasPrefix(value, "NODE_OPTIONS=") {
+					re := regexp.MustCompile(`--test-reporter-destination="([^"]+)"`)
+					match := re.FindStringSubmatch(value)
+					if len(match) > 1 {
+						reportPath = match[1]
+					}
+				}
+			}
+			if err := os.WriteFile(reportPath, []byte(typescriptJUnitFixture), 0o644); err != nil {
 				return "", "", err
 			}
-			data, err := os.ReadFile(flag("--config"))
-			if err != nil || !strings.Contains(string(data), "coverageThreshold = 0") {
-				t.Fatalf("threshold policy was not isolated: %s %v", data, err)
-			}
-			if contains(args, "--coverage") {
+			if args[0] != "test" {
 				data := typescriptLCOV("src/math.ts", 10, 7) + typescriptLCOV("src/cli.ts", 1, 1)
-				return "", "", os.WriteFile(filepath.Join(flag("--coverage-dir"), "lcov.info"), []byte(data), 0o644)
+				return "", "", os.WriteFile(filepath.Join(flag("--reports-dir"), "lcov.info"), []byte(data), 0o644)
 			}
+
 		case "build":
 			if !contains(args, "--compile") {
 				t.Fatal("CLI build did not compile an executable")
@@ -287,10 +297,10 @@ func TestTypeScriptMissingLockAndInvalidTarget(t *testing.T) {
 	if result := Run([]string{"build", "--target", "linux-amd64"}, &out, &diagnostics); result.ExitCode != ExitUsage {
 		t.Fatalf("%+v %s", result, &diagnostics)
 	}
-	if err := os.Remove("bun.lock"); err != nil {
+	if err := os.Remove("package-lock.json"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := prepareTypeScript(os.Environ()); err == nil || !strings.Contains(err.Error(), "bun.lock") {
+	if _, err := prepareTypeScript(os.Environ()); err == nil || !strings.Contains(err.Error(), "package-lock.json") {
 		t.Fatalf("missing lock accepted: %v", err)
 	}
 }
@@ -303,5 +313,17 @@ func TestTypeScriptManifestRejectsWorkspaces(t *testing.T) {
 	}
 	if _, err := prepareTypeScript(os.Environ()); err == nil || !strings.Contains(err.Error(), "workspaces") {
 		t.Fatalf("workspace accepted: %v", err)
+	}
+}
+
+func TestTypeScriptCustomToolingCoverageRoots(t *testing.T) {
+	project := typescriptProject{Files: map[string]string{
+		"/repo/src/main.ts":       "src/main.ts",
+		"/repo/checks/test.ts":    "checks/test.ts",
+		"/repo/tools/generate.ts": "tools/generate.ts",
+	}, ToolingRoots: []string{"checks", "tools"}}
+	files, err := project.coverageFiles(nil)
+	if err != nil || len(files) != 1 || files["/repo/src/main.ts"] != "src/main.ts" {
+		t.Fatalf("tooling included in production coverage: %v %v", files, err)
 	}
 }

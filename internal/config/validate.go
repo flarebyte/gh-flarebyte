@@ -9,6 +9,16 @@ import (
 )
 
 func Validate(cfg Config) error {
+	if err := validateTooling("e2e", cfg.E2E); err != nil {
+		return err
+	}
+	if err := validateTooling("script", cfg.Script); err != nil {
+		return err
+	}
+	if err := validateSharedToolingDependencies(cfg); err != nil {
+		return err
+	}
+
 	if cfg.Project.Org == "" {
 		return errors.New("invalid project.org: value is required")
 	}
