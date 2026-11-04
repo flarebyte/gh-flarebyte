@@ -88,11 +88,22 @@ export type RepositoryConfig = {
   features: RepositoryFeatures;
 };
 
+export type ToolingConfig = {
+  runtime: "bun" | "python3";
+  root?: string; // Defaults to e2e or script; repository-relative.
+  dependencies?: {
+    manager?: "bun" | "npm" | "uv";
+    root?: string; // Defaults to the repository root (.).
+  };
+};
+
 export type GhFlarebyteConfig = {
   project: ProjectConfig;
   sync: SyncPlan;
   repository: RepositoryConfig;
   go?: GoConfig;
+  e2e?: ToolingConfig;
+  script?: ToolingConfig;
   build: BuildConfig;
   release: ReleaseConfig;
 };

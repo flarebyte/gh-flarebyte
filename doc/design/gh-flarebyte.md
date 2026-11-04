@@ -168,6 +168,14 @@ How config fields map onto GitHub sync targets and extension-local automation se
 | release.includeArtifacts | boolean | .gh-flarebyte.cue | Whether release uploads build artifacts or publishes tag/notes only. | local-only |
 | release.artifactDir | string | .gh-flarebyte.cue | Release asset directory. Go scans matching assets; Python/Rust stage only current build outputs and preserve relative artifact paths. Swift stages only fresh executable assets and checksums. TypeScript CLI releases stage only fresh executable assets and checksums. | local-only |
 | release.includeChecksums | boolean | .gh-flarebyte.cue | Whether to include the checksum manifest as a release asset. | local-only |
+| e2e.runtime | string | .gh-flarebyte.cue | Optional independent e2e runtime: bun or python3. | local-only |
+| e2e.root | string | .gh-flarebyte.cue | Repository-relative suite folder; defaults to e2e. | local-only |
+| e2e.dependencies.manager | string | .gh-flarebyte.cue | Optional dependency preparation: bun or npm for Bun; uv for Python. Defaults to bun for Bun. | local-only |
+| e2e.dependencies.root | string | .gh-flarebyte.cue | Dependency files at repository root (.) or suite root; defaults to repository root. | local-only |
+| script.runtime | string | .gh-flarebyte.cue | Optional independent script runtime: bun or python3. | local-only |
+| script.root | string | .gh-flarebyte.cue | Repository-relative script folder; defaults to script. | local-only |
+| script.dependencies.manager | string | .gh-flarebyte.cue | Optional dependency preparation: bun or npm for Bun; uv for Python. | local-only |
+| script.dependencies.root | string | .gh-flarebyte.cue | Dependency root defaults to .; matching JavaScript roots share one manager. | local-only |
 
 ### 03 Topics
 
@@ -191,7 +199,7 @@ Build language selection for gh flarebyte build.
 
 #### Build Config
 
-Build orchestration uses the shared top-level `build` block. Go supports binary and library modes; Dart supports library validation; Python 3 with uv supports package mode; Rust with Cargo supports binary/library/package modes; Swift 6+ with SwiftPM supports library verification and native macOS/Linux binary builds. TypeScript with Bun supports library type verification without assets and native macOS/Linux CLI binaries from an explicit mainPackage source entry point. Swift uses existing configuration fields, executable product names, and exact root target names or ./... for build selection. Python package builds produce a wheel and source distribution via `uv build --no-sources`, reuse outputDir/checksumFile/runTests, and reject target matrices and --target. All Python developer tools run through `uv run --locked` with a repository-local pyproject.toml and uv.lock. Python version selection and tool rules remain in pyproject.toml and optional .python-version. Go binary mode writes per-target binaries and archives with SHA-256 checksums; library mode compiles configured packages and optionally runs tests without binary artifacts. Go library --target maps to GOOS/GOARCH validation. Isolated Python build dependencies are resolved separately from uv.lock and should be pinned in build-system.requires.
+Build orchestration uses the shared top-level `build` block. Go supports binary and library modes; Dart supports library validation; Python 3 with uv supports package mode; Rust with Cargo supports binary/library/package modes; Swift 6+ with SwiftPM supports library verification and native macOS/Linux binary builds. TypeScript with npm and Node supports library type verification without assets and native macOS/Linux CLI binaries from an explicit mainPackage source entry point. Swift uses existing configuration fields, executable product names, and exact root target names or ./... for build selection. Python package builds produce a wheel and source distribution via `uv build --no-sources`, reuse outputDir/checksumFile/runTests, and reject target matrices and --target. All Python developer tools run through `uv run --locked` with a repository-local pyproject.toml and uv.lock. Python version selection and tool rules remain in pyproject.toml and optional .python-version. Go binary mode writes per-target binaries and archives with SHA-256 checksums; library mode compiles configured packages and optionally runs tests without binary artifacts. Go library --target maps to GOOS/GOARCH validation. Isolated Python build dependencies are resolved separately from uv.lock and should be pinned in build-system.requires.
 
 ### 06 Release
 
@@ -298,11 +306,22 @@ export type RepositoryConfig = {
   features: RepositoryFeatures;
 };
 
+export type ToolingConfig = {
+  runtime: "bun" | "python3";
+  root?: string; // Defaults to e2e or script; repository-relative.
+  dependencies?: {
+    manager?: "bun" | "npm" | "uv";
+    root?: string; // Defaults to the repository root (.).
+  };
+};
+
 export type GhFlarebyteConfig = {
   project: ProjectConfig;
   sync: SyncPlan;
   repository: RepositoryConfig;
   go?: GoConfig;
+  e2e?: ToolingConfig;
+  script?: ToolingConfig;
   build: BuildConfig;
   release: ReleaseConfig;
 };
@@ -339,15 +358,17 @@ User-facing extension actions and their purpose.
 | command | config_touchpoints | output | purpose | read_write |
 | --- | --- | --- | --- | --- |
 | gh flarebyte build | build.* -> binaries or library checks or Python distributions or Rust crate packages | language-specific build output Swift verifies libraries or packages native executable artifacts. TypeScript verifies libraries or compiles native Bun CLI executables with checksums. | build the project according to the configured language and build mode | write |
-| gh flarebyte test | build.language and devOutput.* | Go JSON or Dart JSON or Python JUnit XML or Rust standard harness pretty output. Rust includes doctests; custom harnesses require summary style. Swift combines serial XCTest results with Swift Testing JSON schema 0 and rejects incomplete reports. TypeScript uses Bun JUnit reports with validated suite totals and per-test output. | run language tests with summary or per-test output | write |
-| gh flarebyte format | build.language | Go gofmt or Dart format or Python locked Ruff format or Rust cargo fmt --all Swift formats target-owned sources and Package.swift using swift format. TypeScript runs project-local Biome formatting through Bun. | format sources for the configured language | write |
+| gh flarebyte test | build.language and devOutput.* | Go JSON or Dart JSON or Python JUnit XML or Rust standard harness pretty output. Rust includes doctests; custom harnesses require summary style. Swift combines serial XCTest results with Swift Testing JSON schema 0 and rejects incomplete reports. TypeScript runs npm test with Node JUnit reports and per-test output. | run language tests with summary or per-test output | write |
+| gh flarebyte format | build.language | Go gofmt or Dart format or Python locked Ruff format or Rust cargo fmt --all Swift formats target-owned sources and Package.swift using swift format. TypeScript runs project-local Biome formatting through Node. | format sources for the configured language | write |
 | gh flarebyte lint | build.language and devOutput.* | Go vet or Dart analyze or Python Ruff or Rust Clippy with warnings denied across workspace targets Swift runs strict formatter lint and compiles sources/tests with warnings as errors. TypeScript runs Biome checks without fixes and tsc --noEmit. | run static checks without fixing sources | write |
-| gh flarebyte cov | build.language and coverage.* and devOutput.* | Go coverage or Dart LCOV or Python JSON or Rust cargo-llvm-cov LCOV. Rust stable coverage excludes doctests and dependency/generated directories. Swift uses LLVM JSON production-source line coverage weighted by line count. TypeScript uses fresh source-mapped Bun LCOV reports; omitted production files fail explicitly and shared thresholds remain authoritative. | measure coverage and apply the shared threshold policy | write |
+| gh flarebyte cov | build.language and coverage.* and devOutput.* | Go coverage or Dart LCOV or Python JSON or Rust cargo-llvm-cov LCOV. Rust stable coverage excludes doctests and dependency/generated directories. Swift uses LLVM JSON production-source line coverage weighted by line count. TypeScript uses fresh c8 source-mapped LCOV reports from npm test; unimported production files receive zero coverage and shared thresholds remain authoritative. | measure coverage and apply the shared threshold policy | write |
 | gh flarebyte release | build.* and release.* -> GitHub release with optional assets | versioned GitHub release | run build then publish a GitHub release from the configured release settings | write |
 | gh flarebyte repo init | .gh-flarebyte.cue created or seeded | initialized repo state | bootstrap a repo-local config and initial GitHub defaults | write |
 | gh flarebyte repo update | .gh-flarebyte.cue -> GitHub repo state with `--confirm-deletions` and `--accept-visibility-change-consequences` when needed | updated remote repo state | reconcile GitHub repo metadata from local config with explicit safety flags | write |
 | gh flarebyte repo audit | .gh-flarebyte.cue and GitHub state | drift report | compare local config with remote GitHub state | read |
 | gh flarebyte repos mine | none | relevant repo list | list repositories the user contributes to within an org | read |
+| gh flarebyte e2e | e2e.* | Bun JUnit or Python unittest discovery; empty suites fail. | run an independent Bun or Python e2e suite | write |
+| gh flarebyte script | script.* | Child output and exit status; no shell interpolation. | execute a Bun TypeScript or Python file with forwarded arguments | write |
 
 ### 02 Command Flows
 
@@ -434,6 +455,7 @@ CLI flags that define the initial command surface for the extension.
 | safety-gate | gh flarebyte repo update | --accept-visibility-change-consequences | boolean | Allow visibility transitions that need explicit acknowledgement. | required when repository visibility changes |
 | script-friendly | gh flarebyte repo audit | --json | boolean | Emit the audit report as stable machine-readable JSON. | optional |
 | script-friendly | gh flarebyte repos mine | --json | boolean | Emit discovered repositories as stable machine-readable JSON. | optional |
+| script-friendly | gh flarebyte script | -- | separator | Forward subsequent arguments unchanged to the configured script file. | optional |
 
 ### 04 Automation
 
@@ -497,6 +519,8 @@ Stable process exit behavior for humans, scripts, and CI.
 | gh flarebyte repo update | 5 | Safety gate prevented high-consequence visibility change. | visibility change blocked without `--accept-visibility-change-consequences` |
 | gh flarebyte build | 6 | Compilation or packaging failed. | build failed for one or more requested targets |
 | gh flarebyte release | 7 | GitHub release creation or asset upload failed. | release publish failed after version resolution and build |
+| gh flarebyte script | child exit code | Preserve the script exit status; dependency or launch failures use 1. | script process fails |
+| gh flarebyte e2e | child exit code | Preserve suite exit status; empty suites or invalid reports use 1. | suite process fails |
 
 ### 08 Structured Output
 
@@ -611,7 +635,7 @@ How build orchestration is driven from config.
 
 #### Build Command
 
-Build from the shared build block: Go binary/library, Dart library, Python package, Rust binary/library/package, or Swift binary/library or TypeScript library/binary CLI. TypeScript requires a committed bun.lock and uses frozen installation with lifecycle scripts disabled. Project-local Biome formats and lints while tsc --noEmit checks types. Bun JUnit totals are validated and source-mapped LCOV coverage excludes non-production files; omitted production files fail rather than inflate coverage. A private Bun config keeps reports isolated and disables native thresholds so shared policy is authoritative. TypeScript library verification has no entry point or targets and emits no artifacts. CLI builds require an explicit source entry point and match the native Bun host, using existing executable archives and checksum policies. Workspaces, project references, Windows, cross-compilation, npm packaging and npm publication are outside initial support. Go targets use os-arch strings; Unix archives use tar.gz and Windows zip with .exe binaries. Go library builds compile package patterns and optionally test. Dart libraries run pub get/analyze and optional tests. Python package builds validate Python 3 and the lockfile, optionally run pytest, then build a wheel and source distribution in a fresh temporary directory and copy them to outputDir with SHA-256 checksums. --output-dir relocates artifacts and checksums. Python test, format, lint, and cov use pytest JUnit XML, Ruff, and coverage.py JSON with shared output and threshold fields. Go binary builds embed version, commitId, date, and runtime metadata for --version and --version --json. Failures identify the target or mode and failing step. Python, Rust, and Swift failures preserve stdout and stderr diagnostics. Swift requires Package.swift and Package.resolved for remote dependencies, enforcing resolved versions without updates. It formats owned files with swift format, lints strictly and compiles test targets with warnings as errors, tests XCTest serial output and Swift Testing JSON schema 0, and measures production line coverage through fresh LLVM JSON exports. Optional build tests run the whole package on the host. Binary builds discover release paths with --show-bin-path and reject resource bundles and package-built shared libraries. Cross-compilation, Windows, Xcode apps, registry publishing, signing, and notarization are outside initial scope. Swift versions use existing YAML/JSON sources. Rust commands resolve dependencies with --locked, test the workspace including doctests, format with rustfmt, lint with Clippy and warnings denied, and measure line coverage with cargo-llvm-cov LCOV. Custom Rust harnesses require summary output. Stable Rust coverage excludes doctests and dependency/generated sources. Rust library/package selection uses ./... for all workspace members or exact crate names; binary selection uses mainPackage as a manifest directory and the sole binary or package.default-run. Rust target names map to GNU Linux, Apple Darwin, and MSVC Windows triples; installed target components and linkers are required. Optional build tests execute on the compiler host. Rust packaging keeps verification enabled and copies only fresh .crate files; binary packaging reuses the Go artifact policy and discovers executable paths through Cargo compiler JSON.
+Build from the shared build block: Go binary/library, Dart library, Python package, Rust binary/library/package, or Swift binary/library or TypeScript library/binary CLI. TypeScript requires a committed package-lock.json and uses npm ci with lifecycle scripts disabled. Project-local Biome and tsc run through Node. npm test uses Node with tsx and fresh JUnit reports. c8 wraps npm test for source-mapped LCOV coverage including unimported production sources at zero coverage. Optional e2e and script sections select independent Bun TypeScript or Python 3 execution. Source roots default to e2e and script; dependency roots default to the repository root and may be isolated in the source folder. Bun supports locked Bun or npm dependencies; Python optionally uses locked uv dependencies. Without dependencies blocks no installation occurs. Bun e2e validates fresh JUnit; Python uses unittest discovery. Empty suites fail. Scripts forward arguments and child exit status without shell interpolation. TypeScript library verification has no entry point or targets and emits no artifacts. CLI builds require an explicit source entry point and match the native Bun host, using existing executable archives and checksum policies. Workspaces, project references, Windows, cross-compilation, npm packaging and npm publication are outside initial support. Go targets use os-arch strings; Unix archives use tar.gz and Windows zip with .exe binaries. Go library builds compile package patterns and optionally test. Dart libraries run pub get/analyze and optional tests. Python package builds validate Python 3 and the lockfile, optionally run pytest, then build a wheel and source distribution in a fresh temporary directory and copy them to outputDir with SHA-256 checksums. --output-dir relocates artifacts and checksums. Python test, format, lint, and cov use pytest JUnit XML, Ruff, and coverage.py JSON with shared output and threshold fields. Go binary builds embed version, commitId, date, and runtime metadata for --version and --version --json. Failures identify the target or mode and failing step. Python, Rust, and Swift failures preserve stdout and stderr diagnostics. Swift requires Package.swift and Package.resolved for remote dependencies, enforcing resolved versions without updates. It formats owned files with swift format, lints strictly and compiles test targets with warnings as errors, tests XCTest serial output and Swift Testing JSON schema 0, and measures production line coverage through fresh LLVM JSON exports. Optional build tests run the whole package on the host. Binary builds discover release paths with --show-bin-path and reject resource bundles and package-built shared libraries. Cross-compilation, Windows, Xcode apps, registry publishing, signing, and notarization are outside initial scope. Swift versions use existing YAML/JSON sources. Rust commands resolve dependencies with --locked, test the workspace including doctests, format with rustfmt, lint with Clippy and warnings denied, and measure line coverage with cargo-llvm-cov LCOV. Custom Rust harnesses require summary output. Stable Rust coverage excludes doctests and dependency/generated sources. Rust library/package selection uses ./... for all workspace members or exact crate names; binary selection uses mainPackage as a manifest directory and the sole binary or package.default-run. Rust target names map to GNU Linux, Apple Darwin, and MSVC Windows triples; installed target components and linkers are required. Optional build tests execute on the compiler host. Rust packaging keeps verification enabled and copies only fresh .crate files; binary packaging reuses the Go artifact policy and discovers executable paths through Cargo compiler JSON.
 
 #### Build Artifact Rules
 

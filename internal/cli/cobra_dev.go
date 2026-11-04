@@ -92,6 +92,8 @@ func newCobraRoot(stdout, stderr io.Writer) *cobra.Command {
 	root.Flags().BoolVar(&versionFlag, "version", false, "Print version information")
 	root.Flags().BoolVar(&jsonFlag, "json", false, "Print JSON output where supported")
 	root.AddCommand(
+		newToolingCommand("e2e", stdout, stderr),
+		newToolingCommand("script", stdout, stderr),
 		newBuildCobraCommand(stdout, stderr),
 		newTestCobraCommand(stdout, stderr),
 		newFormatCobraCommand(stdout, stderr),

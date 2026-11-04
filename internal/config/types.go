@@ -8,6 +8,8 @@ import "regexp"
 const DefaultPath = ".gh-flarebyte.cue"
 
 type Config struct {
+	E2E        *ToolingConfig   `json:"e2e,omitempty"`
+	Script     *ToolingConfig   `json:"script,omitempty"`
 	Project    ProjectConfig    `json:"project"`
 	Sync       SyncConfig       `json:"sync"`
 	Repository RepositoryConfig `json:"repository"`

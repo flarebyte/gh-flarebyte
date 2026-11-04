@@ -103,7 +103,7 @@ func parseTypeScriptCoverage(data string, root string, allowed map[string]string
 		switch {
 		case strings.HasPrefix(line, "SF:"):
 			if active {
-				return 0, nil, fmt.Errorf("incomplete Bun LCOV record")
+				return 0, nil, fmt.Errorf("incomplete TypeScript LCOV record")
 			}
 			active, lf, lh, lines = true, -1, -1, map[int64]int64{}
 			file = strings.TrimPrefix(line, "SF:")
@@ -116,37 +116,37 @@ func parseTypeScriptCoverage(data string, root string, allowed map[string]string
 			}
 		case strings.HasPrefix(line, "LF:"), strings.HasPrefix(line, "LH:"):
 			if !active {
-				return 0, nil, fmt.Errorf("Bun LCOV counts without a source file")
+				return 0, nil, fmt.Errorf("TypeScript LCOV counts without a source file")
 			}
 			count, err := strconv.ParseInt(line[3:], 10, 64)
 			if err != nil || count < 0 {
-				return 0, nil, fmt.Errorf("invalid Bun LCOV line count")
+				return 0, nil, fmt.Errorf("invalid TypeScript LCOV line count")
 			}
 			if strings.HasPrefix(line, "LF:") {
 				if lf >= 0 {
-					return 0, nil, fmt.Errorf("duplicate Bun LCOV LF count")
+					return 0, nil, fmt.Errorf("duplicate TypeScript LCOV LF count")
 				}
 				lf = count
 			} else {
 				if lh >= 0 {
-					return 0, nil, fmt.Errorf("duplicate Bun LCOV LH count")
+					return 0, nil, fmt.Errorf("duplicate TypeScript LCOV LH count")
 				}
 				lh = count
 			}
 		case strings.HasPrefix(line, "DA:"):
 			parts := strings.Split(line[3:], ",")
 			if !active || len(parts) < 2 {
-				return 0, nil, fmt.Errorf("invalid Bun LCOV DA entry")
+				return 0, nil, fmt.Errorf("invalid TypeScript LCOV DA entry")
 			}
 			number, err1 := strconv.ParseInt(parts[0], 10, 64)
 			count, err2 := strconv.ParseInt(parts[1], 10, 64)
 			if _, duplicate := lines[number]; duplicate || err1 != nil || err2 != nil || number <= 0 || count < 0 {
-				return 0, nil, fmt.Errorf("invalid or duplicate Bun LCOV source line")
+				return 0, nil, fmt.Errorf("invalid or duplicate TypeScript LCOV source line")
 			}
 			lines[number] = count
 		case line == "end_of_record":
 			if !active || lf < 0 || lh < 0 || lh > lf || int64(len(lines)) != lf {
-				return 0, nil, fmt.Errorf("invalid or incomplete Bun LCOV line totals")
+				return 0, nil, fmt.Errorf("invalid or incomplete TypeScript LCOV line totals")
 			}
 			var covered int64
 			for _, count := range lines {
@@ -155,11 +155,11 @@ func parseTypeScriptCoverage(data string, root string, allowed map[string]string
 				}
 			}
 			if covered != lh {
-				return 0, nil, fmt.Errorf("Bun LCOV covered lines disagree with summary")
+				return 0, nil, fmt.Errorf("TypeScript LCOV covered lines disagree with summary")
 			}
 			if label, ok := allowed[file]; ok {
 				if seen[file] {
-					return 0, nil, fmt.Errorf("duplicate Bun LCOV file: %s", label)
+					return 0, nil, fmt.Errorf("duplicate TypeScript LCOV file: %s", label)
 				}
 				seen[file] = true
 				if lf > 0 {
@@ -172,7 +172,7 @@ func parseTypeScriptCoverage(data string, root string, allowed map[string]string
 		}
 	}
 	if active {
-		return 0, nil, fmt.Errorf("incomplete Bun LCOV record")
+		return 0, nil, fmt.Errorf("incomplete TypeScript LCOV record")
 	}
 	var missing []string
 	for path, label := range allowed {
@@ -182,10 +182,10 @@ func parseTypeScriptCoverage(data string, root string, allowed map[string]string
 	}
 	sort.Strings(missing)
 	if len(missing) > 0 {
-		return 0, nil, fmt.Errorf("Bun coverage omitted production sources: %s; import them in tests or explicitly exclude them with test.coveragePathIgnorePatterns", strings.Join(missing, ", "))
+		return 0, nil, fmt.Errorf("TypeScript coverage omitted production sources: %s; check c8 source mapping and tsconfig.json source selection", strings.Join(missing, ", "))
 	}
 	if total == 0 {
-		return 0, nil, fmt.Errorf("Bun coverage contains no production-source line coverage")
+		return 0, nil, fmt.Errorf("TypeScript coverage contains no production-source line coverage")
 	}
 	sort.Slice(details, func(i, j int) bool { return details[i].Label < details[j].Label })
 	return 100 * float64(hit) / float64(total), details, nil

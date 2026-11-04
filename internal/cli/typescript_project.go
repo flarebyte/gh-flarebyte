@@ -1,4 +1,4 @@
-// purpose: Discover one locked TypeScript project and execute its local tools with Bun.
+// purpose: Discover one locked TypeScript project and execute its local tools with Node/npm.
 package cli
 
 import (
@@ -6,40 +6,47 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
-	"strconv"
 	"strings"
-
-	"github.com/pelletier/go-toml/v2"
 )
 
 const typescriptCompiler = "./node_modules/typescript/bin/tsc"
 const typescriptBiome = "./node_modules/@biomejs/biome/bin/biome"
 
 type typescriptProject struct {
-	Root   string
-	Files  map[string]string
-	Bunfig map[string]any
+	Root         string
+	Files        map[string]string
+	ToolingRoots []string
+}
+
+func bunRun(args, env []string) (string, error) {
+	out, diagnostics, err := runCommandCapture("bun", append([]string{"--no-install"}, args...), env)
+	if err != nil {
+		return out, fmt.Errorf("bun %s failed (requires Bun 1.3.6+ for standalone CLI compilation): %w\n%s", args[0], err, strings.TrimSpace(out+"\n"+diagnostics))
+	}
+	return out, nil
 }
 
 func typescriptRun(args, env []string) (string, error) {
-	out, diagnostics, err := runCommandCapture("bun", append([]string{"--no-install"}, args...), env)
+	out, diagnostics, err := runCommandCapture("node", args, env)
 	if err != nil {
-		return out, fmt.Errorf("bun %s failed (requires Bun 1.3.6+, locked dependencies, TypeScript, and Biome): %w\n%s", args[0], err, strings.TrimSpace(out+"\n"+diagnostics))
+		return out, fmt.Errorf("node %s failed: %w\n%s", args[0], err, strings.TrimSpace(out+"\n"+diagnostics))
+	}
+	return out, nil
+}
+
+func npmRun(args, env []string) (string, error) {
+	out, diagnostics, err := runCommandCapture("npm", args, env)
+	if err != nil {
+		return out, fmt.Errorf("npm %s failed: %w\n%s", args[0], err, strings.TrimSpace(out+"\n"+diagnostics))
 	}
 	return out, nil
 }
 
 func prepareTypeScript(env []string) (typescriptProject, error) {
-	project := typescriptProject{Files: map[string]string{}, Bunfig: map[string]any{}}
-	for _, path := range []string{"package.json", "bun.lock", "tsconfig.json"} {
+	project := typescriptProject{Files: map[string]string{}}
+	for _, path := range []string{"package.json", "package-lock.json", "tsconfig.json"} {
 		if info, err := os.Stat(path); err != nil || !info.Mode().IsRegular() {
-			return project, fmt.Errorf("TypeScript requires %s at the project root; install dependencies with Bun and commit bun.lock", path)
-		}
-	}
-	if _, err := os.Stat("biome.json"); err != nil {
-		if _, err := os.Stat("biome.jsonc"); err != nil {
-			return project, fmt.Errorf("TypeScript requires biome.json or biome.jsonc at the project root")
+			return project, fmt.Errorf("TypeScript requires %s at the project root; install dependencies with npm and commit package-lock.json", path)
 		}
 	}
 	data, err := os.ReadFile("package.json")
@@ -53,29 +60,13 @@ func prepareTypeScript(env []string) (typescriptProject, error) {
 		return project, fmt.Errorf("invalid TypeScript package.json: %w", err)
 	}
 	if len(manifest.Workspaces) > 0 {
-		return project, fmt.Errorf("TypeScript initially supports one root package, not Bun workspaces")
+		return project, fmt.Errorf("TypeScript initially supports one root package, not npm workspaces")
 	}
-	version, err := typescriptRun([]string{"--version"}, env)
-	if err != nil {
+	if _, err := npmRun([]string{"ci", "--ignore-scripts", "--no-audit", "--no-fund"}, env); err != nil {
 		return project, err
 	}
-	parts := regexp.MustCompile(`^(\d+)\.(\d+)\.(\d+)`).FindStringSubmatch(strings.TrimSpace(version))
-	if len(parts) != 4 {
-		return project, fmt.Errorf("cannot determine Bun version; TypeScript requires Bun 1.3.6+")
-	}
-	major, _ := strconv.Atoi(parts[1])
-	minor, _ := strconv.Atoi(parts[2])
-	patch, _ := strconv.Atoi(parts[3])
-	if major < 1 || (major == 1 && (minor < 3 || (minor == 3 && patch < 6))) {
-		return project, fmt.Errorf("TypeScript requires Bun 1.3.6+")
-	}
-	if _, err := typescriptRun([]string{"install", "--frozen-lockfile", "--ignore-scripts"}, env); err != nil {
-		return project, err
-	}
-	for _, tool := range []string{typescriptCompiler, typescriptBiome} {
-		if info, err := os.Stat(tool); err != nil || !info.Mode().IsRegular() {
-			return project, fmt.Errorf("TypeScript requires the project-local tool %s; add typescript and @biomejs/biome to devDependencies", tool)
-		}
+	if info, err := os.Stat(typescriptCompiler); err != nil || !info.Mode().IsRegular() {
+		return project, fmt.Errorf("TypeScript requires the project-local tool %s; add typescript to devDependencies", typescriptCompiler)
 	}
 	project.Root, err = filepath.EvalSymlinks(".")
 	if err != nil {
@@ -83,13 +74,6 @@ func prepareTypeScript(env []string) (typescriptProject, error) {
 	}
 	project.Root, err = filepath.Abs(project.Root)
 	if err != nil {
-		return project, err
-	}
-	if data, err := os.ReadFile("bunfig.toml"); err == nil {
-		if err := toml.Unmarshal(data, &project.Bunfig); err != nil {
-			return project, fmt.Errorf("invalid bunfig.toml: %w", err)
-		}
-	} else if !os.IsNotExist(err) {
 		return project, err
 	}
 	out, err := typescriptRun([]string{typescriptCompiler, "--project", "tsconfig.json", "--showConfig"}, env)
@@ -134,7 +118,7 @@ func typescriptTypecheck(env []string) error {
 func typescriptProductionFile(name string) bool {
 	for _, part := range strings.Split(name, "/") {
 		switch part {
-		case "node_modules", "test", "tests", "__tests__", "build", "dist", "coverage", ".cache", "generated", "__generated__":
+		case "node_modules", "e2e", "script", "test", "tests", "__tests__", "build", "dist", "coverage", ".cache", "generated", "__generated__":
 			return false
 		}
 	}
@@ -148,30 +132,16 @@ func typescriptProductionFile(name string) bool {
 func (project typescriptProject) coverageFiles(env []string) (map[string]string, error) {
 	files := map[string]string{}
 	for path, label := range project.Files {
-		if typescriptProductionFile(label) {
+		toolingFile := false
+		for _, root := range project.ToolingRoots {
+			if label == root || strings.HasPrefix(label, root+"/") {
+				toolingFile = true
+			}
+		}
+		if typescriptProductionFile(label) && !toolingFile {
 			files[path] = label
 		}
 	}
-	test, _ := project.Bunfig["test"].(map[string]any)
-	if patterns, ok := test["coveragePathIgnorePatterns"]; ok {
-		if pattern, ok := patterns.(string); ok {
-			patterns = []string{pattern}
-		}
-		payload, err := json.Marshal(map[string]any{"files": files, "patterns": patterns})
-		if err != nil {
-			return nil, err
-		}
-		// Bun owns its glob syntax; pass data as one argument, never interpolated code.
-		code := `const p=JSON.parse(Bun.argv[1]);const globs=p.patterns.map(x=>new Bun.Glob(x));process.stdout.write(JSON.stringify(Object.fromEntries(Object.entries(p.files).filter(([path,label])=>!globs.some(g=>g.match(label))))));`
-		out, err := typescriptRun([]string{"--eval", code, "--", string(payload)}, env)
-		if err != nil {
-			return nil, err
-		}
-		selected := map[string]string{}
-		if err := json.Unmarshal([]byte(out), &selected); err != nil {
-			return nil, fmt.Errorf("invalid Bun coverage source selection: %w", err)
-		}
-		files = selected
-	}
+
 	return files, nil
 }

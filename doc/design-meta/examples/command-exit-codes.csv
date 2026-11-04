@@ -8,3 +8,5 @@ gh flarebyte repo update,4,deletions blocked without `--confirm-deletions`,Safet
 gh flarebyte repo update,5,visibility change blocked without `--accept-visibility-change-consequences`,Safety gate prevented high-consequence visibility change.
 gh flarebyte build,6,build failed for one or more requested targets,Compilation or packaging failed.
 gh flarebyte release,7,release publish failed after version resolution and build,GitHub release creation or asset upload failed.
+gh flarebyte script,child exit code,script process fails,Preserve the script exit status; dependency or launch failures use 1.
+gh flarebyte e2e,child exit code,suite process fails,Preserve suite exit status; empty suites or invalid reports use 1.

@@ -46,6 +46,8 @@ func parseCueConfig(raw string) (Config, error) {
 	var cfg Config
 	var err error
 	if err := assertOnlyAllowedFields("top-level", raw, map[string]struct{}{
+		"e2e":        {},
+		"script":     {},
 		"project":    {},
 		"sync":       {},
 		"repository": {},
@@ -55,6 +57,14 @@ func parseCueConfig(raw string) (Config, error) {
 		"build":      {},
 		"release":    {},
 	}); err != nil {
+		return cfg, err
+	}
+	cfg.E2E, err = parseTooling(raw, "e2e")
+	if err != nil {
+		return cfg, err
+	}
+	cfg.Script, err = parseTooling(raw, "script")
+	if err != nil {
 		return cfg, err
 	}
 	projectBlock, err := extractObjectBlock(raw, "project")

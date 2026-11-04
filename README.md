@@ -445,19 +445,82 @@ failures, coverage thresholds, direct and transitive dependency lock enforcement
 executable packaging, and simulated releases. Releases in this suite never publish
 to GitHub. Real Swift integration remains opt-in for local `make test` runs.
 
-### TypeScript with Bun
+### Independent e2e tests and scripts
 
-TypeScript support uses Bun 1.3.6+, a committed `bun.lock`, a root `package.json`,
-`tsconfig.json`, and `biome.json` or `biome.jsonc`. Add `typescript`, `@biomejs/biome`,
-and your runtime type definitions to the project's dev dependencies. Commands install
-with `bun install --frozen-lockfile --ignore-scripts`, then execute only project-local
-tools with Bun's automatic dependency installation disabled. Missing or stale lockfiles
-fail without being rewritten; lifecycle scripts are not run.
+Optional `e2e` and `script` sections select Bun TypeScript or Python 3 independently
+of `build.language`. A Go or Rust project can use either runtime. Unit tests, build,
+and release do not automatically run e2e suites.
 
-For a new Bun project, install the local tools with
-`bun add --dev typescript @biomejs/biome @types/bun`, create the root TypeScript and
-Biome configurations, and commit `bun.lock`. The CUE snippets below replace the
-`build` and `release` sections in an otherwise complete `.gh-flarebyte.cue`.
+```cue
+e2e: {
+  runtime: "bun"
+  root: "e2e"
+  dependencies: {
+    manager: "npm"
+    root: "."
+  }
+}
+script: {
+  runtime: "python3"
+  root: "script"
+}
+```
+
+Run `gh flarebyte e2e` or `gh flarebyte script release_preflight.py -- --help`.
+`script` takes a file relative to its configured folder and forwards arguments after
+`--`. Bun accepts `.ts`, `.tsx`, `.mts`, and `.cts`; Python accepts `.py`.
+Both commands execute with the repository root as their working directory and preserve
+child failures and output. Files and configured folders must remain inside the repository,
+including after resolving symlinks. Scripts must remain inside their script folder.
+
+All config paths are relative to the repository root containing `.gh-flarebyte.cue`;
+run commands from that root. Default source folders are `e2e` and `script`.
+`dependencies.root: "."` uses shared root dependency files. Set it to the configured
+source folder to isolate dependencies there. Omit `dependencies` when no installation
+is required; Bun automatic dependency installation is disabled.
+
+Within `dependencies`, `root` defaults to `"."`; `manager` defaults to `"bun"` for
+Bun. Select `"npm"` explicitly to share a TypeScript project's npm dependencies.
+Python dependencies require an explicit `manager: "uv"`. Supported preparations are:
+
+| Manager | Required files in dependency root | Preparation |
+|---|---|---|
+| Bun | `package.json`, `bun.lock` | `bun install --frozen-lockfile --ignore-scripts` |
+| npm | `package.json`, `package-lock.json` | `npm ci --ignore-scripts --no-audit --no-fund` |
+| uv | `pyproject.toml`, `uv.lock` | `uv sync --locked`, then `uv run --project … --no-sync python3` |
+
+Use one JavaScript dependency manager for a shared folder. Separate folders may use
+different managers. Bun e2e uses `bun test` with a fresh validated JUnit report;
+Python e2e uses standard-library `unittest` discovery of `test_*.py`, with the usual
+package discovery rules for subdirectories. Empty suites fail. No additional test
+framework is required. Building the application under test belongs in the suite or
+an explicitly invoked preparation script.
+
+### TypeScript with npm and Node
+
+TypeScript unit tests use npm and Node 24+ with `tsx`. Keep a committed
+`package-lock.json`, root `package.json`, and `tsconfig.json`. Commands prepare
+locked dependencies with `npm ci --ignore-scripts --no-audit --no-fund` and run
+project-local tools through Node. Missing or stale lockfiles fail without being
+rewritten. Lifecycle scripts are disabled.
+
+Add `typescript` and `tsx` to dev dependencies. Add `c8` for coverage, and
+`@biomejs/biome` with `biome.json` or `biome.jsonc` for formatting/linting.
+Runtime type definitions belong to the project. For example:
+
+```json
+{
+  "scripts": {
+    "test": "node --import tsx --test test/**/*.test.ts"
+  }
+}
+```
+
+`test` must invoke Node's built-in test runner and inherit `NODE_OPTIONS`:
+gh-flarebyte selects a fresh JUnit report through that environment variable.
+`tsx` handles execution; `tsc --noEmit` handles type checking. Bun is required
+for standalone CLI compilation and Bun-based scripts/e2e suites.
+The CUE snippets below replace the build and release sections in a complete config.
 
 **Libraries** use verification mode. This checks types without emitting JavaScript,
 declarations, binaries, or release assets. `build.runTests` optionally runs the test suite.
@@ -515,22 +578,19 @@ Developer commands operate on the root project:
 |---|---|
 | `format` | Project-local Biome `format --write .` |
 | `lint` | Biome `check .` without fixes, followed by `tsc --project tsconfig.json --noEmit` |
-| `test` | Bun tests with validated JUnit XML and shared summary/per-test output |
-| `cov` | Bun tests with source-mapped LCOV production line coverage |
+| `test` | `npm test` with Node JUnit XML and shared summary/per-test output |
+| `cov` | Project-local c8 wrapping `npm test`, with source-mapped LCOV line coverage |
 
-Keep compiler settings in `tsconfig.json`, lint/format rules in Biome, and test discovery,
-preloads, and coverage exclusions in `bunfig.toml`. Reports use fresh temporary directories.
-A private Bun configuration preserves the project settings while disabling Bun's own
-coverage thresholds, so `coverage.min`, `coverage.enforceMin`, and `--min` remain authoritative.
-The project's `bunfig.toml` is never modified. `--color`, `--failed-only`, `showPassed`, and
-`devOutput.style` follow the same policies as the other languages.
+Keep compiler settings in `tsconfig.json`, lint/format rules in Biome, and test
+discovery/preloads in the npm test script. Reports use fresh temporary directories.
+`coverage.min`, `coverage.enforceMin`, and `--min` control the shared threshold policy.
+`--color`, `--failed-only`, `showPassed`, and `devOutput.style` follow the same policies
+as the other languages. Existing `bunfig.toml` files do not configure Node unit tests.
 
-Coverage excludes test files/directories, declaration files, dependencies, generated
-sources, and build outputs. Totals are weighted by executable line counts. Bun only
-reports loaded modules: an omitted production file selected by `tsconfig.json` causes
-an explicit failure. Import it in tests or deliberately exclude it using
-`test.coveragePathIgnorePatterns`; gh-flarebyte does not invent executable line counts
-or silently accept an inflated percentage. c8 targets Node/V8 and is not used for Bun tests.
+Coverage selects production files from `tsconfig.json`, excluding test files/directories,
+script/e2e folders, declaration files, dependencies, generated sources, and build outputs.
+c8's `--all` includes unimported production sources at zero coverage. Totals are weighted
+by executable line counts. Coverage fails if selected sources are absent from its report.
 
 Both library and CLI releases read the configured `release.versionSource`; the examples
 use `package.json`'s existing top-level `version`. YAML version sources also work.
@@ -539,7 +599,7 @@ executables, archives, and optional checksums. No npm publishing occurs.
 
 Run `gh flarebyte format`, `gh flarebyte lint`, `gh flarebyte test`, and
 `gh flarebyte cov --min 80` from the project root, then `gh flarebyte build`.
-For this repository's real Bun integration checks, run `make test-typescript-e2e`.
+For this repository's real npm/tsx and Bun CLI integration checks, run `make test-typescript-e2e`.
 That fixture exercises library verification and native CLI execution, coverage policies,
 failure handling, checksums, and simulated releases. It runs on macOS in CI; local passes
 validate the local host, while hosted results are available after the workflow runs.
@@ -556,7 +616,7 @@ The core job also runs the Python release-preflight unit tests.
 | Swift integration | Xcode 16.2 and 26.2 | Swift 6.2.4 | 3 |
 | Rust integration | Stable Rust | Stable Rust | 2 |
 | Python integration | Python 3.12 with uv | — | 1 |
-| TypeScript integration | Bun library and native CLI | — | 1 |
+| TypeScript integration | npm/tsx library and native Bun CLI | — | 1 |
 | Core Go and default E2E | Go from `go.mod`; includes Dart stub tests | — | 1 |
 | **Total** | **6** | **2** | **8** |
 
@@ -642,7 +702,7 @@ API hosts; this repository's manual release workflow targets GitHub.com.
 - `make test-python-e2e` runs the real uv fixture (requires uv and an installed Python 3; may download dependencies).
 - `make test-rust-e2e` runs the real Rust workspace fixture (requires Cargo, rustfmt, Clippy, cargo-llvm-cov, and llvm-tools-preview; may access crates.io).
 - `make test-swift-e2e` runs the real SwiftPM fixture (requires Swift 6+ and its SDK).
-- `make test-typescript-e2e` runs the real TypeScript library and CLI fixture (requires Bun 1.3.6+ and may download locked dependencies).
+- `make test-typescript-e2e` runs the real TypeScript library and CLI fixture (requires Node 24+, npm, and Bun 1.3.6+ and may download locked dependencies).
 
 ## Language support snapshot
 
@@ -653,7 +713,7 @@ API hosts; this repository's manual release workflow targets GitHub.com.
 | Python 3 with uv | `package` | Wheels, source distributions, checksums | `test`, `format`, `lint`, `cov` |
 | Rust with Cargo | `binary`, `library`, `package` | Executables, archives, `.crate` packages, checksums; library releases have no assets | `test`, `format`, `lint`, `cov` |
 | Swift with SwiftPM | `binary`, `library` | Native macOS/Linux executables, archives, checksums; library releases have no assets | `test`, `format`, `lint`, `cov` |
-| TypeScript with Bun | `binary` CLI, `library` verification | Native macOS/Linux standalone CLIs, archives, checksums; library releases have no assets | `test`, `format`, `lint`, `cov` |
+| TypeScript with npm/Node | `binary` CLI, `library` verification | Native macOS/Linux standalone CLIs, archives, checksums; library releases have no assets | `test`, `format`, `lint`, `cov` |
 
 All languages support per-test output and coverage thresholds. Artifact-producing builds
 can release without assets by setting `release.includeArtifacts: false`. Language-specific
