@@ -1,33 +1,33 @@
 field,kind,managed_by,sync_direction,notes
 project.org,string,local config,read-only,The owner org anchors discovery and bootstrap.
 project.repo,string,local config,read-only,The repository name binds the config to one GitHub repo.
-sync.mode,enum,extension,read-only,Push-only for now. Remote state is audited but not imported back into config.
+sync.mode,enum,extension,read-only,Only push is accepted. Init can import current GitHub metadata into a new local file; update and audit do not pull remote changes into config.
 repository.description,string,.gh-flarebyte.cue,local-to-remote,Primary repo metadata field.
 repository.defaultBranch,string,.gh-flarebyte.cue,local-to-remote,Usually `main` for flarebyte repositories.
 repository.homepage,string,.gh-flarebyte.cue,local-to-remote,Repository homepage URL.
 repository.visibility,enum,.gh-flarebyte.cue,local-to-remote,"Repository visibility: public, private, or internal."
 repository.template,boolean,.gh-flarebyte.cue,local-to-remote,Make the repository available as a template.
-repository.topics,list,.gh-flarebyte.cue,local-to-remote,Topics are managed as the complete desired set. Missing remote topics are deletions.
-repository.labels,list,.gh-flarebyte.cue,local-to-remote,"Labels are managed as the complete desired set by label name. Missing remote labels are deletions, and renaming a label is modeled as delete-plus-create."
-repository.features.issues,boolean,.gh-flarebyte.cue,local-to-remote,GitHub issues enabled or disabled.
-repository.features.wiki,boolean,.gh-flarebyte.cue,local-to-remote,GitHub wiki enabled or disabled.
-repository.features.projects,boolean,.gh-flarebyte.cue,local-to-remote,GitHub projects enabled or disabled.
-repository.features.discussions,boolean,.gh-flarebyte.cue,local-to-remote,GitHub discussions enabled or disabled.
-repository.features.autoMerge,boolean,.gh-flarebyte.cue,local-to-remote,Auto-merge policy.
+repository.topics,list,.gh-flarebyte.cue,local-to-remote,Topics are managed as the complete desired set. Remote topics absent from config are deletions requiring confirmation.
+repository.labels,list,.gh-flarebyte.cue,local-to-remote,"Labels are managed as the complete desired set by label name. Remote labels absent from config are deletions, and renaming a label is modeled as delete-plus-create."
+repository.features.issues,boolean,.gh-flarebyte.cue,accepted-not-enforced,GitHub issues enabled or disabled. Accepted in config but not applied or audited by the CLI.
+repository.features.wiki,boolean,.gh-flarebyte.cue,accepted-not-enforced,GitHub wiki enabled or disabled. Accepted in config but not applied or audited by the CLI.
+repository.features.projects,boolean,.gh-flarebyte.cue,accepted-not-enforced,GitHub projects enabled or disabled. Accepted in config but not applied or audited by the CLI.
+repository.features.discussions,boolean,.gh-flarebyte.cue,accepted-not-enforced,GitHub discussions enabled or disabled. Accepted in config but not applied or audited by the CLI.
+repository.features.autoMerge,boolean,.gh-flarebyte.cue,accepted-not-enforced,Auto-merge policy. Accepted in config but not applied or audited by the CLI.
 repository.features.mergeCommit,boolean,.gh-flarebyte.cue,local-to-remote,Merge commit policy.
 repository.features.rebaseMerge,boolean,.gh-flarebyte.cue,local-to-remote,Rebase merge policy.
 repository.features.squashMerge,boolean,.gh-flarebyte.cue,local-to-remote,Squash merge policy.
-repository.features.squashMergeCommitMessage,enum,.gh-flarebyte.cue,local-to-remote,Default squash merge commit message behavior.
+repository.features.squashMergeCommitMessage,enum,.gh-flarebyte.cue,accepted-not-enforced,Default squash merge commit message behavior. Accepted in config but not applied or audited by the CLI.
 repository.features.deleteBranchOnMerge,boolean,.gh-flarebyte.cue,local-to-remote,Head branch cleanup policy.
-repository.features.allowForking,boolean,.gh-flarebyte.cue,local-to-remote,Forking policy for organization repos.
-repository.features.allowUpdateBranch,boolean,.gh-flarebyte.cue,local-to-remote,Allow PR head branch updates when behind the base branch.
-repository.features.advancedSecurity,boolean,.gh-flarebyte.cue,local-to-remote,GitHub Advanced Security.
-repository.features.secretScanning,boolean,.gh-flarebyte.cue,local-to-remote,Secret scanning for the repository.
-repository.features.secretScanningPushProtection,boolean,.gh-flarebyte.cue,local-to-remote,Secret scanning push protection.
-build.language,enum,.gh-flarebyte.cue,local-only,"Supported languages: go, dart, python, rust, swift, typescript, kotlin. Python uses uv; Rust uses Cargo. Swift uses SwiftPM and requires a Swift 6+ toolchain. TypeScript uses Bun with project-local TypeScript and Biome tools. Kotlin uses the committed Gradle wrapper for one root Kotlin/JVM project."
+repository.features.allowForking,boolean,.gh-flarebyte.cue,accepted-not-enforced,Forking policy for organization repos. Accepted in config but not applied or audited by the CLI.
+repository.features.allowUpdateBranch,boolean,.gh-flarebyte.cue,accepted-not-enforced,Allow PR head branch updates when behind the base branch. Accepted in config but not applied or audited by the CLI.
+repository.features.advancedSecurity,boolean,.gh-flarebyte.cue,accepted-not-enforced,GitHub Advanced Security. Accepted in config but not applied or audited by the CLI.
+repository.features.secretScanning,boolean,.gh-flarebyte.cue,accepted-not-enforced,Secret scanning for the repository. Accepted in config but not applied or audited by the CLI.
+repository.features.secretScanningPushProtection,boolean,.gh-flarebyte.cue,accepted-not-enforced,Secret scanning push protection. Accepted in config but not applied or audited by the CLI.
+build.language,enum,.gh-flarebyte.cue,local-only,"Supported languages: go, dart, python, rust, swift, typescript, kotlin. Python uses uv; Rust uses Cargo. Swift uses SwiftPM and requires a Swift 6+ toolchain. TypeScript uses npm and Node for tests and quality tools; Bun compiles standalone CLIs. Kotlin uses the committed Gradle wrapper for one root Kotlin/JVM project."
 build.mode,enum,.gh-flarebyte.cue,local-only,Go supports binary/library; Dart supports library; Python supports package; Rust supports binary/library/package. Default remains binary. Swift supports binary/library; package mode is excluded. TypeScript supports library verification and binary CLI builds; library builds emit no release assets and require includeArtifacts=false. Kotlin supports library verification and binary JVM CLI distributions; library releases require includeArtifacts=false.
-build.packages,list,.gh-flarebyte.cue,local-only,"Defaults to [""./...""]. Go uses package patterns; Rust uses all workspace members or explicit crate names for library/package builds. Swift uses all root build targets or exact target names. TypeScript initially accepts only ./... for one root tsconfig.json project. Kotlin accepts only ./... for one root Gradle JVM project."
-build.runTests,boolean,.gh-flarebyte.cue,local-only,Enable optional tests during library/package builds and Rust binary builds. Rust tests selected crates on the active compiler host before cross-building. Swift tests the whole root package before library/binary builds. TypeScript checks types and optionally runs Bun tests before library or CLI builds. Applies to both Kotlin build modes.
+build.packages,list,.gh-flarebyte.cue,local-only,"Defaults to [""./...""]. Go uses package patterns; Rust uses all workspace members or explicit crate names for library/package builds. Swift uses all root build targets or exact target names. TypeScript accepts only ./... for one root tsconfig.json project. Kotlin accepts only ./... for one root Gradle JVM project."
+build.runTests,boolean,.gh-flarebyte.cue,local-only,Enable optional tests during library/package builds and Rust binary builds. Rust tests selected crates on the active compiler host before cross-building. Swift tests the whole root package before library/binary builds. TypeScript checks types and optionally runs npm/Node tests before library or CLI builds. Applies to both Kotlin build modes.
 build.mainPackage,string,.gh-flarebyte.cue,local-only,Go main package defaults to ./cmd/<repo>; Rust package manifest directory defaults to a dot. Rust chooses the sole binary or package.default-run. Swift names an executable product or infers the only one. TypeScript CLI builds require an explicit source entry point included in tsconfig.json; library builds reject this field. Kotlin rejects mainPackage; Gradle application.mainClass selects the CLI entry point.
 build.outputDir,string,.gh-flarebyte.cue,local-only,Directory for built artifacts.
 build.checksumFile,string,.gh-flarebyte.cue,local-only,Checksum manifest for built artifacts.
@@ -40,7 +40,7 @@ release.tagPrefix,string,.gh-flarebyte.cue,local-only,Prefix used for release ta
 release.notesMode,enum,.gh-flarebyte.cue,local-only,"Release note strategy, such as generate-notes or notes-file."
 release.releaseNotesFilePath,string,.gh-flarebyte.cue,local-only,Path required when notesMode is `notes-file`.
 release.includeArtifacts,boolean,.gh-flarebyte.cue,local-only,Whether release uploads build artifacts or publishes tag/notes only.
-release.artifactDir,string,.gh-flarebyte.cue,local-only,Release asset directory. Go scans matching assets; Python/Rust stage only current build outputs and preserve relative artifact paths. Swift stages only fresh executable assets and checksums. TypeScript CLI releases stage only fresh executable assets and checksums.
+release.artifactDir,string,.gh-flarebyte.cue,local-only,Release asset directory. Go scans matching assets; Python/Rust stage only current build outputs and preserve relative artifact paths. Swift stages only fresh executable assets and checksums. TypeScript CLI releases stage only fresh executable assets and checksums. Kotlin stages fresh JVM ZIP distributions and checksums.
 release.includeChecksums,boolean,.gh-flarebyte.cue,local-only,Whether to include the checksum manifest as a release asset.
 e2e.runtime,string,.gh-flarebyte.cue,local-only,Optional independent e2e runtime: bun or python3.
 e2e.root,string,.gh-flarebyte.cue,local-only,Repository-relative suite folder; defaults to e2e.
