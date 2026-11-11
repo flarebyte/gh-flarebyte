@@ -340,3 +340,39 @@ func TestKotlinDistributionValidation(t *testing.T) {
 		})
 	}
 }
+
+func TestKotlinDistributionRejectsUnsafePaths(t *testing.T) {
+	for _, name := range []string{
+		"C:/bin/launcher", "c:/lib/fixture.jar", "C:relative", "app/C:/escape",
+		"//server/share/escape", `\\server\share\escape`, `C:\bin\launcher`,
+		"app/lib/fixture.jar:stream", "app/bin/../../escape", "../escape",
+		"/absolute", ".", "..", "app/./bin/launcher", "app//bin/launcher",
+	} {
+		t.Run(name, func(t *testing.T) {
+			archivePath := filepath.Join(t.TempDir(), "unsafe.zip")
+			f, err := os.Create(archivePath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			w := zip.NewWriter(f)
+			// Keep a valid launcher and JAR so each rejection tests path safety,
+			// rather than an incomplete distribution.
+			for _, entry := range []string{"app/bin/launcher", "app/lib/fixture.jar", name} {
+				h := &zip.FileHeader{Name: entry}
+				h.SetMode(0o755)
+				if _, err := w.CreateHeader(h); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if err := w.Close(); err != nil {
+				t.Fatal(err)
+			}
+			if err := f.Close(); err != nil {
+				t.Fatal(err)
+			}
+			if err := validateKotlinDistribution(archivePath); err == nil || !strings.Contains(err.Error(), "unsafe Kotlin distribution entry") {
+				t.Fatalf("expected unsafe path rejection for %q, got %v", name, err)
+			}
+		})
+	}
+}

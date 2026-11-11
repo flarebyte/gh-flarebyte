@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -82,8 +83,8 @@ func buildKotlin(cfg config.Config, target, outputOverride string, stderr io.Wri
 	return writeArtifactChecksums([]string{dest}, output, resolveChecksumPath(cfg.Build.ChecksumFile, outputOverride))
 }
 
-func validateKotlinDistribution(path string) error {
-	archive, err := zip.OpenReader(path)
+func validateKotlinDistribution(archivePath string) error {
+	archive, err := zip.OpenReader(archivePath)
 	if err != nil {
 		return fmt.Errorf("Kotlin application distribution missing or invalid: %w", err)
 	}
@@ -91,7 +92,9 @@ func validateKotlinDistribution(path string) error {
 	launcher, jar := false, false
 	for _, file := range archive.File {
 		name := file.Name
-		if strings.HasPrefix(name, "/") || strings.Contains(name, "\\") || filepath.ToSlash(filepath.Clean(name)) != strings.TrimSuffix(name, "/") || strings.HasPrefix(name, "../") || file.Mode()&os.ModeSymlink != 0 {
+		// ZIP names use forward slashes on every host. Reject Windows drive
+		// paths, UNC names, and alternate data streams even when building on Unix.
+		if strings.HasPrefix(name, "/") || strings.ContainsAny(name, "\\:\x00") || path.Clean(name) != strings.TrimSuffix(name, "/") || name == "." || name == ".." || strings.HasPrefix(name, "../") || file.Mode()&os.ModeSymlink != 0 {
 			return fmt.Errorf("unsafe Kotlin distribution entry %q", name)
 		}
 		parts := strings.Split(name, "/")

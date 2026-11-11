@@ -501,7 +501,7 @@ an explicitly invoked preparation script.
 Kotlin support uses a committed, executable `gradlew`, its wrapper JAR and properties,
 a root `build.gradle.kts` or `build.gradle`, and a root `gradle.lockfile`. Install the
 JDK selected by the project's Gradle toolchain. The integration fixture pins Gradle
-8.14.3, Kotlin 2.2.21, and JDK 21. Command execution supports macOS and Linux.
+8.14.6, Kotlin 2.2.21, and JDK 21. Command execution supports macOS and Linux.
 
 Apply `org.jetbrains.kotlin.jvm`, `org.jlleitschuh.gradle.ktlint`, and `jacoco` for
 all developer commands. CLI projects also apply `application` and set
