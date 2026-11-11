@@ -1,0 +1,17 @@
+locator: internal/cli/tooling.go
+meta:
+  function_list:
+    - containedPath
+    - newToolingCommand
+    - prepareTooling
+    - regularToolingFile
+    - runTooling
+  import_files_list:
+    - fmt
+    - github.com/flarebyte/gh-flarebyte/internal/config
+    - github.com/spf13/cobra
+    - io
+    - os
+    - path/filepath
+    - strings
+  language: go

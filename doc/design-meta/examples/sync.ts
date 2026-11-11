@@ -1,21 +1,22 @@
 export type SyncMode = "push";
 
+// Only mergeCommit, rebaseMerge, squashMerge, and deleteBranchOnMerge are enforced.
 export type RepositoryFeatures = {
-  issues: boolean;
-  wiki: boolean;
-  projects: boolean;
-  discussions: boolean;
-  autoMerge: boolean;
-  mergeCommit: boolean;
-  rebaseMerge: boolean;
-  squashMerge: boolean;
-  squashMergeCommitMessage: "default" | "pr-title" | "pr-title-commits" | "pr-title-description";
-  deleteBranchOnMerge: boolean;
-  allowForking: boolean;
-  allowUpdateBranch: boolean;
-  advancedSecurity: boolean;
-  secretScanning: boolean;
-  secretScanningPushProtection: boolean;
+  issues?: boolean;
+  wiki?: boolean;
+  projects?: boolean;
+  discussions?: boolean;
+  autoMerge?: boolean;
+  mergeCommit?: boolean;
+  rebaseMerge?: boolean;
+  squashMerge?: boolean;
+  squashMergeCommitMessage?: "default" | "pr-title" | "pr-title-commits" | "pr-title-description";
+  deleteBranchOnMerge?: boolean;
+  allowForking?: boolean;
+  allowUpdateBranch?: boolean;
+  advancedSecurity?: boolean;
+  secretScanning?: boolean;
+  secretScanningPushProtection?: boolean;
 };
 
 export type LabelConfig = {
@@ -24,20 +25,39 @@ export type LabelConfig = {
   description: string;
 };
 
+// Shape examples; language-specific selector and target restrictions are checked at runtime.
 export type BuildConfig =
   | {
-      language: "go" | "dart";
-      mode: "binary";
+      language: "go" | "rust" | "swift" | "typescript";
+      mode?: "binary"; // The default mode.
+      mainPackage?: string; // Required for TypeScript; other languages have selection defaults.
       outputDir: string;
       checksumFile: string;
       targets: BuildTarget[];
       artifactTargetSuffix?: boolean;
+      runTests?: boolean;
     }
   | {
-      language: "go" | "dart";
+      language: "go" | "dart" | "rust" | "swift" | "typescript" | "kotlin";
       mode: "library";
-      packages: string[];
+      packages?: string[]; // Defaults to ["./..."]; TS/Kotlin accept only that root selection.
       runTests?: boolean;
+    }
+  | {
+      language: "python" | "rust";
+      mode: "package";
+      packages?: string[];
+      outputDir: string;
+      checksumFile: string;
+      runTests?: boolean;
+    }
+  | {
+      language: "kotlin";
+      mode?: "binary";
+      outputDir: string;
+      checksumFile: string;
+      runTests?: boolean;
+      // Gradle selects the entry point. Platform targets and target suffixes are rejected.
     };
 
 export type BuildTarget = `${"linux" | "darwin" | "windows"}-${"amd64" | "arm64"}`;
@@ -58,7 +78,7 @@ export type GoConfig = {
 export type ReleaseConfigBase = {
   versionSource: string;
   tagPrefix: string;
-  includeArtifacts: boolean;
+  includeArtifacts?: boolean; // Defaults to true; libraries require false.
   artifactDir?: string;
   includeChecksums?: boolean;
 };
@@ -85,7 +105,7 @@ export type RepositoryConfig = {
   template: boolean;
   topics: string[];
   labels: LabelConfig[];
-  features: RepositoryFeatures;
+  features?: RepositoryFeatures;
 };
 
 export type ToolingConfig = {
@@ -104,6 +124,12 @@ export type GhFlarebyteConfig = {
   go?: GoConfig;
   e2e?: ToolingConfig;
   script?: ToolingConfig;
+  devOutput?: {
+    color?: "auto" | "true" | "false";
+    style?: "summary" | "per_test";
+    showPassed?: boolean;
+  };
+  coverage?: { min?: number; enforceMin?: boolean };
   build: BuildConfig;
   release: ReleaseConfig;
 };

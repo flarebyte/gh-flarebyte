@@ -93,7 +93,7 @@ reports: [{
 			]
 		}, {
 			title:       "03 Flags"
-			description: "CLI flags that define the initial command surface for the extension."
+			description: "CLI flags supported by the current command surface."
 			notes: [
 				"command.flags",
 			]
@@ -105,13 +105,13 @@ reports: [{
 			]
 		}, {
 			title:       "05 Guidance And Errors"
-			description: "How the CLI should help users succeed and recover from mistakes."
+			description: "Current usage guidance and error feedback."
 			notes: [
 				"command.feedback",
 			]
 		}, {
 			title:       "06 Success Output"
-			description: "How successful commands should report outcomes and next steps."
+			description: "Current success messages and output policies."
 			notes: [
 				"command.success",
 			]
@@ -213,11 +213,11 @@ reports: [{
 			]
 		}]
 	}, {
-		title:       "06 Open Questions"
-		description: "Pending decisions that should stay visible in the spec."
+		title:       "06 Current Limitations"
+		description: "Boundaries enforced by the current implementation."
 		sections: [{
-			title:       "01 Decisions Pending"
-			description: "What still needs agreement before the sync contract hardens."
+			title:       "01 Supported Boundaries"
+			description: "Unsupported features and automation requirements."
 			notes: [
 				"project.open-questions",
 			]
@@ -254,31 +254,31 @@ notes: [
 	{
 		name:     "repo.build.config"
 		title:    "Build Config"
-		markdown: "Build orchestration uses the shared top-level `build` block. Go supports binary and library modes; Dart supports library validation; Python 3 with uv supports package mode; Rust with Cargo supports binary/library/package modes; Swift 6+ with SwiftPM supports library verification and native macOS/Linux binary builds. TypeScript with npm and Node supports library type verification without assets and native macOS/Linux CLI binaries from an explicit mainPackage source entry point. Swift uses existing configuration fields, executable product names, and exact root target names or ./... for build selection. Python package builds produce a wheel and source distribution via `uv build --no-sources`, reuse outputDir/checksumFile/runTests, and reject target matrices and --target. All Python developer tools run through `uv run --locked` with a repository-local pyproject.toml and uv.lock. Python version selection and tool rules remain in pyproject.toml and optional .python-version. Go binary mode writes per-target binaries and archives with SHA-256 checksums; library mode compiles configured packages and optionally runs tests without binary artifacts. Go library --target maps to GOOS/GOARCH validation. Isolated Python build dependencies are resolved separately from uv.lock and should be pinned in build-system.requires."
+		markdown: "Build orchestration uses the shared top-level `build` block. Go supports binary and library modes; Dart supports library validation; Python 3 with uv supports package mode; Rust with Cargo supports binary/library/package modes; Swift 6+ with SwiftPM supports library verification and native macOS/Linux binary builds. Kotlin/JVM with Gradle supports library verification and platform-independent CLI distributions containing launch scripts and dependency JARs; targets and mainPackage are rejected. TypeScript with npm and Node supports library type verification without assets and native macOS/Linux CLI binaries from an explicit mainPackage source entry point. Swift uses existing configuration fields, executable product names, and exact root target names or ./... for build selection. Python package builds produce a wheel and source distribution via `uv build --no-sources`, reuse outputDir/checksumFile/runTests, and reject target matrices and --target. All Python developer tools run through `uv run --locked` with a repository-local pyproject.toml and uv.lock. Python version selection and tool rules remain in pyproject.toml and optional .python-version. Go binary mode writes per-target binaries and archives with SHA-256 checksums; library mode compiles configured packages and optionally runs tests without binary artifacts. Go library --target maps to GOOS/GOARCH validation. Isolated Python build dependencies are resolved separately from uv.lock; pin them in build-system.requires for repeatable builds."
 		labels:   ["configuration", "build", "spec"]
 	},
 	{
 		name:     "repo.release.config"
 		title:    "Release Config"
-		markdown: "Release publication uses the shared top-level `release` block for tag prefix, version source, artifact policy, and notes. YAML/JSON version sources read top-level version; TOML reads Python static [project].version or Rust Cargo package.version including workspace inheritance under the same semantic-version rule. Virtual Rust workspaces require a member manifest as versionSource. Dynamic Python versions are rejected. Python, Rust, Swift, and TypeScript releases stage only artifacts and optional checksums returned by the fresh build into artifactDir, preserving relative paths and avoiding stale assets. Dart releases require includeArtifacts=false. No PyPI or crates.io publishing or native Python wheel matrix is included."
+		markdown: "Release publication uses the shared top-level `release` block for tag prefix, version source, artifact policy, and notes. YAML reads a version line and JSON reads a top-level version; TOML reads Python static [project].version or Rust Cargo package.version including workspace inheritance under the same semantic-version rule. Virtual Rust workspaces require a member manifest as versionSource. Dynamic Python versions are rejected. Python, Rust, Swift, TypeScript, and Kotlin releases stage only artifacts and optional checksums returned by the fresh build into artifactDir, preserving relative paths and avoiding stale assets. Dart releases require includeArtifacts=false. No PyPI or crates.io publishing or native Python wheel matrix is included."
 		labels:   ["configuration", "release", "spec"]
 	},
 	{
 		name:     "repo.topics.config"
 		title:    "Topic Sync"
-		markdown: "Topics are kept as a flat string list in the cue config and synchronized as the complete desired repository topics set. If applying the config would delete remote topics, `gh flarebyte repo update` should fail unless the user explicitly confirms deletions."
+		markdown: "Topics are kept as a flat string list in the cue config and synchronized as the complete desired repository topics set. If applying the config would delete remote topics, `gh flarebyte repo update` fails unless the user explicitly confirms deletions."
 		labels:   ["configuration", "topics", "spec"]
 	},
 	{
 		name:     "repo.labels.config"
 		title:    "Label Sync"
-		markdown: "Labels use a structured list of objects in the cue config so name, color, and description can be reconciled separately from repository topics. The config represents the complete desired label set; labels missing from config should be treated as deletions and require explicit confirmation before update. Because labels are keyed by name, renaming a label is modeled explicitly as delete-plus-create."
+		markdown: "Labels use a structured list of objects in the cue config so name, color, and description can be reconciled separately from repository topics. The config represents the complete desired label set; labels missing from config are treated as deletions and require explicit confirmation before update. Because labels are keyed by name, renaming a label is modeled explicitly as delete-plus-create."
 		labels:   ["configuration", "labels", "spec"]
 	},
 	{
 		name:     "repo.config.coverage"
 		title:    "Additional Config Coverage"
-		markdown: "The Cue sync config now models homepage, visibility, template, advanced security, secret scanning, push protection, allow-update-branch, and squash-merge commit-message settings."
+		markdown: "Update and audit enforce description, defaultBranch, homepage, visibility, template, topics, labels, and four explicitly set feature flags: mergeCommit, rebaseMerge, squashMerge, and deleteBranchOnMerge. Other repository.features keys are accepted in configuration but are not applied or audited."
 		labels:   ["configuration", "coverage", "existing-gh"]
 	},
 	{
@@ -310,7 +310,7 @@ notes: [
 	{
 		name:     "command.automation"
 		title:    "Automation Policy"
-		markdown: "Flags marked `script-friendly` are intended for repeatable local scripts and CI jobs. Flags marked `safety-gate` exist to make destructive or high-consequence changes explicit. In practice, `gh flarebyte repo update` should fail in unattended runs when deletions or visibility changes are detected unless the corresponding safety flag is passed deliberately."
+		markdown: "Flags marked `script-friendly` are intended for repeatable local scripts and CI jobs. Flags marked `safety-gate` exist to make destructive or high-consequence changes explicit. In practice, `gh flarebyte repo update` fails in unattended runs when deletions or visibility changes are detected unless the corresponding safety flag is passed deliberately."
 		labels:   ["commands", "flags", "automation", "spec"]
 	},
 	{
@@ -356,7 +356,7 @@ notes: [
 	{
 		name:     "command.version.policy"
 		title:    "Version Output Policy"
-		markdown: "The root `gh flarebyte --version` command should print concise human-readable plain text by default. When `--json` is passed alongside `--version`, it should emit machine-readable JSON using the documented version metadata shape. This keeps the default friendly for humans while making automation explicit and stable."
+		markdown: "The root `gh flarebyte --version` command prints concise human-readable plain text by default. When `--json` is passed alongside `--version`, it emits machine-readable JSON using the documented version metadata shape. This keeps the default friendly for humans while making automation explicit and stable."
 		labels:   ["commands", "version", "policy", "spec"]
 	},
 	{
@@ -375,37 +375,37 @@ notes: [
 	{
 		name:     "command.build"
 		title:    "Build Command"
-		markdown: "Build from the shared build block: Go binary/library, Dart library, Python package, Rust binary/library/package, or Swift binary/library or TypeScript library/binary CLI. TypeScript requires a committed package-lock.json and uses npm ci with lifecycle scripts disabled. Project-local Biome and tsc run through Node. npm test uses Node with tsx and fresh JUnit reports. c8 wraps npm test for source-mapped LCOV coverage including unimported production sources at zero coverage. Optional e2e and script sections select independent Bun TypeScript or Python 3 execution. Source roots default to e2e and script; dependency roots default to the repository root and may be isolated in the source folder. Bun supports locked Bun or npm dependencies; Python optionally uses locked uv dependencies. Without dependencies blocks no installation occurs. Bun e2e validates fresh JUnit; Python uses unittest discovery. Empty suites fail. Scripts forward arguments and child exit status without shell interpolation. TypeScript library verification has no entry point or targets and emits no artifacts. CLI builds require an explicit source entry point and match the native Bun host, using existing executable archives and checksum policies. Workspaces, project references, Windows, cross-compilation, npm packaging and npm publication are outside initial support. Go targets use os-arch strings; Unix archives use tar.gz and Windows zip with .exe binaries. Go library builds compile package patterns and optionally test. Dart libraries run pub get/analyze and optional tests. Python package builds validate Python 3 and the lockfile, optionally run pytest, then build a wheel and source distribution in a fresh temporary directory and copy them to outputDir with SHA-256 checksums. --output-dir relocates artifacts and checksums. Python test, format, lint, and cov use pytest JUnit XML, Ruff, and coverage.py JSON with shared output and threshold fields. Go binary builds embed version, commitId, date, and runtime metadata for --version and --version --json. Failures identify the target or mode and failing step. Python, Rust, and Swift failures preserve stdout and stderr diagnostics. Swift requires Package.swift and Package.resolved for remote dependencies, enforcing resolved versions without updates. It formats owned files with swift format, lints strictly and compiles test targets with warnings as errors, tests XCTest serial output and Swift Testing JSON schema 0, and measures production line coverage through fresh LLVM JSON exports. Optional build tests run the whole package on the host. Binary builds discover release paths with --show-bin-path and reject resource bundles and package-built shared libraries. Cross-compilation, Windows, Xcode apps, registry publishing, signing, and notarization are outside initial scope. Swift versions use existing YAML/JSON sources. Rust commands resolve dependencies with --locked, test the workspace including doctests, format with rustfmt, lint with Clippy and warnings denied, and measure line coverage with cargo-llvm-cov LCOV. Custom Rust harnesses require summary output. Stable Rust coverage excludes doctests and dependency/generated sources. Rust library/package selection uses ./... for all workspace members or exact crate names; binary selection uses mainPackage as a manifest directory and the sole binary or package.default-run. Rust target names map to GNU Linux, Apple Darwin, and MSVC Windows triples; installed target components and linkers are required. Optional build tests execute on the compiler host. Rust packaging keeps verification enabled and copies only fresh .crate files; binary packaging reuses the Go artifact policy and discovers executable paths through Cargo compiler JSON."
+		markdown: "Build from the shared build block: Go binary/library, Dart library, Python package, Rust binary/library/package, Swift binary/library, TypeScript library/binary CLI, or Kotlin JVM library/binary CLI. Kotlin uses a committed Gradle wrapper and root dependency lockfile with strict locking. One root Kotlin/JVM project is supported. ktlintFormat formats; ktlintCheck plus production/test compilation with warnings as errors lints. Tests validate fresh Gradle JUnit XML; coverage reads JaCoCo production LINE counters and applies shared thresholds. Library builds assemble without release assets; CLI builds package application distZip with launch scripts and dependency JARs as repo-version.zip plus checksums. Both modes honor runTests. Reports and build outputs use isolated temporary directories. mainPackage, targets, --target, and artifactTargetSuffix are rejected. JVM CLI distributions require Java; native executables, bundled runtimes, multi-project/composite builds, Android, Multiplatform, and registry publishing are excluded. TypeScript requires a committed package-lock.json and uses npm ci with lifecycle scripts disabled. Project-local Biome and tsc run through Node. npm test uses Node with tsx and fresh JUnit reports. c8 wraps npm test for source-mapped LCOV coverage including unimported production sources at zero coverage. Optional e2e and script sections select independent Bun TypeScript or Python 3 execution. Source roots default to e2e and script; dependency roots default to the repository root and may be isolated in the source folder. Bun supports locked Bun or npm dependencies; Python optionally uses locked uv dependencies. Without dependencies blocks no installation occurs. Bun e2e validates fresh JUnit; Python uses unittest discovery. Empty suites fail. Scripts forward arguments and child exit status without shell interpolation. TypeScript library verification has no entry point or targets and emits no artifacts. CLI builds require an explicit source entry point and match the native Bun host, using existing executable archives and checksum policies. Workspaces, project references, Windows, cross-compilation, npm packaging and npm publication are unsupported. Go targets use os-arch strings; Unix archives use tar.gz and Windows zip with .exe binaries. Go library builds compile package patterns and optionally test. Dart libraries run pub get/analyze and optional tests. Python package builds validate Python 3 and the lockfile, optionally run pytest, then build a wheel and source distribution in a fresh temporary directory and copy them to outputDir with SHA-256 checksums. --output-dir relocates artifacts and checksums. Python test, format, lint, and cov use pytest JUnit XML, Ruff, and coverage.py JSON with shared output and threshold fields. Go binary builds embed version, commitId, date, and runtime metadata for --version and --version --json. Failures identify the target or mode and failing step. Python, Rust, and Swift failures preserve stdout and stderr diagnostics. Swift requires Package.swift and Package.resolved for remote dependencies, enforcing resolved versions without updates. It formats owned files with swift format, lints strictly and compiles test targets with warnings as errors, tests XCTest serial output and Swift Testing JSON schema 0, and measures production line coverage through fresh LLVM JSON exports. Optional build tests run the whole package on the host. Binary builds discover release paths with --show-bin-path and reject resource bundles and package-built shared libraries. Cross-compilation, Windows, Xcode apps, registry publishing, signing, and notarization are unsupported. Swift versions use the shared YAML/JSON sources. Rust commands resolve dependencies with --locked, test the workspace including doctests, format with rustfmt, lint with Clippy and warnings denied, and measure line coverage with cargo-llvm-cov LCOV. Custom Rust harnesses require summary output. Stable Rust coverage excludes doctests and dependency/generated sources. Rust library/package selection uses ./... for all workspace members or exact crate names; binary selection uses mainPackage as a manifest directory and the sole binary or package.default-run. Rust target names map to GNU Linux, Apple Darwin, and MSVC Windows triples; installed target components and linkers are required. Optional build tests execute on the compiler host. Rust packaging keeps verification enabled and copies only fresh .crate files; binary packaging reuses the Go artifact policy and discovers executable paths through Cargo compiler JSON."
 		labels:   ["commands", "build", "spec"]
 	},
 	{
 		name:     "command.release"
 		title:    "Release Command"
-		markdown: "Build first, then publish a GitHub release using the shared release policy. Resolve YAML/JSON top-level version or TOML Python project.version or Rust Cargo package.version with workspace inheritance, derive tagPrefix + version, and fail if the tag exists. includeArtifacts controls uploads; includeChecksums controls the manifest. Python, Rust, Swift, and TypeScript assets come only from the current build and are staged into artifactDir without scanning for stale distributions. notes-file requires releaseNotesFilePath; --draft and --notes-file keep their existing behavior. Failures distinguish build, version/tag, and publication steps."
+		markdown: "Build first, then publish a GitHub release using the shared release policy. Resolve a YAML version line or JSON top-level version or TOML Python project.version or Rust Cargo package.version with workspace inheritance, derive tagPrefix + version, and fail if the tag exists. includeArtifacts controls uploads; includeChecksums controls the manifest. Python, Rust, Swift, TypeScript, and Kotlin assets come only from the current build and are staged into artifactDir without scanning for stale distributions. notes-file requires releaseNotesFilePath during config validation; --notes-file overrides that configured path. --draft creates a draft release. Failures distinguish build, version/tag, and publication steps."
 		labels:   ["commands", "release", "spec"]
 	},
 	{
 		name:     "command.init"
 		title:    "Init Command"
-		markdown: "Bootstrap a repository by seeding `.gh-flarebyte.cue` with repository, build, and release defaults and then applying the initial syncable repo settings. The initial implementation should import current GitHub repository state into the generated config where available, then fill remaining fields from flarebyte defaults. If `.gh-flarebyte.cue` already exists, the command should fail by default rather than merge implicitly; replacement should require `--overwrite`. The command should explain what file it created or updated and point users to `gh flarebyte repo update --help` for the next step. Success output should make the next action obvious."
+		markdown: "Create .gh-flarebyte.cue in the working directory with imported GitHub repository metadata when available and Go build/release defaults. If metadata cannot be read, print a warning and use defaults. An existing file is rejected unless --overwrite is passed. Init writes local configuration only; repo update performs remote mutations. Success reports the created path, whether metadata was imported, and the next review/update step."
 		labels:   ["commands", "init", "spec"]
 	},
 	{
 		name:     "command.update"
 		title:    "Update Command"
-		markdown: "Reconcile the live GitHub repository from `.gh-flarebyte.cue`, including repo settings, topics, and label definitions. Topics and labels are exact-set sync targets, so remote items missing from config should be treated as deletions. The command must fail unless the user explicitly confirms deletions with `--confirm-deletions`. Visibility changes should also require explicit CLI confirmation with `--accept-visibility-change-consequences` rather than a committed config flag. The command should compute and validate the full plan before mutating GitHub, then apply changes sequentially and stop at the first remote mutation failure. It should not attempt rollback for changes already applied; instead it should report partial progress clearly so the user can fix the issue and rerun. Failure output should explain what would change, why it was blocked, and the exact next command or flag to use. Success output should summarize what changed rather than only saying the command succeeded."
+		markdown: "Load local configuration and GitHub state, compute the settings/topics/labels update plan, and check visibility and deletion gates before applying changes. Visibility changes require --accept-visibility-change-consequences; topic or label deletions require --confirm-deletions. Settings, topics, and labels are applied sequentially. The command stops on the first remote error without rollback. Success reports settings changes and configured topic/label counts; failures report the cause and available partial-progress context."
 		labels:   ["commands", "update", "spec"]
 	},
 	{
 		name:     "command.audit"
 		title:    "Audit Command"
-		markdown: "Compare the checked-in Cue config with GitHub and report drift without changing remote state. Output should summarize the number of differences and point users to `gh flarebyte repo update` when remediation is appropriate. A clean run should say clearly that no drift was found. With `--json`, the command should emit a stable machine-readable report of the repo, drift count, and individual diffs. The command should exit `0` for no drift and `3` when drift is found."
+		markdown: "Compare local configuration with GitHub without changing remote state. Plain output reports the number of differences and suggests repo update, or states that no drift was found. --json emits the repository, drift count, and individual diffs. Exit status is 0 for no drift and 3 when drift exists."
 		labels:   ["commands", "audit", "spec"]
 	},
 	{
 		name:     "command.repos.mine"
 		title:    "Repos Mine Command"
-		markdown: "List repositories the current user contributes to within an organization so the extension can discover target repos before sync. Success output should include the organization queried and how many repositories were found. With `--json`, the command should emit a stable machine-readable report containing the requested organization, contributor, count, and discovered repositories."
+		markdown: "List repositories the authenticated user contributes to in the organization required by --org. Plain output includes the organization, contributor, count, and repository details. --json emits the same information as a structured report. This command reads GitHub data without changing remote state."
 		labels:   ["commands", "discovery", "spec"]
 	},
 	{
@@ -443,8 +443,8 @@ notes: [
 	},
 	{
 		name:     "project.open-questions"
-		title:    "Open Questions"
-		markdown: "Clarify the non-interactive CI story for deletion confirmation, future Python dynamic versions, registry publishing, native wheel matrices, and custom Rust target triples, and whether release notes should eventually support templates beyond generated notes and a single notes file path."
+		title:    "Current Limitations"
+		markdown: "Repository sync is push-only. Unattended updates require the same explicit deletion and visibility flags as interactive use. Python dynamic versions and native wheel target matrices, package-registry publication, and custom Rust target triples are unsupported. Release notes support generate-notes, notes-from-tag, and notes-file; no template engine is configured."
 		labels:   ["questions", "sync", "policy"]
 	},
 ]

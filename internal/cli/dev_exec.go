@@ -32,6 +32,8 @@ var runCommandCapture = func(name string, args []string, env []string) (string, 
 
 func newAllowedDevCommand(name string, args []string) (*exec.Cmd, error) {
 	switch name {
+	case "./gradlew":
+		return exec.Command("./gradlew", args...), nil
 	case "go":
 		return exec.Command("go", args...), nil
 	case "gofmt":
@@ -60,7 +62,7 @@ func newAllowedDevCommand(name string, args []string) (*exec.Cmd, error) {
 }
 
 func unsupportedLanguageResult(language string, stderr io.Writer) Result {
-	err := fmt.Errorf("build.language %q is not supported. Supported values: go, dart, python, rust, swift, typescript", language)
+	err := fmt.Errorf("build.language %q is not supported. Supported values: go, dart, python, rust, swift, typescript, kotlin", language)
 	_, _ = fmt.Fprintln(stderr, err.Error())
 	return Result{ExitCode: ExitUsage, Err: err}
 }

@@ -1,0 +1,18 @@
+locator: internal/cli/typescript_dev.go
+meta:
+  function_list:
+    - nodeReportEnv
+    - requireBiome
+    - runTypeScriptDev
+    - typescriptTest
+  import_files_list:
+    - fmt
+    - github.com/flarebyte/gh-flarebyte/internal/config
+    - io
+    - os
+    - path/filepath
+    - sort
+    - strconv
+    - strings
+    - time
+  language: go

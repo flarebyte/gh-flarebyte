@@ -1,0 +1,12 @@
+locator: internal/cli/kotlin_dev.go
+meta:
+  function_list:
+    - runKotlinDev
+  import_files_list:
+    - fmt
+    - github.com/flarebyte/gh-flarebyte/internal/config
+    - io
+    - os
+    - path/filepath
+    - time
+  language: go

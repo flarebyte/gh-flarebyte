@@ -1,0 +1,17 @@
+locator: internal/config/tooling.go
+meta:
+  function_list:
+    - parseTooling
+    - repositoryRelative
+    - toolingKeys
+    - validateSharedToolingDependencies
+    - validateTooling
+  import_files_list:
+    - fmt
+    - path/filepath
+    - regexp
+    - sort
+    - strconv
+    - strings
+    - text/scanner
+  language: go

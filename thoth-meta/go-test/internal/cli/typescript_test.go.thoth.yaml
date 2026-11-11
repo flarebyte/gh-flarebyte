@@ -1,0 +1,26 @@
+locator: internal/cli/typescript_test.go
+meta:
+  function_list:
+    - TestTypeScriptConfigBoundaries
+    - TestTypeScriptCustomToolingCoverageRoots
+    - TestTypeScriptFailures
+    - TestTypeScriptLibraryAndCLI
+    - TestTypeScriptManifestRejectsWorkspaces
+    - TestTypeScriptMissingLockAndInvalidTarget
+    - TestTypeScriptReports
+    - TestTypeScriptStopsBeforePackagingOnTypeErrors
+    - setupTypeScript
+    - stubTypeScript
+    - typescriptConfigCue
+    - typescriptLCOV
+  import_files_list:
+    - bytes
+    - encoding/json
+    - fmt
+    - github.com/flarebyte/gh-flarebyte/internal/config
+    - os
+    - path/filepath
+    - regexp
+    - strings
+    - testing
+  language: go

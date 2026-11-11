@@ -1,0 +1,18 @@
+locator: internal/cli/typescript_edge_test.go
+meta:
+  function_list:
+    - TestTypeScriptBuildFailureGates
+    - TestTypeScriptCoverageSourceSelection
+    - TestTypeScriptJUnitFailureAndTotals
+    - TestTypeScriptProjectValidation
+    - TestTypeScriptRejectsMalformedCoverage
+    - TestTypeScriptTestReportGates
+  import_files_list:
+    - bytes
+    - fmt
+    - os
+    - path/filepath
+    - regexp
+    - strings
+    - testing
+  language: go

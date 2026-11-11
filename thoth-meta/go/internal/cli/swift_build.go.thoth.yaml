@@ -4,6 +4,7 @@ meta:
     - buildSwift
     - runSwiftBuild
     - swiftHostTarget
+    - validateSwiftBuildTarget
     - validateSwiftTargets
   import_files_list:
     - encoding/json

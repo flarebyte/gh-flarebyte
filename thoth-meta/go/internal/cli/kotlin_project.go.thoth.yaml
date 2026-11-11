@@ -1,0 +1,12 @@
+locator: internal/cli/kotlin_project.go
+meta:
+  function_list:
+    - prepareKotlin
+  import_files_list:
+    - embed
+    - fmt
+    - os
+    - path/filepath
+    - runtime
+    - strings
+  language: go

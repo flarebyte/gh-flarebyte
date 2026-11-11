@@ -1,0 +1,23 @@
+locator: internal/cli/kotlin_test.go
+meta:
+  function_list:
+    - TestKotlinBuildAndRelease
+    - TestKotlinBuildRunTestsFalse
+    - TestKotlinDistributionValidation
+    - TestKotlinFreshReports
+    - TestKotlinInvalidRequests
+    - TestKotlinMissingTooling
+    - TestKotlinReleaseStagesOnlyFreshAssets
+    - TestKotlinReports
+    - kotlinTestZip
+    - setupKotlin
+    - stubKotlin
+  import_files_list:
+    - archive/zip
+    - bytes
+    - fmt
+    - os
+    - path/filepath
+    - strings
+    - testing
+  language: go

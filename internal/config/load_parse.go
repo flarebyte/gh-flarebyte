@@ -219,7 +219,7 @@ func parseCueConfig(raw string) (Config, error) {
 	if cfg.Build.MainPackage == "" {
 		if cfg.Build.Language == "rust" {
 			cfg.Build.MainPackage = "."
-		} else if cfg.Build.Language != "swift" && cfg.Build.Language != "typescript" {
+		} else if cfg.Build.Language != "swift" && cfg.Build.Language != "typescript" && cfg.Build.Language != "kotlin" {
 			cfg.Build.MainPackage = fmt.Sprintf("./cmd/%s", cfg.Project.Repo)
 		}
 	}
@@ -231,6 +231,11 @@ func parseCueConfig(raw string) (Config, error) {
 	cfg.Build.OutputDir = extractOptionalStringField(buildBlock, "outputDir")
 	cfg.Build.ChecksumFile = extractOptionalStringField(buildBlock, "checksumFile")
 	cfg.Build.Targets = extractOptionalStringListBlock(buildBlock, "targets")
+	if cfg.Build.Language == "kotlin" {
+		if _, present := extractOptionalBoolFieldRaw(buildBlock, "artifactTargetSuffix"); present {
+			return cfg, fmt.Errorf("invalid build.artifactTargetSuffix: Kotlin JVM distributions do not have platform targets")
+		}
+	}
 	cfg.Build.ArtifactTargetSuffix = extractOptionalBoolField(buildBlock, "artifactTargetSuffix", true)
 	cfg.Repository.Description, err = extractStringField(raw, "description")
 	if err != nil {

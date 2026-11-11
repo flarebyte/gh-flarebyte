@@ -1,0 +1,19 @@
+locator: internal/cli/tooling_test.go
+meta:
+  function_list:
+    - TestBunDependenciesFailBeforeExecution
+    - TestBunToolingRealExecution
+    - TestPythonE2ERealDiscovery
+    - TestScriptArgumentsAndFailure
+    - TestToolingExecution
+    - TestToolingRejectsInvalidPathsAndReports
+    - setupTooling
+  import_files_list:
+    - bytes
+    - fmt
+    - os
+    - os/exec
+    - path/filepath
+    - strings
+    - testing
+  language: go
