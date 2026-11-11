@@ -8,7 +8,7 @@ import (
 )
 
 func parseNodeTests(data []byte, root string) (goTestReport, error) {
-	var suite typescriptJUnit
+	var suite junitSuite
 	var report goTestReport
 	if err := xml.Unmarshal(data, &suite); err != nil {
 		return report, fmt.Errorf("invalid Node JUnit report: %w", err)
@@ -16,8 +16,8 @@ func parseNodeTests(data []byte, root string) (goTestReport, error) {
 	if suite.XMLName.Local != "testsuites" && suite.XMLName.Local != "testsuite" {
 		return report, fmt.Errorf("invalid Node JUnit report root")
 	}
-	var visit func(typescriptJUnit) error
-	visit = func(s typescriptJUnit) error {
+	var visit func(junitSuite) error
+	visit = func(s junitSuite) error {
 		for _, child := range s.Suites {
 			if err := visit(child); err != nil {
 				return err

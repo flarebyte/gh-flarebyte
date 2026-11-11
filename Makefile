@@ -4,7 +4,7 @@
 	lint lint-go lint-dart lint-e2e format format-go format-dart format-e2e review review-dart coverage coverage-go coverage-dart \
 	doc-design doc-decision dup complexity release sec \
 	thoth-meta thoth-meta-go thoth-meta-go-test thoth-meta-ts-e2e \
-	check-tools install-tools-help help e2e e2e-deps test-dart-e2e test-python-e2e test-rust-e2e test-swift-e2e test-typescript-e2e test-integrations
+	check-tools install-tools-help help e2e e2e-deps test-dart-e2e test-python-e2e test-rust-e2e test-swift-e2e test-typescript-e2e test-kotlin-e2e test-integrations
 
 GO := go
 BUN := bun
@@ -70,7 +70,7 @@ test-dart-e2e: build-go ## Run the Dart command fixture using a stub Dart execut
 	mkdir -p "$(TMP_DIR)"
 	$(BUN_ENV) $(BUN) test ./e2e/dart.test.ts
 
-test-integrations: test-python-e2e test-rust-e2e test-swift-e2e test-typescript-e2e ## Run all real Python, Rust, Swift, and TypeScript fixtures.
+test-integrations: test-python-e2e test-rust-e2e test-swift-e2e test-typescript-e2e test-kotlin-e2e ## Run all real language fixtures.
 
 e2e-deps: ## Install locked dependencies for Biome and TypeScript tooling.
 	mkdir -p "$(TMP_DIR)"
@@ -95,6 +95,10 @@ test-swift-e2e: build-go ## Run the real SwiftPM integration fixture.
 test-typescript-e2e: build-go ## Run the real Bun TypeScript library and CLI fixture.
 	mkdir -p "$(TMP_DIR)"
 	GH_FLAREBYTE_TYPESCRIPT_E2E=1 $(BUN_ENV) $(BUN) test ./e2e/typescript.test.ts
+
+test-kotlin-e2e: build-go ## Run the real Kotlin/JVM Gradle library and CLI fixture (JDK 21).
+	mkdir -p "$(TMP_DIR)"
+	GH_FLAREBYTE_KOTLIN_E2E=1 $(BUN_ENV) $(BUN) test ./e2e/kotlin.test.ts
 
 # Formatting, lint, and review
 lint: lint-go lint-e2e ## Run configured Go lint and Biome checks.
@@ -168,6 +172,7 @@ thoth-meta-ts-e2e: ## Refresh E2E TypeScript metadata.
 # Tool discovery and help
 check-tools: ## Report command/local-tool availability as key=value pairs.
 	@printf "biome=%s\n" "$$(test -x "$(ROOT_DIR)/node_modules/.bin/biome" && printf true || printf false)"
+	@printf "java=%s\n" "$$(command -v java >/dev/null 2>&1 && printf true || printf false)"
 	@printf "swift=%s\n" "$$(command -v swift >/dev/null 2>&1 && printf true || printf false)"
 	@printf "cargo=%s\n" "$$(command -v cargo >/dev/null 2>&1 && printf true || printf false)"
 	@printf "cargo-llvm-cov=%s\n" "$$(command -v cargo-llvm-cov >/dev/null 2>&1 && printf true || printf false)"
@@ -182,6 +187,7 @@ check-tools: ## Report command/local-tool availability as key=value pairs.
 
 install-tools-help: ## Show core and optional tool installation guidance.
 	@printf "Core tools and optional workflow tools:\n"
+	@printf "  Kotlin (optional integration): JDK 21; the committed Gradle wrapper downloads pinned tools and locked dependencies.\n"
 	@printf "  Swift (optional integration): Swift 6+ via Xcode or https://www.swift.org/install/\n"
 	@printf "  TypeScript (optional integration): Bun 1.3.6+; the fixture installs locked TypeScript and Biome tools.\n"
 	@printf "  Rust (optional integration): https://rustup.rs; components rustfmt, clippy, llvm-tools-preview; cargo install cargo-llvm-cov --locked\n"

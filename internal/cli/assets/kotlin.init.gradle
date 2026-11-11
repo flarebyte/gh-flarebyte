@@ -1,0 +1,61 @@
+// Keep reports and archives isolated from previous invocations.
+import org.gradle.api.tasks.testing.Test
+import org.gradle.api.tasks.compile.JavaCompile
+import org.gradle.testing.jacoco.tasks.JacocoReport
+import org.gradle.api.artifacts.dsl.LockMode
+
+// Values arrive as JVM system properties, avoiding generated script interpolation.
+def output = new File(System.getProperty('gh.flarebyte.output'))
+def operation = System.getProperty('gh.flarebyte.operation')
+gradle.beforeProject { p ->
+    if (p == p.rootProject) {
+        p.layout.buildDirectory.set(new File(output, 'build'))
+    }
+}
+gradle.projectsEvaluated {
+    def p = gradle.rootProject
+    if (p.allprojects.size() != 1 || !gradle.includedBuilds.empty) {
+        throw new GradleException('Kotlin initially supports one root project; multi-project and composite builds are unsupported')
+    }
+    if (!p.plugins.hasPlugin('org.jetbrains.kotlin.jvm') || p.plugins.hasPlugin('org.jetbrains.kotlin.multiplatform') || p.plugins.hasPlugin('com.android.application') || p.plugins.hasPlugin('com.android.library')) {
+        throw new GradleException('Kotlin requires the org.jetbrains.kotlin.jvm plugin; Android and Multiplatform are unsupported')
+    }
+    p.dependencyLocking {
+        lockAllConfigurations()
+        lockMode = LockMode.STRICT
+    }
+    p.tasks.withType(Test).configureEach {
+        reports.junitXml.required.set(true)
+        reports.junitXml.outputLocation.set(new File(output, 'tests/' + name))
+        ignoreFailures = false
+    }
+    if (operation == 'lint') {
+        p.tasks.matching { it.name == 'compileKotlin' || it.name == 'compileTestKotlin' }.configureEach {
+            compilerOptions.allWarningsAsErrors.set(true)
+        }
+        p.tasks.withType(JavaCompile).configureEach {
+            options.compilerArgs.add('-Werror')
+        }
+        if (p.tasks.findByName('ktlintCheck') == null) {
+            throw new GradleException('Kotlin lint requires the org.jlleitschuh.gradle.ktlint plugin')
+        }
+    }
+    if (operation == 'cov') {
+        if (!p.plugins.hasPlugin('jacoco')) {
+            throw new GradleException('Kotlin coverage requires the jacoco plugin')
+        }
+        p.tasks.named('jacocoTestReport', JacocoReport).configure {
+            reports.xml.required.set(true)
+            reports.xml.outputLocation.set(new File(output, 'jacoco.xml'))
+        }
+    }
+    if (operation == 'binary') {
+        if (!p.plugins.hasPlugin('application')) {
+            throw new GradleException('Kotlin CLI builds require the application plugin and application.mainClass')
+        }
+        p.tasks.named('distZip').configure {
+            destinationDirectory.set(new File(output, 'distribution'))
+            archiveFileName.set('application.zip')
+        }
+    }
+}

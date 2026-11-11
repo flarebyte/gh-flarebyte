@@ -101,9 +101,9 @@ jobs:
         run: make test-typescript-e2e
 
   rust:
-    name: Rust stable / ${{ matrix.runner }}
+    name: Rust stable and Kotlin JVM / ${{ matrix.runner }}
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 20
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -136,3 +136,11 @@ jobs:
           bun --version
       - name: Real Rust integration
         run: make test-rust-e2e
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Report Kotlin JVM toolchain
+        run: java -version
+      - name: Real Kotlin library and CLI integration
+        run: make test-kotlin-e2e

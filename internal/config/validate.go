@@ -66,9 +66,9 @@ func Validate(cfg Config) error {
 		}
 	}
 	switch cfg.Build.Language {
-	case "go", "dart", "python", "rust", "swift", "typescript":
+	case "go", "dart", "python", "rust", "swift", "typescript", "kotlin":
 	default:
-		return fmt.Errorf("invalid build.language %q: expected go, dart, python, rust, swift, or typescript", cfg.Build.Language)
+		return fmt.Errorf("invalid build.language %q: expected go, dart, python, rust, swift, typescript, or kotlin", cfg.Build.Language)
 	}
 	if cfg.Go.CGO.CC != "" && !cfg.Go.CGO.Enabled {
 		return errors.New("invalid go.cgo.cc: requires go.cgo.enabled=true")
@@ -78,6 +78,17 @@ func Validate(cfg Config) error {
 	}
 	if cfg.Build.Language == "python" && cfg.Build.Mode != "package" {
 		return errors.New(`invalid build.mode: Python supports "package" mode only`)
+	}
+	if cfg.Build.Language == "kotlin" {
+		if cfg.Build.Mode != "library" && cfg.Build.Mode != "binary" {
+			return errors.New(`invalid build.mode: Kotlin supports "library" or "binary" JVM builds`)
+		}
+		if cfg.Build.MainPackage != "" || len(cfg.Build.Targets) != 0 {
+			return errors.New("invalid build: Kotlin uses the root Gradle application configuration and does not support mainPackage or targets")
+		}
+		if len(cfg.Build.Packages) != 1 || cfg.Build.Packages[0] != "./..." {
+			return errors.New(`invalid build.packages: Kotlin initially supports ["./..."] for one root Gradle project`)
+		}
 	}
 	if cfg.Build.Language == "typescript" {
 		if cfg.Build.Mode != "library" && cfg.Build.Mode != "binary" {
@@ -111,7 +122,7 @@ func Validate(cfg Config) error {
 		if cfg.Build.ChecksumFile == "" {
 			return errors.New("invalid build.checksumFile: value is required")
 		}
-		if len(cfg.Build.Targets) == 0 {
+		if len(cfg.Build.Targets) == 0 && cfg.Build.Language != "kotlin" {
 			return errors.New("invalid build.targets: at least one target is required")
 		}
 		for _, target := range cfg.Build.Targets {

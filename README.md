@@ -29,7 +29,7 @@ Use `gh flarebyte` to keep a GitHub repository aligned with the config checked i
 
 - `gh flarebyte build [--target <os-arch>] [--output-dir <path>]` builds the project using the language and mode defined in `.gh-flarebyte.cue`.
 - `gh flarebyte release [--draft] [--notes-file <path>]` builds first, then publishes a GitHub release from the configured release policy.
-- `build`: Go supports `binary` and `library`; Dart supports `library`; Python 3 with uv supports `package`; Rust supports all three modes; Swift supports `binary` and `library`; TypeScript supports `library` verification and `binary` CLI builds.
+- `build`: Go supports `binary` and `library`; Dart supports `library`; Python 3 with uv supports `package`; Rust supports all three modes; Swift supports `binary` and `library`; TypeScript supports `library` verification and `binary` CLI builds; Kotlin/JVM supports `library` and `binary` CLI distributions.
 - `release`: Dart currently supports release with `release.includeArtifacts: false`.
 
 ### Dev commands
@@ -496,6 +496,74 @@ package discovery rules for subdirectories. Empty suites fail. No additional tes
 framework is required. Building the application under test belongs in the suite or
 an explicitly invoked preparation script.
 
+### Kotlin/JVM with Gradle
+
+Kotlin support uses a committed, executable `gradlew`, its wrapper JAR and properties,
+a root `build.gradle.kts` or `build.gradle`, and a root `gradle.lockfile`. Install the
+JDK selected by the project's Gradle toolchain. The integration fixture pins Gradle
+8.14.3, Kotlin 2.2.21, and JDK 21. Command execution supports macOS and Linux.
+
+Apply `org.jetbrains.kotlin.jvm`, `org.jlleitschuh.gradle.ktlint`, and `jacoco` for
+all developer commands. CLI projects also apply `application` and set
+`application.mainClass`. Keep plugin versions, dependencies, compiler options, and
+JVM toolchain selection in Gradle. Generate the wrapper and resolve dependency
+locks before using these commands; the [fixture](e2e/fixtures/kotlin/build.gradle.kts)
+includes a `resolveLocks` task. Commit locks for quality-tool configurations too.
+Commands enforce strict dependency locking without updating locks.
+
+Library configuration:
+
+```cue
+build: {
+  language: "kotlin"
+  mode: "library"
+  packages: ["./..."]
+  runTests: true
+}
+release: {
+  versionSource: "main.project.yaml"
+  includeArtifacts: false
+}
+```
+
+For a CLI, replace the build block with:
+
+```cue
+build: {
+  language: "kotlin"
+  mode: "binary"
+  runTests: true
+  outputDir: "dist"
+  checksumFile: "dist/checksums.txt"
+}
+```
+
+Set `release.includeArtifacts: true`, `release.artifactDir: "dist"`, and
+`release.includeChecksums: true` to attach the CLI distribution to GitHub releases.
+The snippets extend the shared project/repository/release configuration above.
+Use existing YAML/JSON version sources; `build.gradle.kts` is not a version source.
+
+- `test` runs the root Gradle `test` task and validates fresh JUnit XML totals.
+  It supports the same summary, per-test, color, skipped-test, and failure-only policies.
+  Missing reports and empty test suites fail explicitly.
+- `format` runs `ktlintFormat`; `lint` runs `ktlintCheck`, `classes`, and
+  `testClasses`, with Kotlin and Java compiler warnings treated as errors.
+- `cov` runs `test` and `jacocoTestReport`. Production line coverage comes from
+  JaCoCo XML, weighted by line counts, with the shared `--min` and enforcement policy.
+  Coverage scope follows Gradle's JaCoCo source/class configuration; this is JVM
+  bytecode line coverage and may differ from source-level Kotlin tools.
+- `build` assembles libraries without release assets, or uses `distZip` for CLIs.
+  Both modes honor `runTests`. Builds and reports use an isolated temporary directory.
+- CLI archives contain launch scripts and runtime dependency JARs and require a
+  compatible Java runtime. Their name is `<repo>-<version>.zip`, with SHA-256 checksums.
+  `--output-dir` relocates archives and checksums. Releases attach only fresh assets.
+
+Initial support covers one root Gradle JVM project, with `packages: ["./..."]`.
+`mainPackage`, `targets`, `--target`, and `artifactTargetSuffix` are rejected:
+JVM distributions are platform-independent. Multi-project/composite builds, Android,
+Multiplatform, native executables, bundled JVMs, and Maven Central publishing are
+outside this scope. `e2e` and `script` remain independent of the build language.
+
 ### TypeScript with npm and Node
 
 TypeScript unit tests use npm and Node 24+ with `tsx`. Keep a committed
@@ -608,19 +676,19 @@ validate the local host, while hosted results are available after the workflow r
 
 Both compatibility workflows run on pull requests, pushes to `main`, and manual dispatch.
 There are **8 jobs per PR/push: 6 macOS and 2 Linux**, within the budget of at most 8.
-Go tests run once in the core job, including the shared contracts for all six languages.
+Go tests run once in the core job, including the shared contracts for all seven languages.
 The core job also runs the Python release-preflight unit tests.
 
 | Checks | macOS arm64 | Linux amd64 | Jobs |
 |---|---|---|---|
 | Swift integration | Xcode 16.2 and 26.2 | Swift 6.2.4 | 3 |
-| Rust integration | Stable Rust | Stable Rust | 2 |
+| Rust and Kotlin integration | Stable Rust; JDK 21 / Gradle JVM | Stable Rust; JDK 21 / Gradle JVM | 2 |
 | Python integration | Python 3.12 with uv | — | 1 |
 | TypeScript integration | npm/tsx library and native Bun CLI | — | 1 |
 | Core Go and default E2E | Go from `go.mod`; includes Dart stub tests | — | 1 |
 | **Total** | **6** | **2** | **8** |
 
-`.github/workflows/languages.yml` owns the Go/default E2E, Python, Rust, and TypeScript jobs;
+`.github/workflows/languages.yml` owns the Go/default E2E, Python, Rust, TypeScript, and Kotlin jobs;
 `.github/workflows/swift.yml` owns the three Swift jobs. Each integration job runs the
 existing Makefile fixture with simulated releases. Dart currently has stub coverage;
 this matrix does not claim real Dart SDK integration. Swift Intel macOS, Linux arm64,
@@ -694,7 +762,7 @@ API hosts; this repository's manual release workflow targets GitHub.com.
 - `GH_FLAREBYTE_FAKE_RELEASE=1 make release` runs the release flow in fake mode (no GitHub mutation).
 - `make review` finishes formatting before running tests and lint, including with `make -j`.
 - `make e2e` aliases the default smoke and stub-tool suite; `make test-dart-e2e` runs the Dart stub fixture alone.
-- `make test-integrations` runs all real Python, Rust, Swift, and TypeScript fixtures; these remain opt-in.
+- `make test-integrations` runs all real Python, Rust, Swift, TypeScript, and Kotlin fixtures; these remain opt-in.
 - `make e2e-deps` installs dependencies from `bun.lock`; formatting and lint use the locked local Biome.
 - The legacy `*-dart` shortcuts and `review-dart` follow the root `.gh-flarebyte.cue`; they do not select Dart. This repository configures Go.
 - `make check-tools` reports executable availability; `biome` checks the local installation and `npx` is the launcher used for jscpd.
@@ -702,6 +770,7 @@ API hosts; this repository's manual release workflow targets GitHub.com.
 - `make test-python-e2e` runs the real uv fixture (requires uv and an installed Python 3; may download dependencies).
 - `make test-rust-e2e` runs the real Rust workspace fixture (requires Cargo, rustfmt, Clippy, cargo-llvm-cov, and llvm-tools-preview; may access crates.io).
 - `make test-swift-e2e` runs the real SwiftPM fixture (requires Swift 6+ and its SDK).
+- `make test-kotlin-e2e` runs the real Kotlin/JVM Gradle library and CLI fixture (requires JDK 21; downloads pinned Gradle and locked dependencies).
 - `make test-typescript-e2e` runs the real TypeScript library and CLI fixture (requires Node 24+, npm, and Bun 1.3.6+ and may download locked dependencies).
 
 ## Language support snapshot
@@ -713,6 +782,7 @@ API hosts; this repository's manual release workflow targets GitHub.com.
 | Python 3 with uv | `package` | Wheels, source distributions, checksums | `test`, `format`, `lint`, `cov` |
 | Rust with Cargo | `binary`, `library`, `package` | Executables, archives, `.crate` packages, checksums; library releases have no assets | `test`, `format`, `lint`, `cov` |
 | Swift with SwiftPM | `binary`, `library` | Native macOS/Linux executables, archives, checksums; library releases have no assets | `test`, `format`, `lint`, `cov` |
+| Kotlin/JVM with Gradle | `binary` CLI, `library` verification | JVM distribution ZIP and checksums; library releases have no assets | `test`, `format`, `lint`, `cov` |
 | TypeScript with npm/Node | `binary` CLI, `library` verification | Native macOS/Linux standalone CLIs, archives, checksums; library releases have no assets | `test`, `format`, `lint`, `cov` |
 
 All languages support per-test output and coverage thresholds. Artifact-producing builds
@@ -723,12 +793,12 @@ toolchains, target restrictions, and test-report limitations are described above
 
 - Topics are managed as a flat list of strings.
 - Labels are managed as structured objects with `name`, `color`, and `description`.
-- Build: Go supports `binary` and `library`; Dart supports `library`; Python supports `package`; Rust supports all three; Swift supports `binary` and `library`; TypeScript supports `library` verification and `binary` CLI builds.
+- Build: Go supports `binary` and `library`; Dart supports `library`; Python supports `package`; Rust supports all three; Swift supports `binary` and `library`; TypeScript supports `library` verification and `binary` CLI builds; Kotlin/JVM supports `library` and `binary` CLI distributions.
 - Release: Dart currently supports `release.includeArtifacts: false`.
-- `build.mode` defaults to `binary`. Use `library` for Go/Dart/Rust/Swift/TypeScript verification or `package` for Python/Rust distributions. `build.runTests` applies to Go/Dart library builds, Python package builds, and every Rust/Swift/TypeScript build mode.
+- `build.mode` defaults to `binary`. Use `library` for Go/Dart/Rust/Swift/TypeScript/Kotlin verification or `package` for Python/Rust distributions. `build.runTests` applies to Go/Dart library builds, Python package builds, and every Rust/Swift/TypeScript/Kotlin build mode.
 - `build.mainPackage` controls the Go main package (default `./cmd/<project.repo>`) or Rust manifest directory (default `.`) used for binary builds. Swift uses an executable product name, inferred when unique. TypeScript CLI builds require an explicit source entry point; library builds reject it.
 - For Go/Rust/Swift/TypeScript binary builds with one target, `build.artifactTargetSuffix: false` removes the target suffix from the archive name. Multiple-target archive names always include the target; setting this field to `false` also places each target's assets in its own subdirectory. Standalone executable asset names always include `-os-arch`.
-- In `library` mode, `--target` selects Go cross-compile checks through `GOOS/GOARCH`, a Rust target triple, or the native Swift host. Dart and TypeScript reject it. Library checks do not produce release artifacts.
+- In `library` mode, `--target` selects Go cross-compile checks through `GOOS/GOARCH`, a Rust target triple, or the native Swift host. Dart, TypeScript, and Kotlin reject it. Library checks do not produce release artifacts.
 - `go.cgo` uses camelCase keys only: `enabled`, `cc`, `cxx`.
 - `go.cacheDir` and `go.modCacheDir` should be project-relative (for example `./.gocache`); `gh flarebyte` resolves them to absolute paths at runtime before invoking Go.
 - Absolute `go.cacheDir` and `go.modCacheDir` values still work, but emit portability warnings.
@@ -741,4 +811,4 @@ toolchains, target restrictions, and test-report limitations are described above
 - `devOutput.style` supports `summary` and `per_test`.
 - `--color` overrides `devOutput.color` for `test`, `lint`, and `cov`.
 - `--failed-only` suppresses PASS summary output for `test`, `lint`, and `cov`.
-- In `per_test` style, `test` prints `✓/↷/✗` per test for all six languages and `cov` prints `✓/✗` per coverage entry; with `--failed-only`, only failing entries are shown.
+- In `per_test` style, `test` prints `✓/↷/✗` per test for all seven languages and `cov` prints `✓/✗` per coverage entry; with `--failed-only`, only failing entries are shown.

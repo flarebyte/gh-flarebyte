@@ -102,3 +102,8 @@ target/
 # SwiftPM build outputs
 .build/
 .swiftpm/
+
+# Gradle and Kotlin local caches
+.gradle/
+.gradle-cache/
+.kotlin/
