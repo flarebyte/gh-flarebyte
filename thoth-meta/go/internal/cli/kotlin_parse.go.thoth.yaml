@@ -1,0 +1,11 @@
+locator: internal/cli/kotlin_parse.go
+meta:
+  function_list:
+    - jacocoLines
+    - parseKotlinCoverage
+    - parseKotlinTests
+  import_files_list:
+    - encoding/xml
+    - fmt
+    - sort
+  language: go

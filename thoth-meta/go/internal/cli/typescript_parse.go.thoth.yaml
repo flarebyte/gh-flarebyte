@@ -1,0 +1,12 @@
+locator: internal/cli/typescript_parse.go
+meta:
+  function_list:
+    - parseTypeScriptCoverage
+    - parseTypeScriptTests
+  import_files_list:
+    - fmt
+    - path/filepath
+    - sort
+    - strconv
+    - strings
+  language: go

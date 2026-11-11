@@ -1,0 +1,11 @@
+locator: e2e/kotlin.test.ts
+meta:
+  import_files_list:
+    - ./helpers
+    - bun:test
+    - node:crypto
+    - node:fs/promises
+    - node:path
+  language: typescript
+  testcase_titles_list:
+    - shared commands, strict reports, JVM distribution and release policy

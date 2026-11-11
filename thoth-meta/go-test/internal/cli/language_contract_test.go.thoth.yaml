@@ -1,0 +1,13 @@
+locator: internal/cli/language_contract_test.go
+meta:
+  function_list:
+    - TestLanguageDeveloperContract
+    - setupLanguageContract
+  import_files_list:
+    - bytes
+    - fmt
+    - os
+    - path/filepath
+    - strings
+    - testing
+  language: go

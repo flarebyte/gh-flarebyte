@@ -1,0 +1,16 @@
+locator: internal/cli/typescript_project.go
+meta:
+  function_list:
+    - bunRun
+    - npmRun
+    - prepareTypeScript
+    - typescriptProductionFile
+    - typescriptRun
+    - typescriptTypecheck
+  import_files_list:
+    - encoding/json
+    - fmt
+    - os
+    - path/filepath
+    - strings
+  language: go

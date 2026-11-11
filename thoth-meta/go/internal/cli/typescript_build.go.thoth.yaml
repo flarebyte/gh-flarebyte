@@ -1,0 +1,15 @@
+locator: internal/cli/typescript_build.go
+meta:
+  function_list:
+    - buildTypeScript
+    - runTypeScriptBuild
+    - validateTypeScriptTarget
+  import_files_list:
+    - errors
+    - fmt
+    - github.com/flarebyte/gh-flarebyte/internal/config
+    - io
+    - os
+    - path/filepath
+    - strings
+  language: go

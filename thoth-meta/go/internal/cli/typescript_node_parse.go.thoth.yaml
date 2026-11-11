@@ -1,0 +1,9 @@
+locator: internal/cli/typescript_node_parse.go
+meta:
+  function_list:
+    - parseNodeTests
+  import_files_list:
+    - encoding/xml
+    - fmt
+    - path/filepath
+  language: go
