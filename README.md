@@ -81,6 +81,7 @@ and [license](LICENSE).
 - `gh flarebyte test [--style summary|per_test] [--color auto|true|false] [--failed-only]` runs tests for the configured build language, with optional per-invocation output overrides.
 - `gh flarebyte format` formats source files for the configured build language.
 - `gh flarebyte lint [--color auto|true|false] [--failed-only]` runs lint/static checks for the configured build language.
+- `gh flarebyte cc` finds duplicate source and test code using an installed jscpd, showing at most 10 pairs.
 - `gh flarebyte cov [--min <percent>] [--color auto|true|false] [--failed-only]` computes coverage and can fail below a threshold.
 - `gh flarebyte e2e` runs an independently configured Bun or Python suite.
 - `gh flarebyte script <file> -- [args...]` runs a file from the configured script folder.
@@ -740,6 +741,34 @@ Python e2e uses standard-library `unittest` discovery of `test_*.py`, with the u
 package discovery rules for subdirectories. Empty suites fail. No additional test
 framework is required. Building the application under test belongs in the suite or
 an explicitly invoked preparation script.
+
+## Carbon-copy checks
+
+Run `gh flarebyte cc` from the repository root (or `make dup` in this checkout).
+Install [jscpd](https://github.com/kucherenko/jscpd) v4 or v5 on your PATH first:
+`brew install jscpd` on macOS or Linux with Homebrew. See the
+[official installation guide](https://jscpd.dev/start/installation) for other Linux options.
+The command never installs tools or invokes npx.
+
+The only optional setting is:
+
+```cue
+cc: { minLines: 10 }
+```
+
+`minLines` defaults to 10 and must be a positive integer. The scan covers common
+source formats across the repository, including root files, production folders,
+and tests; it compares files across folders in the same run. Git ignores and
+built-in exclusions remove dependencies, caches, build outputs, documentation,
+and common generated filenames. Unrecognized generated filenames may still be scanned.
+Repository `.jscpd.json` settings are replaced by the command's fixed policy.
+Detection uses jscpd's mild mode and a minimum of 50 tokens as well as `minLines`.
+
+Output lists relative paths and line ranges for the largest 10 duplicate pairs,
+with stable ordering and a total/remaining count. Fix those pairs and rerun to
+see the rest. Source snippets and raw tool output are omitted. Temporary JSON
+reports are cleaned up after each run. A clean scan exits 0; duplicates, missing
+tooling, unsupported versions, or scan/report failures exit 1 with diagnostics.
 
 ## CI coverage budget
 
