@@ -7,7 +7,12 @@ import "regexp"
 
 const DefaultPath = ".gh-flarebyte.cue"
 
+type CCConfig struct {
+	MinLines int `json:"minLines"`
+}
+
 type Config struct {
+	CC         CCConfig         `json:"cc"`
 	E2E        *ToolingConfig   `json:"e2e,omitempty"`
 	Script     *ToolingConfig   `json:"script,omitempty"`
 	Project    ProjectConfig    `json:"project"`

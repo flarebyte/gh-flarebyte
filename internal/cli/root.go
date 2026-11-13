@@ -154,6 +154,7 @@ Usage:
   gh flarebyte script <file> -- [args...]
   gh flarebyte format
   gh flarebyte lint
+  gh flarebyte cc
   gh flarebyte cov [--min percent]
   gh flarebyte release [--draft] [--notes-file path]
   gh flarebyte repo init --repo owner/name [--overwrite]

@@ -34,6 +34,8 @@ func newAllowedDevCommand(name string, args []string) (*exec.Cmd, error) {
 	switch name {
 	case "./gradlew":
 		return exec.Command("./gradlew", args...), nil
+	case "jscpd":
+		return exec.Command("jscpd", args...), nil
 	case "go":
 		return exec.Command("go", args...), nil
 	case "gofmt":

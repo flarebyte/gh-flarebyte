@@ -143,9 +143,8 @@ doc-decision: build-go ## Legacy decision-doc workflow; requires the missing gen
 	mkdir -p doc/decision
 	SEER_BIN="$(CLI_BIN)" sh ./script/generate-decision-docs.sh
 
-dup: ## Run Go and TypeScript duplication checks through npx jscpd.
-	npx jscpd --format go --min-lines 10 --ignore "**/.gomodcache/**,**/.gocache/**,**/.e2e-bin/**,**/node_modules/**,**/dist/**" --gitignore .
-	npx jscpd --format typescript --min-lines 10 --gitignore .
+dup: build-go ## Find duplicate source and test code using installed jscpd.
+	$(CLI_BIN) cc
 
 complexity: ## Show top Go and TypeScript files by complexity.
 	scc --sort complexity --by-file -i go . | head -n 15
@@ -183,7 +182,7 @@ check-tools: ## Report command/local-tool availability as key=value pairs.
 	@printf "thoth=%s\n" "$$(command -v $(THOTH) >/dev/null 2>&1 && printf true || printf false)"
 	@printf "semgrep=%s\n" "$$(command -v semgrep >/dev/null 2>&1 && printf true || printf false)"
 	@printf "scc=%s\n" "$$(command -v scc >/dev/null 2>&1 && printf true || printf false)"
-	@printf "npx=%s\n" "$$(command -v npx >/dev/null 2>&1 && printf true || printf false)"
+	@printf "jscpd=%s\n" "$$(command -v jscpd >/dev/null 2>&1 && printf true || printf false)"
 
 install-tools-help: ## Show core and optional tool installation guidance.
 	@printf "Core tools and optional workflow tools:\n"
@@ -199,7 +198,7 @@ install-tools-help: ## Show core and optional tool installation guidance.
 	@printf "  thoth: install the thoth CLI used for metadata pipelines.\n"
 	@printf "  semgrep: https://semgrep.dev/docs/getting-started/cli\n"
 	@printf "  scc: https://github.com/boyter/scc\n"
-	@printf "  jscpd: available via npx jscpd once Node/npm tooling is installed.\n"
+	@printf "  jscpd: brew install jscpd (macOS/Linux); https://github.com/kucherenko/jscpd\n"
 
 help: ## Show available targets.
 	@printf "Targets:\n"
