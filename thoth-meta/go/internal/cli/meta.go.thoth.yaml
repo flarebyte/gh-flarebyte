@@ -1,0 +1,23 @@
+locator: internal/cli/meta.go
+meta:
+  function_list:
+    - newMetaCobraCommand
+    - runMeta
+    - snapshotMeta
+  import_files_list:
+    - context
+    - crypto/sha256
+    - fmt
+    - github.com/flarebyte/gh-flarebyte/internal/config
+    - github.com/spf13/cobra
+    - io
+    - io/fs
+    - os
+    - os/exec
+    - os/signal
+    - path/filepath
+    - strconv
+    - strings
+    - syscall
+    - time
+  language: go

@@ -1,0 +1,8 @@
+locator: internal/config/cc_test.go
+meta:
+  function_list:
+    - TestCCConfiguration
+  import_files_list:
+    - os
+    - testing
+  language: go

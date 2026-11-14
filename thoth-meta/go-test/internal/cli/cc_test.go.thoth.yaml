@@ -1,0 +1,15 @@
+locator: internal/cli/cc_test.go
+meta:
+  function_list:
+    - TestCCCommand
+    - TestCCInstalledExecutable
+    - TestCCReport
+  import_files_list:
+    - bytes
+    - encoding/json
+    - fmt
+    - os
+    - path/filepath
+    - strings
+    - testing
+  language: go

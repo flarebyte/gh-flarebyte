@@ -1,0 +1,21 @@
+locator: internal/cli/meta_test.go
+meta:
+  function_list:
+    - TestMetaBoundedDiagnostics
+    - TestMetaFailedSummaryAndCancellation
+    - TestMetaMissingTools
+    - TestMetaNoPipelines
+    - TestMetaRunPartialFailure
+    - TestMetaSuccessAndArguments
+    - TestMetaUnsafePaths
+    - metaFixture
+    - metaWrite
+  import_files_list:
+    - bytes
+    - context
+    - os
+    - path/filepath
+    - strings
+    - testing
+    - time
+  language: go
