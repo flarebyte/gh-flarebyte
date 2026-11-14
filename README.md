@@ -82,6 +82,7 @@ and [license](LICENSE).
 - `gh flarebyte format` formats source files for the configured build language.
 - `gh flarebyte lint [--color auto|true|false] [--failed-only]` runs lint/static checks for the configured build language.
 - `gh flarebyte cc` finds duplicate source and test code using an installed jscpd, showing at most 10 pairs.
+- `gh flarebyte meta` runs root-level Thoth/Maat pipelines and summarizes metadata changes.
 - `gh flarebyte cov [--min <percent>] [--color auto|true|false] [--failed-only]` computes coverage and can fail below a threshold.
 - `gh flarebyte e2e` runs an independently configured Bun or Python suite.
 - `gh flarebyte script <file> -- [args...]` runs a file from the configured script folder.
@@ -741,6 +742,39 @@ Python e2e uses standard-library `unittest` discovery of `test_*.py`, with the u
 package discovery rules for subdirectories. Empty suites fail. No additional test
 framework is required. Building the application under test belongs in the suite or
 an explicitly invoked preparation script.
+
+## Metadata pipelines
+
+Run `gh flarebyte meta` from the repository root to execute
+`pipeline-*-maat.thoth.cue` files in filename order. Install both tools first:
+
+```sh
+brew install flarebyte/tap/thoth-ostraca
+npm install --global maat-ostraca
+gh flarebyte meta
+```
+
+See [Thoth](https://github.com/flarebyte/thoth-ostraca) and
+[Maat](https://github.com/flarebyte/maat-ostraca) for installation alternatives
+and Node.js requirements. Missing tools produce installation guidance; the
+command does not install them.
+
+Each pipeline gets an `OK` or `ERROR` result. Successful tool output is suppressed;
+failures include bounded diagnostics. The final summary counts content changes
+under `thoth-meta/`, including created and deleted files and partial changes from
+failed pipelines. Timestamp-only rewrites do not count as updates. Any failed
+pipeline or metadata inspection returns exit code 1; other pipelines continue
+after an individual failure. Interrupting the command stops further launches.
+
+Discovery is limited to the current directory and is independent of the build
+language. `.gh-flarebyte.cue` is optional and only informs a filename suggestion
+when no pipelines exist. That case exits successfully as an explicit no-op and
+creates no files. Symlink pipelines and symlinks within the metadata tree are
+rejected.
+
+Run only trusted pipelines: Thoth configurations can execute code. Existing
+pipelines may invoke `npx maat-ostraca`, whose package resolution and possible
+downloads remain controlled by those pipelines, even when `maat` is installed.
 
 ## Carbon-copy checks
 
