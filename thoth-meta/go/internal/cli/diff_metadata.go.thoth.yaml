@@ -1,0 +1,18 @@
+locator: internal/cli/diff_metadata.go
+meta:
+  function_list:
+    - parseDiffMetadata
+  import_files_list:
+    - bytes
+    - encoding/base64
+    - encoding/json
+    - fmt
+    - gopkg.in/yaml.v3
+    - io
+    - io/fs
+    - os
+    - path
+    - path/filepath
+    - sort
+    - strings
+  language: go
