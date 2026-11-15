@@ -3,6 +3,7 @@ meta:
   function_list:
     - TestKotlinBuildAndRelease
     - TestKotlinBuildRunTestsFalse
+    - TestKotlinDistributionRejectsUnsafePaths
     - TestKotlinDistributionValidation
     - TestKotlinFreshReports
     - TestKotlinInvalidRequests

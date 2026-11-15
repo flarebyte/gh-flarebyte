@@ -1,0 +1,11 @@
+locator: internal/config/cc.go
+meta:
+  function_list:
+    - parseCC
+  import_files_list:
+    - fmt
+    - regexp
+    - strconv
+    - strings
+    - text/scanner
+  language: go

@@ -1,0 +1,35 @@
+locator: internal/cli/diff_test.go
+meta:
+  function_list:
+    - TestDiffBaselinesAndContext
+    - TestDiffBinaryModesSymlinksAndFences
+    - TestDiffConflicts
+    - TestDiffDoesNotExecuteGitDrivers
+    - TestDiffEmptyAndValidation
+    - TestDiffErrorsAndDetachedHEAD
+    - TestDiffFutureHistoryAndDeletedInvalidText
+    - TestDiffInvalidUTF8Path
+    - TestDiffMetadataRejectsUnsafeYAML
+    - TestDiffMixedChangesAndNoMutation
+    - TestDiffRecreatedIndexDeletion
+    - TestDiffSparseCheckout
+    - TestDiffSubmoduleAndUninitializedCheckout
+    - TestDiffThothEnrichmentAndFormats
+    - diffCollect
+    - diffFind
+    - diffFixture
+    - diffTestGit
+    - diffTestWrite
+  import_files_list:
+    - bytes
+    - context
+    - encoding/json
+    - gopkg.in/yaml.v3
+    - os
+    - os/exec
+    - path/filepath
+    - reflect
+    - strings
+    - testing
+    - time
+  language: go

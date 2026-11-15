@@ -1,0 +1,27 @@
+locator: internal/cli/diff_git.go
+meta:
+  function_list:
+    - collectDiff
+    - diffArgs
+    - diffInt
+    - diffLineCount
+    - diffMode
+    - diffPath
+    - diffString
+    - parseDiffRaw
+  import_files_list:
+    - bytes
+    - context
+    - crypto/sha256
+    - encoding/base64
+    - errors
+    - fmt
+    - os
+    - os/exec
+    - path/filepath
+    - sort
+    - strconv
+    - strings
+    - time
+    - unicode/utf8
+  language: go

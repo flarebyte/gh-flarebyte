@@ -10,6 +10,7 @@ meta:
     - github.com/flarebyte/gh-flarebyte/internal/config
     - io
     - os
+    - path
     - path/filepath
     - strings
   language: go

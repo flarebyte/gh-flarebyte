@@ -1,0 +1,19 @@
+locator: internal/cli/diff_render.go
+meta:
+  function_list:
+    - diffByteCount
+    - diffCount
+    - diffLanguage
+    - diffOptional
+    - markdownDiffPath
+    - renderDiff
+    - writeDiffFence
+  import_files_list:
+    - bytes
+    - encoding/json
+    - fmt
+    - path/filepath
+    - strconv
+    - strings
+    - unicode
+  language: go

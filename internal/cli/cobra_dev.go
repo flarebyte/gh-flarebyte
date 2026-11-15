@@ -101,6 +101,7 @@ func newCobraRoot(stdout, stderr io.Writer) *cobra.Command {
 		newCovCobraCommand(stdout, stderr),
 		newCCCobraCommand(stdout, stderr),
 		newMetaCobraCommand(stdout, stderr),
+		newDiffCobraCommand(stdout, stderr),
 		newReleaseCobraCommand(stdout, stderr),
 		newRepoCommand(stdout, stderr),
 		newReposCommand(stdout, stderr),

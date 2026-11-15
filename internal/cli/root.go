@@ -156,6 +156,7 @@ Usage:
   gh flarebyte lint
   gh flarebyte cc
   gh flarebyte meta
+  gh flarebyte diff [--against main|head] [--format markdown|json|yaml] [--context lines]
   gh flarebyte cov [--min percent]
   gh flarebyte release [--draft] [--notes-file path]
   gh flarebyte repo init --repo owner/name [--overwrite]

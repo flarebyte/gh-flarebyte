@@ -1,0 +1,22 @@
+locator: internal/cli/cc.go
+meta:
+  function_list:
+    - ccDiagnostic
+    - ccIgnores
+    - ccLocationKey
+    - newCCCobraCommand
+    - parseCCReport
+    - printCCReport
+    - runCC
+  import_files_list:
+    - encoding/json
+    - fmt
+    - github.com/spf13/cobra
+    - io
+    - os
+    - path/filepath
+    - regexp
+    - sort
+    - strconv
+    - strings
+  language: go

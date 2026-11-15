@@ -83,11 +83,33 @@ and [license](LICENSE).
 - `gh flarebyte lint [--color auto|true|false] [--failed-only]` runs lint/static checks for the configured build language.
 - `gh flarebyte cc` finds duplicate source and test code using an installed jscpd, showing at most 10 pairs.
 - `gh flarebyte meta` runs root-level Thoth/Maat pipelines and summarizes metadata changes.
+- `gh flarebyte diff [--against main|head] [--format markdown|json|yaml] [--context <lines>]` reports code changes with existing Thoth metadata.
 - `gh flarebyte cov [--min <percent>] [--color auto|true|false] [--failed-only]` computes coverage and can fail below a threshold.
 - `gh flarebyte e2e` runs an independently configured Bun or Python suite.
 - `gh flarebyte script <file> -- [args...]` runs a file from the configured script folder.
 
 See [independent e2e tests and scripts](#independent-e2e-tests-and-scripts) for their configuration.
+
+### Code review reports
+
+```sh
+gh flarebyte diff
+gh flarebyte diff --against head
+gh flarebyte diff --format json --context 20
+```
+
+`diff` defaults to the merge base of HEAD and local `main`, including branch commits,
+staged and unstaged edits, and nonignored untracked files. Use `--against head` for
+uncommitted changes only. Run it from anywhere inside a Git working tree; no project
+config, GitHub authentication, or network access is required.
+
+Markdown output lists created, updated, and deleted paths alphabetically, then shows
+file history, matching `thoth-meta/**/*.thoth.yaml` documents, and contextual diffs.
+New text files are shown in full. File age measures days since the last committed
+update; local changes are indicated separately. The command reads metadata without
+regenerating it. JSON and YAML provide the same versioned report for automation.
+A clean comparison prints `No changes.` in Markdown. Both changed and clean reports
+exit successfully; comparison failures exit `1` and invalid flags exit `2`.
 
 ### Runtime info
 
