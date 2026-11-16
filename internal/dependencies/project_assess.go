@@ -69,11 +69,14 @@ func hasBundled(value any) bool {
 	}
 }
 
-func mergeProjectFindings(f *Finding, project *ProjectSnapshot) {
+func mergeProjectFindings(f *Finding, project *ProjectSnapshot, name string) {
 	if len(project.Missing) > 0 || len(project.Findings) != len(project.Nodes) {
 		f.Missing = append(f.Missing, "PROJECT_ASSESSMENT_INCOMPLETE")
 	}
 	for _, node := range project.Findings {
+		if f.Resolution == "replace-leaf" && name != "" && node.Path == "node_modules/"+name {
+			continue // The independently assessed candidate replaces this exact node.
+		}
 		f.Reasons = append(f.Reasons, node.Finding.Reasons...)
 		f.Advisories = append(f.Advisories, node.Finding.Advisories...)
 		if len(node.Finding.Missing) > 0 {

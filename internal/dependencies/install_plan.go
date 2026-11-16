@@ -41,11 +41,6 @@ func PrepareInstall(dir string, r Report) (InstallPlan, error) {
 	if len(snapshot.Nodes) > maxAssessedNodes || len(r.Details.Project.Findings) != len(snapshot.Nodes) {
 		return plan, fmt.Errorf("%w: incomplete artifact graph", ErrInstallUnsupported)
 	}
-	for _, node := range r.Details.Project.Findings {
-		if node.Finding.Decision != Allow || len(node.Finding.Missing) > 0 {
-			return plan, fmt.Errorf("%w: unresolved transitive evidence", ErrInstallUnsupported)
-		}
-	}
 	root, err := os.OpenRoot(dir)
 	if err != nil {
 		return plan, err
@@ -69,26 +64,71 @@ func PrepareInstall(dir string, r Report) (InstallPlan, error) {
 		return plan, fmt.Errorf("%w: installation requires lockfile v3", ErrInstallUnsupported)
 	}
 	version := r.Recommendation.Version
+	replaced := ""
+	added := ""
 	if !snapshot.binds(name, version) {
-		var addition *ProjectPlan
+		var changePlan *ProjectPlan
 		for i := range r.Details.Project.Plans {
 			p := &r.Details.Project.Plans[i]
-			if p.Name == name && p.Version == version && p.Kind == "add-leaf" {
-				if addition != nil {
+			if p.Name == name && p.Version == version && (p.Kind == "add-leaf" || p.Kind == "replace-leaf") {
+				if changePlan != nil {
 					return plan, fmt.Errorf("ambiguous installation plan")
 				}
-				addition = p
+				changePlan = p
 			}
 		}
-		if addition == nil || !npmArtifact(addition.Resolved, addition.Integrity) {
+		if changePlan == nil || !npmArtifact(changePlan.Resolved, changePlan.Integrity) {
 			return plan, fmt.Errorf("candidate has no supported installation plan")
 		}
-		if _, exists := snapshot.packages["node_modules/"+name]; exists {
-			return plan, fmt.Errorf("plan would replace an unassessed version")
+		release := &NPMRelease{}
+		release.Name, release.Version = name, version
+		release.Dist.Tarball, release.Dist.Integrity = changePlan.Resolved, changePlan.Integrity
+		valid := false
+		if changePlan.Kind == "replace-leaf" {
+			valid = snapshot.planReplacement(release)
+			if valid && snapshot.Plans[len(snapshot.Plans)-1].PreviousVersion == changePlan.PreviousVersion {
+				replaced = "node_modules/" + name
+			} else {
+				valid = false
+			}
+		} else {
+			valid = snapshot.planLeaf(release)
 		}
-		node := ProjectNode{Path: "node_modules/" + name, Name: name, Version: version, Resolved: addition.Resolved, Integrity: addition.Integrity}
-		snapshot.Nodes = append(snapshot.Nodes, node)
+		if !valid {
+			return plan, fmt.Errorf("candidate plan no longer valid")
+		}
+		node := ProjectNode{Path: "node_modules/" + name, Name: name, Version: version, Resolved: changePlan.Resolved, Integrity: changePlan.Integrity}
+		if replaced == "" {
+			added = node.Path
+			snapshot.Nodes = append(snapshot.Nodes, node)
+		} else {
+			for i := range snapshot.Nodes {
+				if snapshot.Nodes[i].Path == replaced {
+					snapshot.Nodes[i] = node
+				}
+			}
+		}
 		snapshot.packages[node.Path] = npmPackage{Version: version, Resolved: node.Resolved, Integrity: node.Integrity}
+	}
+	// Only the replaced node's historical verdict may be omitted. Every retained
+	// artifact must have exactly one matching, fully approved assessment.
+	for _, node := range snapshot.Nodes {
+		if node.Path == replaced || node.Path == added {
+			continue
+		}
+		matches := 0
+		for _, assessed := range r.Details.Project.Findings {
+			if assessed.Path != node.Path {
+				continue
+			}
+			matches++
+			if assessed.Package != "npm:"+node.Name || assessed.Finding.Version != node.Version || assessed.Finding.Decision != Allow || len(assessed.Finding.Missing) > 0 {
+				return plan, fmt.Errorf("%w: unresolved transitive evidence", ErrInstallUnsupported)
+			}
+		}
+		if matches != 1 {
+			return plan, fmt.Errorf("%w: incomplete artifact assessment", ErrInstallUnsupported)
+		}
 	}
 	var dependencies map[string]string
 	if raw := manifest["dependencies"]; len(raw) > 0 {
@@ -116,7 +156,7 @@ func PrepareInstall(dir string, r Report) (InstallPlan, error) {
 		if raw := bytes.TrimSpace(snapshot.packages[node.Path].Bin); len(raw) > 0 && !bytes.Equal(raw, []byte("null")) && !bytes.Equal(raw, []byte("{}")) {
 			return plan, fmt.Errorf("%w: executable bin packages", ErrInstallUnsupported)
 		}
-		if _, exists := packages[node.Path]; !exists {
+		if _, exists := packages[node.Path]; !exists || node.Path == replaced {
 			packages[node.Path], _ = json.Marshal(map[string]string{"version": node.Version, "resolved": node.Resolved, "integrity": node.Integrity})
 		}
 		plan.Artifacts = append(plan.Artifacts, InstallArtifact{Node: node, Manifest: snapshot.packages[node.Path]})

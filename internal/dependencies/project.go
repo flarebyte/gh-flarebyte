@@ -1,6 +1,6 @@
 // purpose: Inspect a concrete local npm lock graph without invoking package tooling.
 // responsibilities: Bound file reads, verify manifest/lock agreement and identify unsupported resolution changes.
-// architecture notes: Inspect locked versions and dependency-free additions; general version changes require a separate safe resolver.
+// architecture notes: Inspect locked versions and dependency-free additions/upgrades; general changes require a separate safe resolver.
 package dependencies
 
 import (
@@ -42,11 +42,12 @@ type ProjectSnapshot struct {
 }
 
 type ProjectPlan struct {
-	Name      string `json:"name"`
-	Version   string `json:"version"`
-	Kind      string `json:"kind"`
-	Integrity string `json:"integrity,omitempty"`
-	Resolved  string `json:"resolved,omitempty"`
+	Name            string `json:"name"`
+	Version         string `json:"version"`
+	Kind            string `json:"kind"`
+	Integrity       string `json:"integrity,omitempty"`
+	Resolved        string `json:"resolved,omitempty"`
+	PreviousVersion string `json:"previous_version,omitempty"`
 }
 
 type ProjectFinding struct {
@@ -372,6 +373,62 @@ func (s *ProjectSnapshot) planLeaf(release *NPMRelease) bool {
 		}
 	}
 	s.Plans = append(s.Plans, ProjectPlan{Name: release.Name, Version: release.Version, Kind: "add-leaf", Integrity: release.Dist.Integrity, Resolved: release.Dist.Tarball})
+	return true
+}
+
+// planReplacement preserves every other locked node and every incoming edge.
+// Only the root runtime declaration may change; no fresh resolution is inferred.
+func (s *ProjectSnapshot) planReplacement(release *NPMRelease) bool {
+	if s == nil || !s.Complete || release == nil {
+		return false
+	}
+	path := "node_modules/" + release.Name
+	old, exists := s.packages[path]
+	if !exists || s.runtime[release.Name] != old.Version {
+		return false
+	}
+	before, beforeOK := stableVersion("npm", old.Version)
+	after, afterOK := stableVersion("npm", release.Version)
+	if !beforeOK || !afterOK || compareNumbers(after, before) <= 0 || len(old.Dependencies)+len(old.OptionalDependencies)+len(old.PeerDependencies) > 0 {
+		return false
+	}
+	// Reuse addition validation on a private view without the old root slot.
+	view := *s
+	view.packages = make(map[string]npmPackage, len(s.packages))
+	view.Plans = nil
+	for location, p := range s.packages {
+		if strings.HasPrefix(location, path+"/") {
+			return false
+		}
+		if location != path {
+			view.packages[location] = p
+		}
+		groups := []map[string]string{p.Dependencies, p.OptionalDependencies, p.PeerDependencies}
+		if location == "" {
+			if _, found := p.DevDependencies[release.Name]; found {
+				return false
+			}
+			if _, found := p.OptionalDependencies[release.Name]; found {
+				return false
+			}
+		}
+		for group, declarations := range groups {
+			requirement, present := declarations[release.Name]
+			if !present || location == "" && group == 0 || resolveLocked(s.packages, location, release.Name) != path {
+				continue
+			}
+			if match, known := npmSatisfies(requirement, release.Version); !known || !match {
+				return false
+			}
+		}
+	}
+	if !view.planLeaf(release) {
+		return false
+	}
+	plan := view.Plans[0]
+	plan.Kind = "replace-leaf"
+	plan.PreviousVersion = old.Version
+	s.Plans = append(s.Plans, plan)
 	return true
 }
 

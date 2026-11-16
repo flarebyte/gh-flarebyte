@@ -64,6 +64,76 @@ func TestDependencyNPMOfflineIntegration(t *testing.T) {
 	}
 }
 
+func approvedDependencyUpgrade(t *testing.T) (string, dependencies.Report, []byte) {
+	t.Helper()
+	root, r, artifact := approvedDependencyInstall(t)
+	manifest := `{"name":"local","version":"1.0.0","dependencies":{"fixture-lib":"0.9.0"}}`
+	lock := `{"lockfileVersion":3,"packages":{"":{"name":"local","version":"1.0.0","dependencies":{"fixture-lib":"0.9.0"}},"node_modules/fixture-lib":{"version":"0.9.0","resolved":"https://registry.npmjs.org/fixture-lib/-/fixture-lib-0.9.0.tgz","integrity":"` + r.Details.Project.Plans[0].Integrity + `"}}}`
+	for name, data := range map[string]string{"package.json": manifest, "package-lock.json": lock} {
+		if err := os.WriteFile(name, []byte(data), 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.MkdirAll("node_modules/fixture-lib", 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile("node_modules/fixture-lib/package.json", []byte(`{"name":"fixture-lib","version":"0.9.0"}`), 0600); err != nil {
+		t.Fatal(err)
+	}
+	plan := r.Details.Project.Plans[0]
+	plan.Kind, plan.PreviousVersion = "replace-leaf", "0.9.0"
+	r.Details.Project = dependencies.ReadProject(root, "npm")
+	r.Details.Project.Plans = []dependencies.ProjectPlan{plan}
+	r.Details.Project.Findings = []dependencies.ProjectFinding{{Path: "node_modules/fixture-lib", Package: "npm:fixture-lib", Finding: dependencies.Finding{Version: "0.9.0", Decision: dependencies.Deny, Reasons: []string{"KNOWN_VULNERABILITY"}}}}
+	return root, r, artifact
+}
+
+func TestDependencyUpgrade(t *testing.T) {
+	for _, mode := range []string{"success", "artifact", "command", "changedplan", "wrongversion"} {
+		t.Run(mode, func(t *testing.T) {
+			root, r, b := approvedDependencyUpgrade(t)
+			stubDependencyNative(t, b, mode)
+			beforeManifest, _ := os.ReadFile("package.json")
+			beforeLock, _ := os.ReadFile("package-lock.json")
+			err := installNPMDependency(context.Background(), root, &r)
+			installed, readErr := os.ReadFile("node_modules/fixture-lib/package.json")
+			if readErr != nil {
+				t.Fatal(readErr)
+			}
+			if mode == "success" {
+				if err != nil || r.Installation == nil || !strings.Contains(string(installed), `"1.0.0"`) {
+					t.Fatal(err, string(installed))
+				}
+			} else {
+				afterManifest, _ := os.ReadFile("package.json")
+				afterLock, _ := os.ReadFile("package-lock.json")
+				if err == nil || !bytes.Equal(beforeManifest, afterManifest) || !bytes.Equal(beforeLock, afterLock) || !strings.Contains(string(installed), `"0.9.0"`) {
+					t.Fatal("failed upgrade modified original project", err)
+				}
+			}
+		})
+	}
+}
+
+func TestDependencyNPMOfflineUpgradeIntegration(t *testing.T) {
+	if os.Getenv("GH_FLAREBYTE_DEP_NPM_INTEGRATION") != "1" {
+		t.Skip("opt-in synthetic npm upgrade")
+	}
+	root, r, b := approvedDependencyUpgrade(t)
+	old := dependencyArtifact
+	t.Cleanup(func() { dependencyArtifact = old })
+	dependencyArtifact = func(context.Context, dependencies.InstallArtifact) ([]byte, error) { return b, nil }
+	if err := installNPMDependency(context.Background(), root, &r); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat("node_modules/fixture-lib/hook-executed"); !os.IsNotExist(err) {
+		t.Fatal("lifecycle hook executed")
+	}
+	if s := dependencies.ReadProject(root, "npm"); !s.Complete || len(s.Nodes) != 1 || s.Nodes[0].Version != "1.0.0" {
+		t.Fatal(s)
+	}
+}
+
 func TestDepInstallCommandApproved(t *testing.T) {
 	_, r, b := approvedDependencyInstall(t)
 	stubDependencyNative(t, b, "success")

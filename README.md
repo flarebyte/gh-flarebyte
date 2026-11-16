@@ -287,7 +287,10 @@ and npm/Cargo build metadata; unsupported ordering prevents a newest-version cla
 
 Npm checks inspect local lockfiles v2/v3 without executing tooling. They support an
 already locked runtime version or a dependency-free addition that preserves existing
-versions and peer constraints. Checks reject stale manifests, unsafe artifact origins,
+versions and peer constraints. Dependency-free runtime packages can also be upgraded
+when both versions have no outgoing dependency or peer edges, no nested subtree
+exists, and every retained incoming constraint still holds. Every other locked
+artifact remains pinned and assessed. Checks reject stale manifests, unsafe artifact origins,
 weak hashes, symlinks, workspaces and unsupported resolution forms. Transitive findings
 include lockfile paths, and registry metadata is compared with the proposed graph.
 Supported constraints include exact versions, full caret/tilde versions, comparator
@@ -311,7 +314,8 @@ ordering or unresolved newer candidates prevent a newest-version recommendation.
 
 `gh flarebyte dep install npm lodash` assesses first and installs only a fully approved
 npm plan. The initial installer requires Node 24+, npm 10+, lockfile v3 and a supported
-locked version or dependency-free addition. Executable-bin packages, links, bundled
+locked version, dependency-free addition or the guarded upgrade described above.
+Executable-bin packages, links, bundled
 dependencies and embedded shrinkwrap are unsupported. Artifacts are downloaded from
 the public npm registry, checked against SHA-512 and inspected for archive escapes,
 unexpected metadata and expansion limits before native tooling runs. npm uses an

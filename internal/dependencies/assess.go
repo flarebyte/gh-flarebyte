@@ -232,6 +232,8 @@ func (c *Client) assess(ctx context.Context, system, name string, requested *str
 			resolution = "locked"
 		} else if project.planLeaf(npm) {
 			resolution = "add-leaf"
+		} else if project.planReplacement(npm) {
+			resolution = "replace-leaf"
 		}
 		if resolution != "" {
 			e.ProjectResolved = true
@@ -243,7 +245,7 @@ func (c *Client) assess(ctx context.Context, system, name string, requested *str
 		f.Resolution = resolution
 		f.Reasons = unique(append(f.Reasons, releaseReasons...))
 		if e.ProjectResolved {
-			mergeProjectFindings(&f, project)
+			mergeProjectFindings(&f, project, name)
 			if npm != nil && (len(npm.Engines) > 0 || len(npm.OS) > 0 || len(npm.CPU) > 0) {
 				f.Missing = unique(append(f.Missing, "RUNTIME_COMPATIBILITY"))
 			}

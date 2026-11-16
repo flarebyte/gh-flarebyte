@@ -79,9 +79,12 @@ and npm range parsing. Test malformed/changed lockfiles, missing transitive edge
 artifact or registry metadata disagreement, conflicting provenance, advisory aliases,
 snapshot selection and evidence budgets. Concrete plan checks must never execute
 package tooling. The guarded installer has an opt-in synthetic integration:
-`GH_FLAREBYTE_DEP_NPM_INTEGRATION=1 go test ./internal/cli -run '^TestDependencyNPMOfflineIntegration$'`.
+`GH_FLAREBYTE_DEP_NPM_INTEGRATION=1 go test ./internal/cli -run '^TestDependencyNPMOffline.*Integration$'`.
 It uses a checked-in synthetic artifact and no registry network access, and verifies
-that its lifecycle hook does not run. SDK flags, environment isolation, artifact
+that its lifecycle hook does not run during addition or upgrade. Upgrade tests must
+retain all other nodes' findings, reject incompatible incoming constraints and
+preserve the original manifest, lockfile and installed version after staged failure.
+SDK flags, environment isolation, artifact
 preflight, staged failures and conditional rollback have offline unit tests. Keep
 identity, maintainer and resolution gaps blocking; do not enable installation by
 assuming stars, contributors or a high Scorecard score establish safety.

@@ -148,7 +148,7 @@ func TestProjectAssessmentBudgets(t *testing.T) {
 		t.Fatal(project)
 	}
 	f := Finding{Reasons: []string{}, Missing: []string{}, Advisories: []string{}}
-	mergeProjectFindings(&f, project)
+	mergeProjectFindings(&f, project, "")
 	if !slices.Contains(f.Missing, "PROJECT_ASSESSMENT_INCOMPLETE") {
 		t.Fatal(f)
 	}
