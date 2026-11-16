@@ -29,16 +29,19 @@ type ProjectNode struct {
 }
 
 type ProjectSnapshot struct {
-	System         string           `json:"system"`
-	ManifestDigest string           `json:"manifest_digest,omitempty"`
-	LockDigest     string           `json:"lock_digest,omitempty"`
-	Complete       bool             `json:"complete"`
-	Missing        []string         `json:"missing"`
-	Nodes          []ProjectNode    `json:"nodes"`
-	Findings       []ProjectFinding `json:"findings,omitempty"`
-	Plans          []ProjectPlan    `json:"plans,omitempty"`
-	runtime        map[string]string
-	packages       map[string]npmPackage
+	System          string           `json:"system"`
+	Resolution      string           `json:"resolution,omitempty"`
+	RuntimeBaseline string           `json:"runtime_baseline,omitempty"`
+	ManifestDigest  string           `json:"manifest_digest,omitempty"`
+	LockDigest      string           `json:"lock_digest,omitempty"`
+	Complete        bool             `json:"complete"`
+	Missing         []string         `json:"missing"`
+	Nodes           []ProjectNode    `json:"nodes"`
+	Findings        []ProjectFinding `json:"findings,omitempty"`
+	Plans           []ProjectPlan    `json:"plans,omitempty"`
+	runtime         map[string]string
+	packages        map[string]npmPackage
+	cargo           *cargoGraph
 }
 
 type ProjectPlan struct {
@@ -164,6 +167,9 @@ func strictJSON(b []byte, out any, opening byte) error {
 }
 
 func ReadProject(dir, system string) *ProjectSnapshot {
+	if system == "cargo" {
+		return readCargoProject(dir)
+	}
 	s := &ProjectSnapshot{System: system, Missing: []string{}, Nodes: []ProjectNode{}, runtime: map[string]string{}}
 	fail := func(code string) *ProjectSnapshot { s.Missing = unique(append(s.Missing, code)); return s }
 	if system != "npm" {
@@ -438,10 +444,17 @@ func (s *ProjectSnapshot) unchanged(dir string) bool {
 		return false
 	}
 	defer root.Close()
-	m, err := projectFile(root, "package.json", 1<<20)
+	manifest, lock := "package.json", "package-lock.json"
+	if s.System == "cargo" {
+		manifest, lock = "Cargo.toml", "Cargo.lock"
+		if cargoConfigPresent(root) {
+			return false
+		}
+	}
+	m, err := projectFile(root, manifest, 1<<20)
 	if err != nil {
 		return false
 	}
-	l, err := projectFile(root, "package-lock.json", maxBody)
+	l, err := projectFile(root, lock, maxBody)
 	return err == nil && digestBytes(m) == s.ManifestDigest && digestBytes(l) == s.LockDigest
 }

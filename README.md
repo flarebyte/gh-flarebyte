@@ -301,6 +301,26 @@ conjunctions, bare partial versions (`1`, `1.2`), trailing wildcards and `||`
 alternatives. Every alternative must use supported syntax; prereleases remain gated.
 General upgrades and runtime/platform constraints may still require further evidence.
 
+Cargo checks inspect `Cargo.toml` and lockfiles v3/v4 for single-package crates.io
+projects and already locked runtime dependencies. Every locked crate is assessed,
+including build/development dependencies, as a conservative superset rather than
+an activated target/feature graph. Checks compare registry SHA-256 checksums and
+dependency declarations with the lock. Explained output identifies entries as
+`Cargo.lock#name@version` and labels the resolution `locked-superset`.
+Workspaces, target tables, patches, path/Git dependencies, alternate registries and
+local Cargo configuration remain unsupported. Feature activation, missing optional
+resolution and Rust compiler requirements can leave the verdict unknown. Cargo
+bare versions use caret semantics; unsupported ranges remain blocking. Checks
+never execute Cargo or package code. Cargo installation remains unavailable.
+
+If `[package].rust-version` is declared, Cargo checks compare each locked crate's
+published minimum Rust version against that baseline. A newer requirement denies
+with `RUST_VERSION_INCOMPATIBLE`; a missing baseline or unrecognised requirement
+stays unknown. Invalid edition/baseline combinations are blocked. `--explain`
+includes `runtime_baseline` and per-crate `runtime` evidence with the basis
+`manifest-rust-version`. This compares declared requirements; it does not verify
+the installed compiler, compilation or feature activation.
+
 Conservative defaults require 100 stars, two independently established active
 maintainers and a Scorecard scan no older than 30 days. Individual Scorecard minimums
 are Branch-Protection 6, Code-Review 7, Dangerous-Workflow 10, Maintained 5 and

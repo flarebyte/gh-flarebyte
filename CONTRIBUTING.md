@@ -91,6 +91,18 @@ preflight, staged failures and conditional rollback have offline unit tests. Kee
 identity, maintainer and resolution gaps blocking; do not enable installation by
 assuming stars, contributors or a high Scorecard score establish safety.
 
+Cargo assessment tests use TOML fixtures and fake crates.io/deps.dev/OSV/GitHub
+responses. Cover root-lock agreement, version/source ambiguity, checksum and edge
+disagreement, build/dev dependencies, renamed crates, feature/compiler uncertainty,
+configuration changes and malformed or linked files. The existing TOML dependency
+is reused. Fuzz Cargo requirement parsing and bounded manifest/lock parsing without
+invoking Cargo. Keep Cargo native installation gated independently of check success.
+Compiler-baseline tests cover numeric/partial Rust versions, transitive requirements,
+edition floors, missing/invalid declarations, unchanged security verdicts and
+malicious upstream text that must not enter explained evidence. Keep the comparison
+against the manifest's declared `rust-version`; do not infer an installed toolchain
+or silently raise the project's baseline to permit a dependency.
+
 [Design notes](doc/design/gh-flarebyte.md) are generated from
 [app.cue](doc/design-meta/app.cue) and its example inputs. Change the authored inputs
 and use `make doc-design` (requires `flyb`) to validate and regenerate them. Do not

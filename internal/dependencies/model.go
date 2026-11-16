@@ -101,14 +101,25 @@ type Source struct {
 	Attempts    int       `json:"attempts"`
 }
 type Finding struct {
-	Version        string          `json:"version"`
-	Reasons        []string        `json:"reasons"`
-	Missing        []string        `json:"missing"`
-	Advisories     []string        `json:"advisories"`
-	Decision       string          `json:"decision"`
-	Evidence       *Evidence       `json:"evidence,omitempty"`
-	AdvisoryGroups []AdvisoryGroup `json:"advisory_groups,omitempty"`
-	Resolution     string          `json:"resolution,omitempty"`
+	Version        string                `json:"version"`
+	Reasons        []string              `json:"reasons"`
+	Missing        []string              `json:"missing"`
+	Advisories     []string              `json:"advisories"`
+	Decision       string                `json:"decision"`
+	Evidence       *Evidence             `json:"evidence,omitempty"`
+	AdvisoryGroups []AdvisoryGroup       `json:"advisory_groups,omitempty"`
+	Resolution     string                `json:"resolution,omitempty"`
+	Runtime        *RuntimeCompatibility `json:"runtime,omitempty"`
+}
+
+// RuntimeCompatibility compares declared requirements; it does not attest to an
+// installed compiler, successful compilation or feature activation.
+type RuntimeCompatibility struct {
+	Runtime  string `json:"runtime"`
+	Basis    string `json:"basis"`
+	Baseline string `json:"baseline,omitempty"`
+	Minimum  string `json:"minimum,omitempty"`
+	Status   string `json:"status"`
 }
 type Details struct {
 	Policy                Policy           `json:"policy"`

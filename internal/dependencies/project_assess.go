@@ -12,24 +12,32 @@ import (
 const maxAssessedNodes = 32
 
 func (c *Client) assessProject(ctx context.Context, project *ProjectSnapshot, p Policy, now time.Time, r *Report, cache map[string]TrustEvidence) {
+	system := project.System
+	if system == "" {
+		system = "npm"
+	}
 	for index, node := range project.Nodes {
 		if index >= maxAssessedNodes || ctx.Err() != nil {
 			project.Missing = unique(append(project.Missing, "PROJECT_ASSESSMENT_LIMIT"))
 			break
 		}
 		finding := Finding{Version: node.Version, Decision: Unknown, Reasons: []string{}, Missing: []string{}, Advisories: []string{}}
-		v, err := c.Version(ctx, "npm", node.Name, node.Version, &r.Details.Sources)
-		if err != nil || v.Key.Name != node.Name || v.Key.Version != node.Version || !strings.EqualFold(v.Key.System, "npm") {
-			finding.Missing = []string{"VERSION_LOOKUP"}
+		advisories, osvErr := c.OSV(ctx, systems[system], node.Name, node.Version, &r.Details.Sources)
+		v, err := c.Version(ctx, system, node.Name, node.Version, &r.Details.Sources)
+		if err != nil || v.Key.Name != node.Name || v.Key.Version != node.Version || !strings.EqualFold(v.Key.System, system) {
+			finding = EvaluateVersion(Version{Key: VersionKey{System: system, Name: node.Name, Version: node.Version}}, advisories, osvErr, p, now)
+			finding.Missing = unique(append(finding.Missing, "VERSION_LOOKUP"))
 		} else {
-			advisories, osvErr := c.OSV(ctx, "npm", node.Name, node.Version, &r.Details.Sources)
-			e, release, _, releaseReasons := c.releaseEvidence(ctx, "npm", node.Name, node.Version, &r.Details.Sources)
+			e, release, _, releaseReasons := c.releaseEvidence(ctx, system, node.Name, node.Version, &r.Details.Sources)
 			e.ProjectResolved = true
-			e.NameScreened, e.NameConflict = screenName("npm", node.Name)
+			e.NameScreened, e.NameConflict = screenName(system, node.Name)
 			c.fillRepository(ctx, v, &e, r, cache)
 			c.fillMaintainers(ctx, &e, p, now, r, cache)
 			finding = evaluateRelease(v, advisories, osvErr, e, p, now)
 			finding.Reasons = unique(append(finding.Reasons, releaseReasons...))
+			if system == "cargo" {
+				c.checkCargoNode(ctx, project, node, &finding, &r.Details.Sources)
+			}
 			if release != nil {
 				if release.Dist.Tarball != node.Resolved || release.Dist.Integrity != node.Integrity {
 					finding.Reasons = unique(append(finding.Reasons, "ARTIFACT_MISMATCH"))
@@ -50,9 +58,12 @@ func (c *Client) assessProject(ctx context.Context, project *ProjectSnapshot, p 
 					finding.Missing = unique(append(finding.Missing, "RUNTIME_COMPATIBILITY"))
 				}
 			}
-			finding.Decision = verdict(finding.Reasons, finding.Missing)
 		}
-		project.Findings = append(project.Findings, ProjectFinding{Path: node.Path, Package: "npm:" + node.Name, Finding: finding})
+		finding.Decision = verdict(finding.Reasons, finding.Missing)
+		if finding.Evidence != nil {
+			finding.Evidence.Missing = finding.Missing
+		}
+		project.Findings = append(project.Findings, ProjectFinding{Path: node.Path, Package: system + ":" + node.Name, Finding: finding})
 	}
 }
 

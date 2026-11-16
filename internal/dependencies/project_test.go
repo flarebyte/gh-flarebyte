@@ -115,7 +115,7 @@ func TestReadProject(t *testing.T) {
 
 func TestProjectFileSafety(t *testing.T) {
 	dir := t.TempDir()
-	if !slices.Contains(ReadProject(dir, "cargo").Missing, "PROJECT_RESOLVER_UNSUPPORTED") {
+	if !slices.Contains(ReadProject(dir, "pypi").Missing, "PROJECT_RESOLVER_UNSUPPORTED") {
 		t.Fatal("unsupported resolver")
 	}
 	if !slices.Contains(ReadProject(filepath.Join(dir, "absent"), "npm").Missing, "PROJECT_READ") {
