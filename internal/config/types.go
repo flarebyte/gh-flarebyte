@@ -12,17 +12,22 @@ type CCConfig struct {
 }
 
 type Config struct {
-	CC         CCConfig         `json:"cc"`
-	E2E        *ToolingConfig   `json:"e2e,omitempty"`
-	Script     *ToolingConfig   `json:"script,omitempty"`
-	Project    ProjectConfig    `json:"project"`
-	Sync       SyncConfig       `json:"sync"`
-	Repository RepositoryConfig `json:"repository"`
-	Go         GoConfig         `json:"go"`
-	DevOutput  DevOutputConfig  `json:"devOutput"`
-	Coverage   CoverageConfig   `json:"coverage"`
-	Build      BuildConfig      `json:"build"`
-	Release    ReleaseConfigRaw `json:"release"`
+	Dependencies DependencyPolicyConfig `json:"dependencies"`
+	CC           CCConfig               `json:"cc"`
+	E2E          *ToolingConfig         `json:"e2e,omitempty"`
+	Script       *ToolingConfig         `json:"script,omitempty"`
+	Project      ProjectConfig          `json:"project"`
+	Sync         SyncConfig             `json:"sync"`
+	Repository   RepositoryConfig       `json:"repository"`
+	Go           GoConfig               `json:"go"`
+	DevOutput    DevOutputConfig        `json:"devOutput"`
+	Coverage     CoverageConfig         `json:"coverage"`
+	Build        BuildConfig            `json:"build"`
+	Release      ReleaseConfigRaw       `json:"release"`
+}
+
+type DependencyPolicyConfig struct {
+	MinAgeDays int `json:"minAgeDays"`
 }
 
 type GoConfig struct {

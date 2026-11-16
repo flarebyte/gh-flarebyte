@@ -41,6 +41,13 @@ jobs:
         run: python -m unittest discover -s script -p 'test_*.py'
       - name: Go tests and default E2E suite
         run: make test
+      - name: Dependency core coverage floor
+        env:
+          GOCACHE: ${{ github.workspace }}/.gocache
+          GOMODCACHE: ${{ github.workspace }}/.gomodcache
+        run: |
+          go test ./internal/dependencies -coverprofile=tmp/dependency-coverage.out
+          go tool cover -func=tmp/dependency-coverage.out | awk '/^total:/ { sub(/%/, "", $3); found=1; if ($3+0 < 90) exit 1 } END { if (!found) exit 1 }'
 
   python:
     name: Python 3.12 with uv / macOS arm64

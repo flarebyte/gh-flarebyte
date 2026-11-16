@@ -148,6 +148,8 @@ func printHelp(w io.Writer) {
 Usage:
   gh flarebyte --help
   gh flarebyte --version [--json]
+  gh flarebyte dep check <ecosystem> <package[@version]> [--json] [--explain]
+  gh flarebyte dep install <ecosystem> <package> [--json] [--explain]
   gh flarebyte build [--target os-arch] [--output-dir path]
   gh flarebyte test
   gh flarebyte e2e

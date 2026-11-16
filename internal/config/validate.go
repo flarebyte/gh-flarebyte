@@ -9,6 +9,9 @@ import (
 )
 
 func Validate(cfg Config) error {
+	if cfg.Dependencies.MinAgeDays < 0 {
+		return errors.New("invalid dependencies.minAgeDays: expected nonnegative integer")
+	}
 	if err := validateTooling("e2e", cfg.E2E); err != nil {
 		return err
 	}

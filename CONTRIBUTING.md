@@ -55,6 +55,7 @@ or running the CLI does not require the SDKs for every supported language.
 |---|---|
 | [cmd/gh-flarebyte](cmd/gh-flarebyte) | Process entry point and runtime metadata |
 | [internal/config](internal/config) | Literal config parsing, defaults, validation |
+| [internal/dependencies](internal/dependencies) | Bounded provider clients, dependency policy and partial evidence reports |
 | [internal/cli](internal/cli) | Command wiring, tool execution, reports, repository and release flows |
 | [internal/cli/language_contract_test.go](internal/cli/language_contract_test.go) | Shared output, flag, and coverage policies across languages |
 | [e2e](e2e) and [fixtures](e2e/fixtures) | Smoke tests and opt-in real-toolchain suites |
@@ -66,6 +67,24 @@ then dispatch to repository operations or a language adapter. The adapters use s
 execution, output, coverage, checksum, and artifact-staging helpers. For a language
 change, keep help, config validation, README examples, and the shared contract tests
 consistent; add real-toolchain coverage in the corresponding fixture when needed.
+
+Dependency tests use fake HTTP transports and temporary repositories; they never
+call live registries or install third-party packages. Run focused checks with
+`go test ./internal/dependencies ./internal/config` and
+`go test ./internal/cli -run '^TestDep'`.
+The new dependency core has a 90% statement coverage floor in CI; security failure
+cases still require explicit tests regardless of that percentage. Seeded fuzz
+tests cover package inputs, descriptions, dependency policy parsing, project JSON
+and npm range parsing. Test malformed/changed lockfiles, missing transitive edges,
+artifact or registry metadata disagreement, conflicting provenance, advisory aliases,
+snapshot selection and evidence budgets. Concrete plan checks must never execute
+package tooling. The guarded installer has an opt-in synthetic integration:
+`GH_FLAREBYTE_DEP_NPM_INTEGRATION=1 go test ./internal/cli -run '^TestDependencyNPMOfflineIntegration$'`.
+It uses a checked-in synthetic artifact and no registry network access, and verifies
+that its lifecycle hook does not run. SDK flags, environment isolation, artifact
+preflight, staged failures and conditional rollback have offline unit tests. Keep
+identity, maintainer and resolution gaps blocking; do not enable installation by
+assuming stars, contributors or a high Scorecard score establish safety.
 
 [Design notes](doc/design/gh-flarebyte.md) are generated from
 [app.cue](doc/design-meta/app.cue) and its example inputs. Change the authored inputs

@@ -1,0 +1,158 @@
+// purpose: Model bounded dependency assessments and versioned machine-readable reports.
+// responsibilities: Define policy, evidence, outcomes and provider-neutral records.
+// architecture notes: Unknown evidence is explicit and never converted into permission to install.
+package dependencies
+
+import (
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"strings"
+	"time"
+	"unicode"
+)
+
+const (
+	Allow   = "allow"
+	Deny    = "deny"
+	Unknown = "unknown"
+)
+
+type Policy struct {
+	ID                    string           `json:"id"`
+	MinAgeDays            int              `json:"min_age_days"`
+	MinStars              int              `json:"min_stars"`
+	MinMaintainers        int              `json:"min_maintainers"`
+	ActivityDays          int              `json:"activity_days"`
+	MaxScorecardAgeDays   int              `json:"max_scorecard_age_days"`
+	ScorecardChecks       []CheckThreshold `json:"scorecard_checks"`
+	NameReferenceRevision string           `json:"name_reference_revision"`
+	NameReferenceDigest   string           `json:"name_reference_digest"`
+}
+
+type CheckThreshold struct {
+	Name     string `json:"name"`
+	MinScore int    `json:"min_score"`
+}
+
+func DefaultPolicy(days int) Policy {
+	references, _ := json.Marshal(nameReferences)
+	hash := sha256.Sum256(references)
+	return Policy{ID: "conservative-v1", MinAgeDays: days, MinStars: 100, MinMaintainers: 2, ActivityDays: 180, MaxScorecardAgeDays: 30,
+		NameReferenceRevision: nameReferenceRevision, NameReferenceDigest: "sha256:" + hex.EncodeToString(hash[:]), ScorecardChecks: []CheckThreshold{{"Branch-Protection", 6}, {"Code-Review", 7}, {"Dangerous-Workflow", 10}, {"Maintained", 5}, {"Token-Permissions", 8}}}
+}
+
+func (p Policy) Digest() string {
+	b, _ := json.Marshal(p)
+	h := sha256.Sum256(b)
+	return "sha256:" + hex.EncodeToString(h[:])
+}
+
+type Candidate struct {
+	Version       string `json:"version"`
+	AgeDays       int64  `json:"age_days"`
+	Compatibility string `json:"compatibility"`
+}
+
+type Evidence struct {
+	Identity    string   `json:"identity"`
+	Stars       *int     `json:"stars"`
+	Maintainers string   `json:"maintainers"`
+	Advisories  []string `json:"advisories"`
+	Missing     []string `json:"missing"`
+}
+
+type Report struct {
+	Schema         int           `json:"schema"`
+	Package        string        `json:"package"`
+	Description    *string       `json:"description"`
+	Requested      *string       `json:"requested"`
+	Scope          string        `json:"scope"`
+	Decision       string        `json:"decision"`
+	Reasons        []string      `json:"reasons"`
+	Recommendation *Candidate    `json:"recommendation"`
+	Alternatives   []Candidate   `json:"alternatives"`
+	Evidence       Evidence      `json:"evidence"`
+	Policy         string        `json:"policy"`
+	PolicyDigest   string        `json:"policy_digest"`
+	CheckedAt      time.Time     `json:"checked_at"`
+	Details        *Details      `json:"details,omitempty"`
+	Error          *ReportError  `json:"error,omitempty"`
+	Installation   *Installation `json:"installation,omitempty"`
+}
+
+type Installation struct {
+	Version             string   `json:"version"`
+	Files               []string `json:"files"`
+	AssessmentReference string   `json:"assessment_reference"`
+}
+
+type ReportError struct {
+	Code    string `json:"code"`
+	Message string `json:"message"`
+}
+type Source struct {
+	Package     string    `json:"package,omitempty"`
+	Version     string    `json:"version,omitempty"`
+	Provider    string    `json:"provider"`
+	URL         string    `json:"url"`
+	RetrievedAt time.Time `json:"retrieved_at"`
+	Status      string    `json:"status"`
+	Attempts    int       `json:"attempts"`
+}
+type Finding struct {
+	Version        string          `json:"version"`
+	Reasons        []string        `json:"reasons"`
+	Missing        []string        `json:"missing"`
+	Advisories     []string        `json:"advisories"`
+	Decision       string          `json:"decision"`
+	Evidence       *Evidence       `json:"evidence,omitempty"`
+	AdvisoryGroups []AdvisoryGroup `json:"advisory_groups,omitempty"`
+	Resolution     string          `json:"resolution,omitempty"`
+}
+type Details struct {
+	Policy                Policy           `json:"policy"`
+	Sources               []Source         `json:"sources"`
+	Candidates            []Finding        `json:"candidates"`
+	Scorecards            []Scorecard      `json:"scorecards"`
+	ConfigPath            string           `json:"config_path"`
+	LimitReached          bool             `json:"limit_reached"`
+	Project               *ProjectSnapshot `json:"project,omitempty"`
+	RecommendationMissing []string         `json:"recommendation_missing,omitempty"`
+}
+
+func NewReport(system, name string, requested *string, p Policy, now time.Time) Report {
+	return Report{Schema: 1, Package: system + ":" + name, Requested: requested,
+		Scope: "package", Decision: Unknown, Reasons: []string{}, Alternatives: []Candidate{},
+		Evidence: Evidence{Identity: "unknown", Maintainers: "unknown", Advisories: []string{}, Missing: []string{}},
+		Policy:   p.ID, PolicyDigest: p.Digest(), CheckedAt: now.UTC(),
+		Details: &Details{Policy: p, Sources: []Source{}, Candidates: []Finding{}, Scorecards: []Scorecard{}}}
+}
+
+// Description treats upstream text as data, removing terminal controls before
+// rendering. Limit by Unicode code points, including the truncation marker.
+func Description(raw string) *string {
+	raw = strings.Map(func(r rune) rune {
+		if unicode.IsControl(r) || unicode.Is(unicode.Cf, r) {
+			return ' '
+		}
+		return r
+	}, raw)
+	raw = strings.Join(strings.Fields(raw), " ")
+	if raw == "" {
+		return nil
+	}
+	r := []rune(raw)
+	if len(r) > 200 {
+		raw = string(r[:199]) + "…"
+	}
+	return &raw
+}
+
+func daysOld(now, published time.Time) int64 {
+	seconds := now.Unix() - published.Unix()
+	if now.Nanosecond() < published.Nanosecond() {
+		seconds--
+	}
+	return seconds / 86400
+}

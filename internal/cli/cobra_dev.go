@@ -36,6 +36,9 @@ func runWithCobra(args []string, stdout, stderr io.Writer) Result {
 		if errors.As(err, &exitErr) {
 			return Result{ExitCode: exitErr.code, Err: exitErr.err}
 		}
+		if len(args) > 1 && args[0] == "dep" && (args[1] == "check" || args[1] == "install") {
+			return dependencyError("", "INVALID_INPUT", err, ExitUsage, dependencyJSONRequested(args), stdout, stderr)
+		}
 		_, _ = fmt.Fprintf(stderr, "unknown arguments: %v\n", args)
 		_, _ = fmt.Fprintln(stderr, "run `gh flarebyte --help` for usage")
 		return Result{ExitCode: ExitUsage, Err: errors.New("invalid invocation")}
@@ -92,6 +95,7 @@ func newCobraRoot(stdout, stderr io.Writer) *cobra.Command {
 	root.Flags().BoolVar(&versionFlag, "version", false, "Print version information")
 	root.Flags().BoolVar(&jsonFlag, "json", false, "Print JSON output where supported")
 	root.AddCommand(
+		newDepCommand(stdout, stderr),
 		newToolingCommand("e2e", stdout, stderr),
 		newToolingCommand("script", stdout, stderr),
 		newBuildCobraCommand(stdout, stderr),

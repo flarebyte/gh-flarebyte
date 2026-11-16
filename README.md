@@ -254,6 +254,81 @@ release: {
 }
 ```
 
+### Dependency assessment
+
+Run dependency checks from a local Git repository:
+
+```sh
+gh flarebyte dep check npm lodash@4.17.21 --json
+gh flarebyte dep check cargo serde --explain
+```
+
+The only command flags are `--json` and `--explain`. Checks query deps.dev, OSV
+and OpenSSF Scorecard with bounded requests. Registry descriptions are included
+when available. Configure the release waiting period in `.gh-flarebyte.cue`:
+
+```cue
+dependencies: {
+  minAgeDays: 14
+}
+```
+
+The default is 14 days; explicit zero removes only that waiting period. Invalid
+policy values fail validation. The configuration is discovered at the local Git
+repository root, including when invoked from a subdirectory.
+
+Current coverage is partial: npm, Cargo, PyPI, Go and Maven metadata can be checked;
+exact Dart/pub and SwiftURL versions can receive OSV advisory findings. Registry
+lookups corroborate npm, Cargo and PyPI release availability, deprecation or yanking.
+Verified provenance can corroborate a GitHub source repository; self-declared links
+cannot borrow its reputation. Advisory aliases are grouped, and withdrawal conflicts
+remain blocking evidence gaps. Candidate ordering handles numeric stable releases
+and npm/Cargo build metadata; unsupported ordering prevents a newest-version claim.
+
+Npm checks inspect local lockfiles v2/v3 without executing tooling. They support an
+already locked runtime version or a dependency-free addition that preserves existing
+versions and peer constraints. Checks reject stale manifests, unsafe artifact origins,
+weak hashes, symlinks, workspaces and unsupported resolution forms. Transitive findings
+include lockfile paths, and registry metadata is compared with the proposed graph.
+General upgrades and runtime/platform constraints may still require further evidence.
+
+Conservative defaults require 100 stars, two independently established active
+maintainers and a Scorecard scan no older than 30 days. Individual Scorecard minimums
+are Branch-Protection 6, Code-Review 7, Dangerous-Workflow 10, Maintained 5 and
+Token-Permissions 8. Scores are evaluated from one applicable snapshot. Limited
+lookalike screening uses a versioned reference set; it is not exhaustive.
+
+Authenticated GitHub lookups can corroborate two distinct non-bot user accounts with
+current write authority and recent PR or independent review activity. Existing
+credentials are read lazily; permissions are never expanded. Protected or incomplete
+role data stays unknown, and contributor counts do not substitute for authority.
+[GitHub restricts access to collaborator data](https://docs.github.com/en/rest/collaborators/collaborators#list-repository-collaborators).
+Checks recommend versions only when every required check passes. Unsupported
+ordering or unresolved newer candidates prevent a newest-version recommendation.
+
+`gh flarebyte dep install npm lodash` assesses first and installs only a fully approved
+npm plan. The initial installer requires Node 24+, npm 10+, lockfile v3 and a supported
+locked version or dependency-free addition. Executable-bin packages, links, bundled
+dependencies and embedded shrinkwrap are unsupported. Artifacts are downloaded from
+the public npm registry, checked against SHA-512 and inspected for archive escapes,
+unexpected metadata and expansion limits before native tooling runs. npm uses an
+isolated cache, offline mode and disabled hooks; credential variables and Node preload
+options are not inherited. Installation stages the tree before committing files and
+preserves recovery files if rollback encounters concurrent edits. Avoid running other
+package managers concurrently. Other ecosystems remain unsupported for installation.
+
+`--explain` reports candidate findings, grouped advisories, source timestamps,
+concrete npm plans and transitive paths. JSON reports
+`scope: "project-resolution"` only for supported plans; partial package findings
+use `scope: "package"` and cannot approve a project installation. Provider work is
+bounded to 128 requests and 32 MiB of input per assessment, with one bounded retry
+for transient HTTP statuses. Exhausted budgets remain unknown.
+
+Dependency exit codes are `0` for approval/success,
+`1` for policy denial, `2` for invalid input/configuration or an unindexed exact
+version, `8` for insufficient evidence, `9` for unsupported coverage/installation,
+and `10` for output/operational failure. Existing command exit codes are unchanged.
+
 ### Dart
 
 Library validation:

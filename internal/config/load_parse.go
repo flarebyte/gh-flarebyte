@@ -46,18 +46,23 @@ func parseCueConfig(raw string) (Config, error) {
 	var cfg Config
 	var err error
 	if err := assertOnlyAllowedFields("top-level", raw, map[string]struct{}{
-		"cc":         {},
-		"e2e":        {},
-		"script":     {},
-		"project":    {},
-		"sync":       {},
-		"repository": {},
-		"go":         {},
-		"devOutput":  {},
-		"coverage":   {},
-		"build":      {},
-		"release":    {},
+		"dependencies": {},
+		"cc":           {},
+		"e2e":          {},
+		"script":       {},
+		"project":      {},
+		"sync":         {},
+		"repository":   {},
+		"go":           {},
+		"devOutput":    {},
+		"coverage":     {},
+		"build":        {},
+		"release":      {},
 	}); err != nil {
+		return cfg, err
+	}
+	cfg.Dependencies, err = ParseDependencies(raw)
+	if err != nil {
 		return cfg, err
 	}
 	cfg.CC, err = parseCC(raw)
