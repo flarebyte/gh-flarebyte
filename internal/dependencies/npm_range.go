@@ -1,21 +1,42 @@
 // purpose: Validate a bounded subset of npm stable-version constraints for local lockfiles.
-// responsibilities: Handle exact, caret, tilde and simple comparator conjunctions conservatively.
+// responsibilities: Handle exact, partial, wildcard and alternative ranges plus bounded comparator conjunctions.
 // architecture notes: Unsupported range forms remain unknown; they are never treated as matching.
 package dependencies
 
-import "strings"
+import (
+	"strconv"
+	"strings"
+)
 
 func npmSatisfies(requirement, version string) (bool, bool) {
+	// Bound work on untrusted lockfile input and validate every alternative:
+	// a matching branch must never hide unsupported syntax in another branch.
+	if len(requirement) > 4096 {
+		return false, false
+	}
+	alternatives := strings.Split(requirement, "||")
+	if len(alternatives) > 32 {
+		return false, false
+	}
+	match := false
+	for _, alternative := range alternatives {
+		matched, known := npmConjunction(alternative, version)
+		if !known {
+			return false, false
+		}
+		match = match || matched
+	}
+	return match, true
+}
+
+func npmConjunction(requirement, version string) (bool, bool) {
 	v, ok := stableVersion("npm", version)
 	if !ok {
 		return false, false
 	}
 	requirement = strings.TrimSpace(requirement)
-	if requirement == "*" {
-		return true, true
-	}
-	if strings.Contains(requirement, "||") {
-		return false, false
+	if match, known := npmPartial(requirement, v); known {
+		return match, true
 	}
 	if strings.HasPrefix(requirement, "^") || strings.HasPrefix(requirement, "~") {
 		base, ok := stableVersion("npm", requirement[1:])
@@ -73,6 +94,37 @@ func npmSatisfies(requirement, version string) (bool, bool) {
 		case "<":
 			match = match && cmp < 0
 		}
+	}
+	return match, true
+}
+
+// npmPartial implements bare partial versions and trailing x/X/* components.
+// Comparator and caret partials are intentionally left unsupported.
+// Semantics: https://github.com/npm/node-semver#x-ranges-12x-1x-12-
+func npmPartial(requirement string, version []uint64) (bool, bool) {
+	parts := strings.Split(requirement, ".")
+	if len(parts) > 3 {
+		return false, false
+	}
+	wildcard, match := false, true
+	for i, part := range parts {
+		if part == "*" || part == "x" || part == "X" {
+			wildcard = true
+			continue
+		}
+		if wildcard || part == "" || len(part) > 1 && part[0] == '0' {
+			return false, false
+		}
+		for _, char := range part {
+			if char < '0' || char > '9' {
+				return false, false
+			}
+		}
+		number, err := strconv.ParseUint(part, 10, 64)
+		if err != nil {
+			return false, false
+		}
+		match = match && version[i] == number
 	}
 	return match, true
 }

@@ -290,6 +290,9 @@ already locked runtime version or a dependency-free addition that preserves exis
 versions and peer constraints. Checks reject stale manifests, unsafe artifact origins,
 weak hashes, symlinks, workspaces and unsupported resolution forms. Transitive findings
 include lockfile paths, and registry metadata is compared with the proposed graph.
+Supported constraints include exact versions, full caret/tilde versions, comparator
+conjunctions, bare partial versions (`1`, `1.2`), trailing wildcards and `||`
+alternatives. Every alternative must use supported syntax; prereleases remain gated.
 General upgrades and runtime/platform constraints may still require further evidence.
 
 Conservative defaults require 100 stars, two independently established active

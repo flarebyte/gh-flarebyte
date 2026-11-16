@@ -7,7 +7,6 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
-	"strings"
 	"testing"
 )
 
@@ -45,6 +44,14 @@ func TestReadProject(t *testing.T) {
 		missing string
 	}{
 		{"valid", func(map[string]any, map[string]any) {}, ""},
+		{"wildcard root", func(m, l map[string]any) {
+			m["dependencies"] = map[string]string{"pkg": "1.x || 2.x"}
+			l["packages"].(map[string]any)[""].(map[string]any)["dependencies"] = map[string]string{"pkg": "1.x || 2.x"}
+		}, ""},
+		{"wildcard root mismatch", func(m, l map[string]any) {
+			m["dependencies"] = map[string]string{"pkg": "2.x || 3.x"}
+			l["packages"].(map[string]any)[""].(map[string]any)["dependencies"] = map[string]string{"pkg": "2.x || 3.x"}
+		}, "PROJECT_LOCK_STALE"},
 		{"lock v2", func(_ map[string]any, l map[string]any) { l["lockfileVersion"] = 2 }, ""},
 		{"old lock", func(_ map[string]any, l map[string]any) { l["lockfileVersion"] = 1 }, "PROJECT_LOCK_FORMAT"},
 		{"no root", func(_ map[string]any, l map[string]any) { delete(l["packages"].(map[string]any), "") }, "PROJECT_LOCK_ROOT"},
@@ -55,8 +62,8 @@ func TestReadProject(t *testing.T) {
 			l["packages"].(map[string]any)["node_modules/pkg"].(map[string]any)["version"] = "2.0.0"
 		}, "PROJECT_LOCK_STALE"},
 		{"range unknown", func(m, l map[string]any) {
-			m["dependencies"] = map[string]string{"pkg": "1.x"}
-			l["packages"].(map[string]any)[""].(map[string]any)["dependencies"] = map[string]string{"pkg": "1.x"}
+			m["dependencies"] = map[string]string{"pkg": "^1.x"}
+			l["packages"].(map[string]any)[""].(map[string]any)["dependencies"] = map[string]string{"pkg": "^1.x"}
 		}, "PROJECT_RANGE_SEMANTICS"},
 		{"missing edge", func(_ map[string]any, l map[string]any) { delete(l["packages"].(map[string]any), "node_modules/pkg") }, "PROJECT_GRAPH_INCOMPLETE"},
 		{"link", func(_ map[string]any, l map[string]any) {
@@ -237,7 +244,7 @@ func TestNPMRanges(t *testing.T) {
 		{"^1.2.3", "1.9.0", true, true}, {"^1.2.3", "2.0.0", false, true}, {"^0.2.3", "0.3.0", false, true}, {"^0.0.3", "0.0.4", false, true},
 		{"~1.2.3", "1.2.9", true, true}, {"~1.2.3", "1.3.0", false, true}, {">=1.0.0 <2.0.0", "1.2.3", true, true},
 		{">1.0.0 <=2.0.0", "2.0.0", true, true}, {">1.0.0 <=2.0.0", "1.0.0", false, true},
-		{"^1", "1.2.3", false, false}, {"1.x", "1.2.3", false, false}, {"1.0.0 || 2.0.0", "1.0.0", false, false}, {"", "1.0.0", false, false},
+		{"^1", "1.2.3", false, false}, {"1.x", "1.2.3", true, true}, {"1.0.0 || 2.0.0", "1.0.0", true, true}, {"", "1.0.0", false, false},
 		{"1.0.0", "1.0.0-rc1", false, false}, {"^18446744073709551615.0.0", "1.0.0", false, false},
 	} {
 		match, known := npmSatisfies(tt.req, tt.version)
@@ -288,9 +295,17 @@ func TestLeafAdditionPlan(t *testing.T) {
 	if snapshot.planLeaf(&release) {
 		t.Fatal("unsatisfied peer activated")
 	}
-	snapshot.packages[""] = npmPackage{PeerDependencies: map[string]string{"leaf": "1.x"}}
+	snapshot.packages[""] = npmPackage{PeerDependencies: map[string]string{"leaf": "^1.x"}}
 	if snapshot.planLeaf(&release) {
 		t.Fatal("unknown peer constraint accepted")
+	}
+	snapshot.packages[""] = npmPackage{PeerDependencies: map[string]string{"leaf": "2.x || 3.x"}}
+	if snapshot.planLeaf(&release) {
+		t.Fatal("incompatible wildcard peer activated")
+	}
+	snapshot.packages[""] = npmPackage{PeerDependencies: map[string]string{"leaf": "1.x || 2.x"}}
+	if !snapshot.planLeaf(&release) {
+		t.Fatal("compatible wildcard peer rejected")
 	}
 	snapshot.packages[""] = npmPackage{PeerDependencies: map[string]string{"leaf": "^1.0.0"}}
 	if !snapshot.planLeaf(&release) {
@@ -311,6 +326,8 @@ func FuzzProjectJSON(f *testing.F) {
 }
 
 func FuzzNPMRange(f *testing.F) {
+	f.Add("1.x || >=2.5.0 <3.0.0", "2.6.0")
+	f.Add("1.0.0 || latest", "1.0.0")
 	f.Add("^1.2.3", "1.2.4")
 	f.Add("*", "1.0.0")
 	f.Fuzz(func(t *testing.T, requirement, version string) {
@@ -321,8 +338,11 @@ func FuzzNPMRange(f *testing.F) {
 		if match && !known {
 			t.Fatal("unknown constraint approved")
 		}
-		if strings.Contains(requirement, "||") && known {
-			t.Fatal("unsupported OR accepted")
+		if known {
+			combined, combinedKnown := npmSatisfies(requirement+" || latest", version)
+			if combined || combinedKnown {
+				t.Fatal("matching alternative concealed unsupported syntax")
+			}
 		}
 	})
 }
