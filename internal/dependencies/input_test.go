@@ -56,7 +56,7 @@ func TestVersionOrdering(t *testing.T) {
 		{"go", "v2.0.0+incompatible", true}, {"go", "2.0.0", false},
 		{"pypi", "1.2.3.4", true}, {"pypi", "1.2rc1", false}, {"pypi", "1..2", false},
 		{"npm", "01.2.3", false}, {"npm", "1.a.3", false}, {"npm", "99999999999999999999999999.2.3", false},
-		{"maven", "1.2.3", false}, {"swift", "1.2.3", false}, {"pypi", "1.2.3.4.5", false},
+		{"maven", "1.2.3", false}, {"swift", "1.2.3", false}, {"pypi", "1.2.3.4.5", true},
 	} {
 		_, ok := stableVersion(tt.system, tt.version)
 		if ok != tt.valid {
@@ -90,6 +90,7 @@ func TestDescription(t *testing.T) {
 func FuzzCoordinates(f *testing.F) {
 	f.Add("npm", "@scope/pkg@1.2.3")
 	f.Add("pypi", "Foo_BAR")
+	f.Add("pypi", "Example_Pkg@1!2.0.post1")
 	f.Add("go", "../../x")
 	f.Fuzz(func(t *testing.T, system, arg string) {
 		name, version, err := Parse(system, arg)

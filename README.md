@@ -283,7 +283,10 @@ lookups corroborate npm, Cargo and PyPI release availability, deprecation or yan
 Verified provenance can corroborate a GitHub source repository; self-declared links
 cannot borrow its reputation. Advisory aliases are grouped, and withdrawal conflicts
 remain blocking evidence gaps. Candidate ordering handles numeric stable releases
-and npm/Cargo build metadata; unsupported ordering prevents a newest-version claim.
+and npm/Cargo build metadata. PyPI ordering also handles public epochs, longer
+numeric release tuples and stable `.postN` releases; canonical prerelease and
+development releases are excluded. Local versions and unsupported spellings remain
+unknown. Unsupported ordering prevents a newest-version claim.
 
 Npm checks inspect local lockfiles v2/v3 without executing tooling. They support an
 already locked runtime version or a dependency-free addition that preserves existing

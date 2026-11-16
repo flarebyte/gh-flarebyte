@@ -18,7 +18,8 @@ var goName = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._~/-]*$`)
 var normalizePyPI = regexp.MustCompile(`[-_.]+`)
 var buildMetadata = regexp.MustCompile(`^[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*$`)
 var semverPrerelease = regexp.MustCompile(`^v?[0-9]+\.[0-9]+\.[0-9]+-[0-9A-Za-z.-]+(?:\+[0-9A-Za-z.-]+)?$`)
-var pythonPrerelease = regexp.MustCompile(`(?i)^[0-9]+(?:\.[0-9]+)*(?:a|b|rc|\.dev)[0-9]+$`)
+var exactVersion = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9.+_-]*$`)
+var exactPythonVersion = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9.!+_-]*$`)
 
 func Parse(system, arg string) (string, *string, error) {
 	if _, ok := systems[system]; !ok {
@@ -35,7 +36,11 @@ func Parse(system, arg string) (string, *string, error) {
 		if len(v) == 0 || len(v) > 128 || strings.ContainsAny(v, "\r\n\t /\\^*<>=|@") {
 			return "", nil, fmt.Errorf("expected an exact version")
 		}
-		if !regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9.+_-]*$`).MatchString(v) {
+		pattern := exactVersion
+		if system == "pypi" {
+			pattern = exactPythonVersion
+		}
+		if !pattern.MatchString(v) {
 			return "", nil, fmt.Errorf("invalid exact version")
 		}
 		version = &v
@@ -78,6 +83,9 @@ func Repository(repo string) string {
 func stableVersion(system, version string) ([]uint64, bool) {
 	if len(version) > 128 {
 		return nil, false
+	}
+	if system == "pypi" {
+		return pythonStableVersion(version)
 	}
 	if system == "maven" || system == "swift" {
 		return nil, false
@@ -124,7 +132,7 @@ func knownPrerelease(system, version string) bool {
 	if system == "npm" || system == "cargo" || system == "go" {
 		return semverPrerelease.MatchString(version)
 	}
-	return system == "pypi" && pythonPrerelease.MatchString(version)
+	return system == "pypi" && pythonPrerelease(version)
 }
 
 func newer(system, a, b string) bool {

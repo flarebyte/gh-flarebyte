@@ -75,7 +75,9 @@ call live registries or install third-party packages. Run focused checks with
 The new dependency core has a 90% statement coverage floor in CI; security failure
 cases still require explicit tests regardless of that percentage. Seeded fuzz
 tests cover package inputs, descriptions, dependency policy parsing, project JSON
-and npm range parsing. Test malformed/changed lockfiles, missing transitive edges,
+and npm range/Python version parsing. Python ordering tests cover epochs, numeric
+post releases, zero padding, prerelease/dev exclusions, integer overflow and
+unsupported local versions. Test malformed/changed lockfiles, missing transitive edges,
 artifact or registry metadata disagreement, conflicting provenance, advisory aliases,
 snapshot selection and evidence budgets. Concrete plan checks must never execute
 package tooling. The guarded installer has an opt-in synthetic integration:
