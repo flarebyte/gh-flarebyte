@@ -77,7 +77,7 @@ func cargoClient(t *testing.T, dir, mode string) *Client {
 				if mode == "dependency schema" {
 					return response(`{}`, 200), nil
 				}
-				deps := []any{map[string]any{"crate_id": "child", "req": "^1.0.0", "kind": "normal", "optional": false}}
+				deps := []any{map[string]any{"crate_id": "child", "req": "^1.0.0", "kind": "normal", "optional": false, "default_features": true, "features": []string{}}}
 				if mode == "missing edge" {
 					deps = []any{}
 				}
@@ -94,13 +94,13 @@ func cargoClient(t *testing.T, dir, mode string) *Client {
 					delete(deps[0].(map[string]any), "optional")
 				}
 				if mode == "optional absent" {
-					deps = append(deps, map[string]any{"crate_id": "other", "req": "^1.0.0", "kind": "normal", "optional": true})
+					deps = append(deps, map[string]any{"crate_id": "other", "req": "^1.0.0", "kind": "normal", "optional": true, "default_features": true, "features": []string{}})
 				}
 				if mode == "mandatory absent" {
-					deps = append(deps, map[string]any{"crate_id": "other", "req": "^1.0.0", "kind": "build", "optional": false})
+					deps = append(deps, map[string]any{"crate_id": "other", "req": "^1.0.0", "kind": "build", "optional": false, "default_features": true, "features": []string{}})
 				}
 				if mode == "dev absent" {
-					deps = append(deps, map[string]any{"crate_id": "other", "req": "^1.0.0", "kind": "dev", "optional": false})
+					deps = append(deps, map[string]any{"crate_id": "other", "req": "^1.0.0", "kind": "dev", "optional": false, "default_features": true, "features": []string{}})
 				}
 				payload = map[string]any{"dependencies": deps}
 				break
@@ -111,7 +111,7 @@ func cargoClient(t *testing.T, dir, mode string) *Client {
 			if mode == "artifact schema" {
 				return response(`{}`, 200), nil
 			}
-			version := map[string]any{"crate": name, "num": "1.0.0", "yanked": false, "checksum": strings.Repeat("a", 64), "rust_version": nil}
+			version := map[string]any{"crate": name, "num": "1.0.0", "yanked": false, "checksum": strings.Repeat("a", 64), "rust_version": nil, "features": map[string][]string{}}
 			if mode == "checksum" {
 				version["checksum"] = strings.Repeat("b", 64)
 			}
@@ -206,7 +206,7 @@ func TestAssessCargoProject(t *testing.T) {
 
 func TestCargoFeaturesRemainUnknown(t *testing.T) {
 	for _, manifest := range []string{
-		"[features]\ndefault=[]\n",
+		"[features]\ndefault=['missing']\n",
 		"[features]\ncustom=['pkg/derive']\n",
 	} {
 		m, l := cargoDocuments()

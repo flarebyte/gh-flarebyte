@@ -121,6 +121,18 @@ type RuntimeCompatibility struct {
 	Minimum  string `json:"minimum,omitempty"`
 	Status   string `json:"status"`
 }
+
+type FeatureResolution struct {
+	Basis        string              `json:"basis"`
+	Status       string              `json:"status"`
+	Enabled      []FeatureActivation `json:"enabled"`
+	Missing      []string            `json:"missing"`
+	MinimumCargo string              `json:"minimum_cargo,omitempty"`
+}
+type FeatureActivation struct {
+	Path     string   `json:"path"`
+	Features []string `json:"features"`
+}
 type Details struct {
 	Policy                Policy           `json:"policy"`
 	Sources               []Source         `json:"sources"`

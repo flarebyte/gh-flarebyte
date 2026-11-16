@@ -29,16 +29,17 @@ type ProjectNode struct {
 }
 
 type ProjectSnapshot struct {
-	System          string           `json:"system"`
-	Resolution      string           `json:"resolution,omitempty"`
-	RuntimeBaseline string           `json:"runtime_baseline,omitempty"`
-	ManifestDigest  string           `json:"manifest_digest,omitempty"`
-	LockDigest      string           `json:"lock_digest,omitempty"`
-	Complete        bool             `json:"complete"`
-	Missing         []string         `json:"missing"`
-	Nodes           []ProjectNode    `json:"nodes"`
-	Findings        []ProjectFinding `json:"findings,omitempty"`
-	Plans           []ProjectPlan    `json:"plans,omitempty"`
+	System          string             `json:"system"`
+	Resolution      string             `json:"resolution,omitempty"`
+	RuntimeBaseline string             `json:"runtime_baseline,omitempty"`
+	ManifestDigest  string             `json:"manifest_digest,omitempty"`
+	LockDigest      string             `json:"lock_digest,omitempty"`
+	Complete        bool               `json:"complete"`
+	Missing         []string           `json:"missing"`
+	Nodes           []ProjectNode      `json:"nodes"`
+	Findings        []ProjectFinding   `json:"findings,omitempty"`
+	Plans           []ProjectPlan      `json:"plans,omitempty"`
+	Features        *FeatureResolution `json:"features,omitempty"`
 	runtime         map[string]string
 	packages        map[string]npmPackage
 	cargo           *cargoGraph

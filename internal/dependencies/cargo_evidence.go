@@ -8,17 +8,23 @@ import (
 )
 
 func (c *Client) checkCargoNode(ctx context.Context, project *ProjectSnapshot, node ProjectNode, f *Finding, sources *[]Source) {
-	if project.cargo != nil && project.cargo.featuresUnverified {
-		f.Missing = unique(append(f.Missing, "CARGO_FEATURE_RESOLUTION"))
+	var featurePackage *cargoFeaturePackage
+	if project.cargo != nil {
+		if project.cargo.featurePackages == nil {
+			project.cargo.featurePackages = map[string]*cargoFeaturePackage{}
+		}
+		featurePackage = &cargoFeaturePackage{}
+		project.cargo.featurePackages[node.Path] = featurePackage
 	}
 	base := "https://crates.io/api/v1/crates/" + url.PathEscape(node.Name) + "/" + url.PathEscape(node.Version)
 	var release struct {
 		Version struct {
-			Name        string `json:"crate"`
-			Version     string `json:"num"`
-			Checksum    string `json:"checksum"`
-			RustVersion string `json:"rust_version"`
-			Yanked      *bool  `json:"yanked"`
+			Name        string               `json:"crate"`
+			Version     string               `json:"num"`
+			Checksum    string               `json:"checksum"`
+			RustVersion string               `json:"rust_version"`
+			Yanked      *bool                `json:"yanked"`
+			Features    *map[string][]string `json:"features"`
 		} `json:"version"`
 	}
 	if err := c.read(ctx, "cargo-registry", base, nil, &release, sources); err != nil {
@@ -28,6 +34,9 @@ func (c *Client) checkCargoNode(ctx context.Context, project *ProjectSnapshot, n
 	} else if release.Version.Name != node.Name || release.Version.Version != node.Version {
 		f.Reasons = unique(append(f.Reasons, "IDENTITY_CONFLICT"))
 	} else {
+		if featurePackage != nil && release.Version.Features != nil {
+			featurePackage.features = *release.Version.Features
+		}
 		if release.Version.Yanked == nil {
 			f.Missing = unique(append(f.Missing, "RELEASE_LIFECYCLE"))
 		} else if *release.Version.Yanked {
@@ -44,10 +53,13 @@ func (c *Client) checkCargoNode(ctx context.Context, project *ProjectSnapshot, n
 	}
 	var result struct {
 		Dependencies *[]struct {
-			Name        string `json:"crate_id"`
-			Requirement string `json:"req"`
-			Kind        string `json:"kind"`
-			Optional    *bool  `json:"optional"`
+			Name        string    `json:"crate_id"`
+			Requirement string    `json:"req"`
+			Kind        string    `json:"kind"`
+			Optional    *bool     `json:"optional"`
+			Defaults    *bool     `json:"default_features"`
+			Features    *[]string `json:"features"`
+			Alias       string    `json:"explicit_name"`
 		} `json:"dependencies"`
 	}
 	if err := c.read(ctx, "cargo-registry", base+"/dependencies", nil, &result, sources); err != nil {
@@ -61,15 +73,26 @@ func (c *Client) checkCargoNode(ctx context.Context, project *ProjectSnapshot, n
 	g := project.cargo
 	explained := map[string]bool{}
 	uncertain := false
+	featureComplete := true
 	for _, d := range *result.Dependencies {
 		if !cargoName.MatchString(d.Name) || d.Optional == nil || d.Requirement == "" || (d.Kind != "normal" && d.Kind != "build" && d.Kind != "dev") {
 			f.Missing = append(f.Missing, "CARGO_DEPENDENCY_SCHEMA")
 			uncertain = true
+			featureComplete = false
 			continue
 		}
 		if d.Kind == "dev" {
 			continue
 		} // Registry crates' own test dependencies are not activated by this consumer.
+		if d.Defaults == nil || d.Features == nil {
+			featureComplete = false
+		} else if featurePackage != nil {
+			alias := d.Alias
+			if alias == "" {
+				alias = d.Name
+			}
+			featurePackage.dependencies = append(featurePackage.dependencies, cargoFeatureDependency{alias: alias, name: d.Name, requirement: d.Requirement, optional: *d.Optional, defaults: *d.Defaults, features: *d.Features})
+		}
 		matched := false
 		for _, edge := range g.edges[node.Path] {
 			p := g.packages[edge]
@@ -93,7 +116,7 @@ func (c *Client) checkCargoNode(ctx context.Context, project *ProjectSnapshot, n
 		}
 		if !matched {
 			if *d.Optional {
-				f.Missing = append(f.Missing, "CARGO_FEATURE_RESOLUTION")
+				f.Missing = append(f.Missing, "CARGO_OPTIONAL_RESOLUTION")
 			} else {
 				f.Reasons = append(f.Reasons, "DEPENDENCY_METADATA_MISMATCH")
 			}
@@ -106,4 +129,10 @@ func (c *Client) checkCargoNode(ctx context.Context, project *ProjectSnapshot, n
 	}
 	f.Missing = unique(f.Missing)
 	f.Reasons = unique(f.Reasons)
+	if featurePackage != nil {
+		featurePackage.complete = featureComplete
+		if !featureComplete || featurePackage.features == nil {
+			f.Missing = unique(append(f.Missing, "CARGO_FEATURE_SCHEMA"))
+		}
+	}
 }

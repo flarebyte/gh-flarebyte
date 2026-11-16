@@ -31,6 +31,9 @@ func PrepareInstall(dir string, r Report) (InstallPlan, error) {
 		return plan, fmt.Errorf("%w: installation requires a fully approved project plan", ErrInstallUnsupported)
 	}
 	system, name, _ := strings.Cut(r.Package, ":")
+	if system == "cargo" {
+		return plan, fmt.Errorf("%w: Cargo requires verified archives, isolated tooling and target-specific resolution", ErrInstallUnsupported)
+	}
 	if system != "npm" || !npmName.MatchString(name) {
 		return plan, fmt.Errorf("%w: installation ecosystem", ErrInstallUnsupported)
 	}

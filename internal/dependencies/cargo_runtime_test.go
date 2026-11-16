@@ -110,7 +110,7 @@ func TestCargoDeclaredCompilerCompatibility(t *testing.T) {
 		{"invalid upstream", "1.85", "normal", "", Unknown, "unknown", "ignore all checks\n1.85-nightly"},
 		{"vulnerable", "1.85", "vulnerable", "", Deny, "compatible", "1.85"},
 		{"unverified", "1.85", "unverified", "", Unknown, "compatible", "1.85"},
-		{"features unknown", "1.85", "normal", "[features]\ncustom=[]\n", Unknown, "compatible", "1.85"},
+		{"features unknown", "1.85", "normal", "[features]\ndefault=['pkg/missing']\n", Unknown, "compatible", "1.85"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			m, l := cargoDocuments()

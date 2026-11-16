@@ -65,6 +65,9 @@ func (c *Client) assessProject(ctx context.Context, project *ProjectSnapshot, p 
 		}
 		project.Findings = append(project.Findings, ProjectFinding{Path: node.Path, Package: system + ":" + node.Name, Finding: finding})
 	}
+	if system == "cargo" {
+		finishCargoFeatures(project)
+	}
 }
 
 func hasBundled(value any) bool {
@@ -81,6 +84,12 @@ func hasBundled(value any) bool {
 }
 
 func mergeProjectFindings(f *Finding, project *ProjectSnapshot, name string) {
+	if project.Features != nil {
+		f.Missing = append(f.Missing, project.Features.Missing...)
+		if len(project.Features.Missing) > 0 {
+			f.Missing = append(f.Missing, "TRANSITIVE_EVIDENCE")
+		}
+	}
 	if len(project.Missing) > 0 || len(project.Findings) != len(project.Nodes) {
 		f.Missing = append(f.Missing, "PROJECT_ASSESSMENT_INCOMPLETE")
 	}

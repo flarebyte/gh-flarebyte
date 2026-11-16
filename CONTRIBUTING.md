@@ -103,6 +103,15 @@ malicious upstream text that must not enter explained evidence. Keep the compari
 against the manifest's declared `rust-version`; do not infer an installed toolchain
 or silently raise the project's baseline to permit a dependency.
 
+Feature tests cover defaults, namespaced/implicit optional activation, renaming,
+strong/weak forwarding, cycles, metadata gaps, event budgets and unchanged security
+gates. The opt-in offline oracle requires a standalone Cargo SDK:
+`GH_FLAREBYTE_DEP_CARGO_INTEGRATION=1 go test ./internal/dependencies -run '^TestCargoFeatureOracle$'`.
+It compares generated path-only fixtures with Cargo metadata, checks that build
+scripts do not run, and preserves an unknown verdict for inactive weak contexts
+where metadata reports a broader union. These controlled path fixtures do not
+enable path dependencies in production assessment. Default tests never invoke Cargo.
+
 [Design notes](doc/design/gh-flarebyte.md) are generated from
 [app.cue](doc/design-meta/app.cue) and its example inputs. Change the authored inputs
 and use `make doc-design` (requires `flyb`) to validate and regenerate them. Do not

@@ -26,14 +26,18 @@ type cargoLockedPackage struct {
 	Replace      string   `toml:"replace"`
 }
 type cargoGraph struct {
-	packages           map[string]cargoLockedPackage
-	edges              map[string][]string
-	featuresUnverified bool
+	packages        map[string]cargoLockedPackage
+	edges           map[string][]string
+	root            string
+	featurePackages map[string]*cargoFeaturePackage
 }
 type cargoDeclaration struct {
 	name, requirement string
 	runtime           bool
-	features          bool
+	alias             string
+	optional          bool
+	defaultFeatures   bool
+	requested         []string
 }
 
 func cargoConfigPresent(root *os.Root) bool {
@@ -114,26 +118,28 @@ func readCargoProject(dir string) *ProjectSnapshot {
 		return fail("PROJECT_GRAPH_LIMIT")
 	}
 	g := &cargoGraph{packages: map[string]cargoLockedPackage{}, edges: map[string][]string{}}
+	rootFeatures := map[string][]string{}
 	if features, present := manifest["features"]; present {
 		entries, ok := features.(map[string]any)
 		if !ok {
 			return fail("PROJECT_CARGO_UNSUPPORTED_MANIFEST")
 		}
-		for _, entry := range entries {
+		for name, entry := range entries {
 			items, ok := entry.([]any)
 			if !ok {
 				return fail("PROJECT_CARGO_UNSUPPORTED_MANIFEST")
 			}
 			for _, item := range items {
-				if _, ok := item.(string); !ok {
+				text, ok := item.(string)
+				if !ok {
 					return fail("PROJECT_CARGO_UNSUPPORTED_MANIFEST")
 				}
+				rootFeatures[name] = append(rootFeatures[name], text)
+			}
+			if rootFeatures[name] == nil {
+				rootFeatures[name] = []string{}
 			}
 		}
-		g.featuresUnverified = len(entries) > 0
-	}
-	for _, d := range declarations {
-		g.featuresUnverified = g.featuresUnverified || d.features
 	}
 	s.cargo = g
 	rootPath := ""
@@ -163,6 +169,11 @@ func readCargoProject(dir string) *ProjectSnapshot {
 	}
 	if rootPath == "" {
 		return fail("PROJECT_LOCK_STALE")
+	}
+	g.root = rootPath
+	g.featurePackages = map[string]*cargoFeaturePackage{rootPath: {features: rootFeatures, complete: true}}
+	for _, d := range declarations {
+		g.featurePackages[rootPath].dependencies = append(g.featurePackages[rootPath].dependencies, cargoFeatureDependency{alias: d.alias, name: d.name, requirement: d.requirement, optional: d.optional, defaults: d.defaultFeatures, features: d.requested})
 	}
 	paths := make([]string, 0, len(g.packages))
 	for path := range g.packages {
@@ -260,7 +271,7 @@ func cargoDeclarations(manifest map[string]any) ([]cargoDeclaration, bool) {
 			return nil, false
 		}
 		for alias, value := range entries {
-			d := cargoDeclaration{name: alias, runtime: group == "dependencies"}
+			d := cargoDeclaration{name: alias, alias: alias, defaultFeatures: true, runtime: group == "dependencies"}
 			if !cargoName.MatchString(alias) {
 				return nil, false
 			}
@@ -285,17 +296,22 @@ func cargoDeclarations(manifest map[string]any) ([]cargoDeclaration, bool) {
 						if !ok {
 							return nil, false
 						}
-						d.features = d.features || key == "optional" && flag || key == "default-features" && !flag
+						if key == "optional" {
+							d.optional = flag
+						} else {
+							d.defaultFeatures = flag
+						}
 					case "features":
 						items, ok := value.([]any)
 						if !ok {
 							return nil, false
 						}
-						d.features = d.features || len(items) > 0
 						for _, item := range items {
-							if _, ok := item.(string); !ok {
+							text, ok := item.(string)
+							if !ok {
 								return nil, false
 							}
+							d.requested = append(d.requested, text)
 						}
 					default:
 						return nil, false
@@ -324,7 +340,7 @@ func cargoDeclarations(manifest map[string]any) ([]cargoDeclaration, bool) {
 		if a.runtime != b.runtime {
 			return !a.runtime
 		}
-		return !a.features && b.features
+		return a.alias < b.alias
 	})
 	return declarations, true
 }

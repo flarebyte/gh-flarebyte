@@ -235,7 +235,7 @@ func TestCargoDeclarationSchema(t *testing.T) {
 			if valid != test.valid {
 				t.Fatal(valid, decls)
 			}
-			if valid && len(decls) == 1 && decls[0].features != test.features {
+			if valid && len(decls) == 1 && (decls[0].optional || !decls[0].defaultFeatures || len(decls[0].requested) > 0) != test.features {
 				t.Fatal("feature gap lost", decls)
 			}
 		})

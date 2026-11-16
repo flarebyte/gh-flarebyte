@@ -321,6 +321,15 @@ includes `runtime_baseline` and per-crate `runtime` evidence with the basis
 `manifest-rust-version`. This compares declared requirements; it does not verify
 the installed compiler, compilation or feature activation.
 
+Cargo checks now resolve a bounded default-feature union, including explicit
+features, disabled defaults, optional dependencies, renamed crates and forwarding.
+`--explain` includes `project.features` with enabled names, resolution status and
+any minimum Cargo syntax requirement. Cycles, ambiguous mappings, missing metadata
+and inactive weak-feature contexts stay unknown. Missing optional locked packages
+remain blocking, and inactive crates retain all security findings. This union does
+not establish a target-specific install plan; Cargo installation remains blocked
+pending archive verification, isolated tooling and exact execution-context checks.
+
 Conservative defaults require 100 stars, two independently established active
 maintainers and a Scorecard scan no older than 30 days. Individual Scorecard minimums
 are Branch-Protection 6, Code-Review 7, Dangerous-Workflow 10, Maintained 5 and
