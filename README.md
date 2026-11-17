@@ -362,7 +362,9 @@ again before commit; concurrent edits trigger rollback or retained recovery data
 Conservative defaults require 100 stars, two independently established active
 maintainers and a Scorecard scan no older than 30 days. Individual Scorecard minimums
 are Branch-Protection 6, Code-Review 7, Dangerous-Workflow 10, Maintained 5 and
-Token-Permissions 8. Scores are evaluated from one applicable snapshot. Limited
+Token-Permissions 8. Scores are evaluated from one applicable snapshot. Public
+Scorecard date-only scan dates are interpreted as midnight UTC; RFC3339 timestamps
+are also accepted, and the same 30-day freshness limit applies. Limited
 lookalike screening uses a versioned reference set; it is not exhaustive.
 
 Authenticated GitHub lookups can corroborate two distinct non-bot user accounts with
@@ -370,6 +372,9 @@ current write authority and recent PR or independent review activity. Existing
 credentials are read lazily; permissions are never expanded. Protected or incomplete
 role data stays unknown, and contributor counts do not substitute for authority.
 [GitHub restricts access to collaborator data](https://docs.github.com/en/rest/collaborators/collaborators#list-repository-collaborators).
+That endpoint requires repository write/maintain/admin privileges and, for an
+organization repository, organization membership. Authentication alone cannot
+close this evidence gap for arbitrary third-party packages.
 Checks recommend versions only when every required check passes. Unsupported
 ordering or unresolved newer candidates prevent a newest-version recommendation.
 

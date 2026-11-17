@@ -91,6 +91,13 @@ preflight, staged failures and conditional rollback have offline unit tests. Kee
 identity, maintainer and resolution gaps blocking; do not enable installation by
 assuming stars, contributors or a high Scorecard score establish safety.
 
+Scorecard transport tests must cover the public API's `YYYY-MM-DD` scan dates as
+well as RFC3339 timestamps. Interpret date-only values at midnight UTC, preserve
+all other response fields, and keep malformed dates and missing/future/stale scans
+blocking. A successful HTTP response is not proof that the payload was decoded.
+Live checks should record exact package versions, provider statuses and local
+resolution limitations; do not weaken authority or policy gates to produce an allow.
+
 Cargo assessment tests use TOML fixtures and fake crates.io/deps.dev/OSV/GitHub
 responses. Cover root-lock agreement, version/source ambiguity, checksum and edge
 disagreement, build/dev dependencies, renamed crates, feature/compiler uncertainty,
