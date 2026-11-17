@@ -121,7 +121,23 @@ provenance. Run the controlled archive oracle with
 `GH_FLAREBYTE_DEP_CARGO_INTEGRATION=1 go test ./internal/dependencies -run '^TestCargoArchiveOracle$'`.
 It packages only generated fixtures offline with `--no-verify`, checks the resulting
 crate, and asserts that its build script did not run. Archive preflight never extracts
-files or authorizes a native install; do not wire it past the remaining SDK/context gates.
+files or authorizes a native install.
+
+Cargo staging tests cover private external directories, exclusive writes, archive
+budgets, vendor checksum generation and unchanged source inputs. Native metadata
+must match approved identities, registry sources, manifest locations, graph edges
+and default features; modified staged inputs must fail. SDK tests verify the fixed
+metadata command, bounded output, compatible versions, host validation and removal
+of credentials, inherited options and compiler wrappers. Refuse ancestor Cargo
+configuration and Rustup proxies. Run both offline staging/SDK oracles with:
+
+```bash
+GH_FLAREBYTE_DEP_CARGO_INTEGRATION=1 go test ./internal/dependencies ./internal/cli -run '^TestCargoStageOracle$|^TestDependencyCargoSDKIntegration$'
+```
+
+Only generated fixtures and a standalone SDK are used. Build-script/proc-macro
+fixtures must remain unexecuted. The synthetic root proves a staged resolution;
+it does not prove original project target/unit equivalence or authorize installation.
 
 [Design notes](doc/design/gh-flarebyte.md) are generated from
 [app.cue](doc/design-meta/app.cue) and its example inputs. Change the authored inputs

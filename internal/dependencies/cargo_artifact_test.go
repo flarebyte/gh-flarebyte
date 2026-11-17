@@ -163,17 +163,31 @@ func TestCrateDownloadBoundary(t *testing.T) {
 	}
 }
 
-func approvedCrateArtifacts(t *testing.T) (string, Report, map[string][]byte) {
+func approvedCrateArtifacts(t *testing.T, runtime ...string) (string, Report, map[string][]byte) {
 	t.Helper()
 	m, l := cargoDocuments()
+	if len(runtime) > 0 {
+		m = strings.Replace(m, "[package]\n", "[package]\nrust-version='"+runtime[0]+"'\nedition='2021'\n", 1)
+	}
 	blobs := map[string][]byte{}
 	for _, name := range []string{"pkg", "child"} {
 		manifest := "[package]\nname='" + name + "'\nversion='1.0.0'\n"
+		if len(runtime) > 0 {
+			manifest += "rust-version='" + runtime[0] + "'\nedition='2021'\n"
+		}
 		if name == "pkg" {
 			manifest += "[dependencies]\nchild='1.0.0'\n"
 		}
 		prefix := name + "-1.0.0/"
-		blobs[name] = archiveFixture(t, []tar.Header{{Name: prefix + "Cargo.toml"}, {Name: prefix + "src/lib.rs"}}, []string{manifest, ""}, nil)
+		headers := []tar.Header{{Name: prefix + "Cargo.toml"}, {Name: prefix + "src/lib.rs"}}
+		bodies := []string{manifest, ""}
+		if len(runtime) > 1 && runtime[1] == "hooks" {
+			bodies[0] += "[lib]\nproc-macro=true\n"
+			bodies[1] = "extern crate proc_macro;\n"
+			headers = append(headers, tar.Header{Name: prefix + "build.rs"})
+			bodies = append(bodies, `fn main() { std::fs::write("hook-executed", "unexpected").unwrap(); }`)
+		}
+		blobs[name] = archiveFixture(t, headers, bodies, nil)
 	}
 	var lock struct {
 		Version  int                  `toml:"version"`
@@ -193,6 +207,10 @@ func approvedCrateArtifacts(t *testing.T) (string, Report, map[string][]byte) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// A real Cargo lock omits absent registry fields on the root package.
+	for _, field := range []string{"source", "checksum", "replace"} {
+		lb = []byte(strings.ReplaceAll(string(lb), field+" = ''\n", ""))
+	}
 	dir := writeCargoDocuments(t, m, string(lb))
 	c := cargoClient(t, dir, "normal")
 	transport := c.HTTP
@@ -207,6 +225,9 @@ func approvedCrateArtifacts(t *testing.T) (string, Report, map[string][]byte) {
 			t.Fatal(err)
 		}
 		v := data["version"].(map[string]any)
+		if len(runtime) > 0 {
+			v["rust_version"], v["edition"] = runtime[0], "2021"
+		}
 		sum := sha256.Sum256(blobs[v["crate"].(string)])
 		v["checksum"] = hex.EncodeToString(sum[:])
 		b, err := json.Marshal(data)

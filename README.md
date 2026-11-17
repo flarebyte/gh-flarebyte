@@ -328,15 +328,24 @@ any minimum Cargo syntax requirement. Cycles, ambiguous mappings, missing metada
 and inactive weak-feature contexts stay unknown. Missing optional locked packages
 remain blocking, and inactive crates retain all security findings. This union does
 not establish a target-specific install plan; Cargo installation remains blocked
-pending archive verification, isolated tooling and exact execution-context checks.
+pending exact execution-context checks and guarded project application.
 
 Cargo archive preflight is now implemented as a read-only backend component. It
 binds SHA-256 checksums and normalized manifests to an approved, unchanged graph,
 rejects links, escapes, control files and path collisions, and bounds archive
 expansion and metadata. It records build-script/proc-macro declarations without
 executing code. The initial verifier accepts a restricted portable filename and
-manifest subset. It is not yet wired into Cargo installation; SDK isolation,
-execution-context validation and staged application remain required.
+manifest subset.
+
+The backend can now stage an approved graph outside the repository, extract only
+verified crates with private permissions, and generate Cargo directory-source
+checksums. An isolated standalone Cargo 1.85+ SDK can validate the staged default
+feature graph with `metadata --offline --locked`. The adapter clears inherited
+credentials/options/wrappers, rejects ancestor Cargo configuration and Rustup
+proxies, and checks the actual Rust version against declared requirements. It
+does not compile packages. This stage uses a synthetic root for resolution checks;
+Cargo installation still requires original project context validation, exact
+pinning and a guarded commit before the command can be enabled.
 
 Conservative defaults require 100 stars, two independently established active
 maintainers and a Scorecard scan no older than 30 days. Individual Scorecard minimums
