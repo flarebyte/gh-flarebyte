@@ -5,7 +5,10 @@ package dependencies
 
 import (
 	"fmt"
+	"reflect"
+	"slices"
 	"strings"
+	"time"
 )
 
 type CargoArtifact struct {
@@ -13,8 +16,11 @@ type CargoArtifact struct {
 	expected *cargoArchiveExpectation
 }
 type cargoArchiveExpectation struct {
-	node     ProjectNode
-	metadata *cargoFeaturePackage
+	node        ProjectNode
+	metadata    *cargoFeaturePackage
+	maintenance *cargoMaintenanceProof
+	policy      Policy
+	checkedAt   time.Time
 }
 
 func PrepareCargoArtifacts(dir string, r Report) ([]CargoArtifact, error) {
@@ -48,6 +54,18 @@ func PrepareCargoArtifacts(dir string, r Report) ([]CargoArtifact, error) {
 			}
 		}
 		metadata := approved.cargo.featurePackages[node.Path]
+		var maintenance *cargoMaintenanceProof
+		for _, f := range approved.Findings {
+			if f.Path == node.Path {
+				if !validCargoMaintenanceFinding(f.Finding, node.Name, r) {
+					return unsupported()
+				}
+				maintenance = f.Finding.cargoMaintenance
+				if node.Name == name && node.Version == r.Recommendation.Version && !reflect.DeepEqual(r.Evidence.Maintenance, f.Finding.Evidence.Maintenance) {
+					return unsupported()
+				}
+			}
+		}
 		locked := approved.cargo.packages[node.Path]
 		if matches != 1 || metadata == nil || !metadata.complete || metadata.features == nil || locked.Source != cargoRegistry || locked.Name != node.Name || locked.Version != node.Version || node.Integrity != "sha256-"+locked.Checksum || !cargoArtifactIdentity(node) {
 			return unsupported()
@@ -63,7 +81,9 @@ func PrepareCargoArtifacts(dir string, r Report) ([]CargoArtifact, error) {
 		if _, ok, _ := normaliseCargoFeatures(frozen); !ok {
 			return unsupported()
 		}
-		artifacts = append(artifacts, CargoArtifact{Node: node, expected: &cargoArchiveExpectation{node: node, metadata: frozen}})
+		policy := r.Details.Policy
+		policy.ScorecardChecks = slices.Clone(policy.ScorecardChecks)
+		artifacts = append(artifacts, CargoArtifact{Node: node, expected: &cargoArchiveExpectation{node: node, metadata: frozen, maintenance: maintenance.clone(), policy: policy, checkedAt: r.CheckedAt}})
 	}
 	return artifacts, nil
 }
@@ -79,5 +99,13 @@ func cargoArtifactIdentity(node ProjectNode) bool {
 }
 
 func (a CargoArtifact) valid() bool {
-	return a.expected != nil && a.expected.metadata != nil && a.expected.metadata.complete && a.expected.metadata.features != nil && a.Node == a.expected.node && cargoArtifactIdentity(a.Node)
+	if a.expected == nil {
+		return false
+	}
+	if p := a.expected.maintenance; p != nil {
+		if _, ok := p.evidence(a.expected.policy, a.expected.checkedAt); !ok || p.name != a.Node.Name {
+			return false
+		}
+	}
+	return a.expected.metadata != nil && a.expected.metadata.complete && a.expected.metadata.features != nil && a.Node == a.expected.node && cargoArtifactIdentity(a.Node)
 }

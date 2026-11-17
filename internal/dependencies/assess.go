@@ -42,6 +42,9 @@ func EvaluateVersion(v Version, advisories []Advisory, osvErr error, p Policy, n
 }
 
 func evaluateRelease(v Version, advisories []Advisory, osvErr error, e TrustEvidence, p Policy, now time.Time) Finding {
+	if !strings.EqualFold(v.Key.System, "cargo") || e.cargoMaintenance != nil && e.cargoMaintenance.name != v.Key.Name {
+		e.cargoMaintenance = nil
+	}
 	f := Finding{Version: v.Key.Version, Reasons: []string{}, Missing: []string{}, Advisories: []string{}}
 	if v.PublishedAt.IsZero() || v.PublishedAt.After(now) {
 		f.Missing = append(f.Missing, "PUBLICATION_TIME")
@@ -85,10 +88,15 @@ func evaluateRelease(v Version, advisories []Advisory, osvErr error, e TrustEvid
 		}
 	}
 	identity := e.Identity
+	maintenance, publicActive := e.cargoMaintenance.evidence(p, now)
+	if publicActive {
+		maintainers = "multiple"
+		f.cargoMaintenance = e.cargoMaintenance
+	}
 	if identity == "" {
 		identity = "unknown"
 	}
-	f.Evidence = &Evidence{Identity: identity, Stars: e.Stars, Maintainers: maintainers, Advisories: f.Advisories, Missing: f.Missing}
+	f.Evidence = &Evidence{Identity: identity, Stars: e.Stars, Maintainers: maintainers, Advisories: f.Advisories, Missing: f.Missing, Maintenance: maintenance}
 	return f
 }
 
@@ -225,7 +233,7 @@ func (c *Client) assess(ctx context.Context, system, name string, requested *str
 		advisories, osvErr := c.OSV(ctx, systems[system], name, version, &r.Details.Sources)
 		e, npm, description, releaseReasons := c.releaseEvidence(ctx, system, name, version, &r.Details.Sources)
 		c.fillRepository(ctx, v, &e, &r, cache)
-		c.fillMaintainers(ctx, &e, p, now, &r, cache)
+		c.fillMaintenance(ctx, system, v.Key.Name, &e, p, now, &r, cache)
 		e.NameScreened, e.NameConflict = screenName(system, name)
 		resolution := ""
 		if project.binds(name, version) {

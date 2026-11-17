@@ -32,7 +32,7 @@ func (c *Client) assessProject(ctx context.Context, project *ProjectSnapshot, p 
 			e.ProjectResolved = true
 			e.NameScreened, e.NameConflict = screenName(system, node.Name)
 			c.fillRepository(ctx, v, &e, r, cache)
-			c.fillMaintainers(ctx, &e, p, now, r, cache)
+			c.fillMaintenance(ctx, system, node.Name, &e, p, now, r, cache)
 			finding = evaluateRelease(v, advisories, osvErr, e, p, now)
 			finding.Reasons = unique(append(finding.Reasons, releaseReasons...))
 			if system == "cargo" {

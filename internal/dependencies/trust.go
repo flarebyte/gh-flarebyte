@@ -12,18 +12,20 @@ import (
 )
 
 type TrustEvidence struct {
-	Identity               string
-	Repository             string
-	Stars                  *int
-	IndependentMaintainers *int
-	LifecycleKnown         bool
-	Withdrawn              bool
-	NameScreened           bool
-	NameConflict           bool
-	ProjectResolved        bool
-	Scorecards             []Scorecard
-	RepositoryDescription  *string
-	MaintenanceChecked     bool
+	cargoMaintenance        *cargoMaintenanceProof
+	cargoMaintenanceChecked bool
+	Identity                string
+	Repository              string
+	Stars                   *int
+	IndependentMaintainers  *int
+	LifecycleKnown          bool
+	Withdrawn               bool
+	NameScreened            bool
+	NameConflict            bool
+	ProjectResolved         bool
+	Scorecards              []Scorecard
+	RepositoryDescription   *string
+	MaintenanceChecked      bool
 }
 
 func (e TrustEvidence) Evaluate(p Policy, now time.Time) ([]string, []string) {
@@ -48,9 +50,10 @@ func (e TrustEvidence) Evaluate(p Policy, now time.Time) ([]string, []string) {
 	if !e.ProjectResolved {
 		missing = append(missing, "PROJECT_RESOLUTION")
 	}
-	if e.IndependentMaintainers == nil || *e.IndependentMaintainers < 0 {
+	_, publicActive := e.cargoMaintenance.evidence(p, now)
+	if (e.IndependentMaintainers == nil || *e.IndependentMaintainers < 0) && !publicActive {
 		missing = append(missing, "ACTIVE_MAINTAINERS")
-	} else if *e.IndependentMaintainers < p.MinMaintainers {
+	} else if e.IndependentMaintainers != nil && *e.IndependentMaintainers >= 0 && *e.IndependentMaintainers < p.MinMaintainers && !publicActive {
 		if *e.IndependentMaintainers == 1 {
 			reasons = append(reasons, "SINGLE_MAINTAINER")
 		} else {

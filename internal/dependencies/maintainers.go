@@ -156,3 +156,19 @@ func (c *Client) fillMaintainers(ctx context.Context, e *TrustEvidence, p Policy
 	}
 	e.IndependentMaintainers = prior.IndependentMaintainers
 }
+
+func (c *Client) fillMaintenance(ctx context.Context, system, name string, e *TrustEvidence, p Policy, now time.Time, r *Report, cache map[string]TrustEvidence) {
+	c.fillMaintainers(ctx, e, p, now, r, cache)
+	if system != "cargo" || p.ID != publicMaintenancePolicy || e.IndependentMaintainers != nil && *e.IndependentMaintainers >= p.MinMaintainers {
+		return
+	}
+	key := "cargo-maintenance:" + name
+	prior := cache[key]
+	if !prior.cargoMaintenanceChecked {
+		prior.cargoMaintenanceChecked = true
+		prior.cargoMaintenance = c.cargoMaintainers(ctx, name, p, now, &r.Details.Sources)
+		cache[key] = prior
+		r.Details.Maintenance = append(r.Details.Maintenance, prior.cargoMaintenance.detail())
+	}
+	e.cargoMaintenance = prior.cargoMaintenance
+}

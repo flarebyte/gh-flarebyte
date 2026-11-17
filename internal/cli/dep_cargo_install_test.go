@@ -192,7 +192,7 @@ func mustReadCargoFile(t *testing.T, name string) []byte {
 }
 
 func TestCargoDependencyPreconditions(t *testing.T) {
-	for _, mode := range []string{"denied", "stale", "future", "policy", "lock", "unsupported context"} {
+	for _, mode := range []string{"denied", "stale", "future", "policy", "old policy", "lock", "unsupported context"} {
 		t.Run(mode, func(t *testing.T) {
 			root, r, _ := approvedCargoInstall(t)
 			switch mode {
@@ -204,6 +204,10 @@ func TestCargoDependencyPreconditions(t *testing.T) {
 				r.CheckedAt = time.Now().Add(time.Hour)
 			case "policy":
 				r.PolicyDigest = "changed"
+			case "old policy":
+				r.Policy = "conservative-v1"
+				r.Details.Policy.ID = r.Policy
+				r.PolicyDigest = r.Details.Policy.Digest()
 			case "lock":
 				if err := os.WriteFile(".gh-flarebyte-dep.lock", nil, 0600); err != nil {
 					t.Fatal(err)

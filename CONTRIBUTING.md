@@ -98,6 +98,26 @@ blocking. A successful HTTP response is not proof that the payload was decoded.
 Live checks should record exact package versions, provider statuses and local
 resolution limitations; do not weaken authority or policy gates to produce an allow.
 
+The `conservative-v2` Cargo maintenance fallback must join current registry user-owner
+IDs to `published_by.id` for the same crate within 180 days. Test positive evidence,
+one owner, teams/bots, one active owner, unrelated publisher IDs with matching names,
+revocation during recheck, alias changes, duplicate/malformed records, future/stale
+uploads, bounded partial history, per-package cache scope and policy-version replay.
+Keep registry proofs private and frozen through candidate/transitive findings and
+artifact/install preparation; serialized or altered count summaries cannot authorize
+an install. A public maintenance pass must never override identity, advisory,
+Scorecard, age or project-resolution failures. Existing GitHub authority remains
+the other maintenance route; npm/PyPI gain no registry fallback in this phase.
+
+Run the anonymous live API contract probe explicitly with:
+
+```bash
+GH_FLAREBYTE_DEP_LIVE=1 go test ./internal/dependencies -run '^TestCargoPublicMaintenanceLive$' -v
+```
+
+It fetches public owners and bounded release records only, uses no credentials or
+native tools, and reports insufficient evidence without asserting inactivity.
+
 Cargo assessment tests use TOML fixtures and fake crates.io/deps.dev/OSV/GitHub
 responses. Cover root-lock agreement, version/source ambiguity, checksum and edge
 disagreement, build/dev dependencies, renamed crates, feature/compiler uncertainty,

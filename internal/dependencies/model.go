@@ -38,7 +38,7 @@ type CheckThreshold struct {
 func DefaultPolicy(days int) Policy {
 	references, _ := json.Marshal(nameReferences)
 	hash := sha256.Sum256(references)
-	return Policy{ID: "conservative-v1", MinAgeDays: days, MinStars: 100, MinMaintainers: 2, ActivityDays: 180, MaxScorecardAgeDays: 30,
+	return Policy{ID: publicMaintenancePolicy, MinAgeDays: days, MinStars: 100, MinMaintainers: 2, ActivityDays: 180, MaxScorecardAgeDays: 30,
 		NameReferenceRevision: nameReferenceRevision, NameReferenceDigest: "sha256:" + hex.EncodeToString(hash[:]), ScorecardChecks: []CheckThreshold{{"Branch-Protection", 6}, {"Code-Review", 7}, {"Dangerous-Workflow", 10}, {"Maintained", 5}, {"Token-Permissions", 8}}}
 }
 
@@ -55,11 +55,37 @@ type Candidate struct {
 }
 
 type Evidence struct {
-	Identity    string   `json:"identity"`
-	Stars       *int     `json:"stars"`
-	Maintainers string   `json:"maintainers"`
-	Advisories  []string `json:"advisories"`
-	Missing     []string `json:"missing"`
+	Identity    string               `json:"identity"`
+	Stars       *int                 `json:"stars"`
+	Maintainers string               `json:"maintainers"`
+	Advisories  []string             `json:"advisories"`
+	Missing     []string             `json:"missing"`
+	Maintenance *MaintenanceEvidence `json:"maintenance,omitempty"`
+}
+
+type MaintenanceEvidence struct {
+	Basis                   string `json:"basis"`
+	AuthorityAccounts       *int   `json:"authority_accounts"`
+	ActiveAuthorityAccounts *int   `json:"active_authority_accounts"`
+}
+
+type MaintenanceAuthority struct {
+	ID    int64  `json:"id"`
+	Login string `json:"login"`
+}
+
+type MaintenanceActivity struct {
+	OwnerID     int64     `json:"owner_id"`
+	Version     string    `json:"version"`
+	PublishedAt time.Time `json:"published_at"`
+}
+
+type MaintenanceDetail struct {
+	Package     string                 `json:"package"`
+	Evidence    MaintenanceEvidence    `json:"evidence"`
+	Authorities []MaintenanceAuthority `json:"authorities"`
+	Activities  []MaintenanceActivity  `json:"activities"`
+	Missing     []string               `json:"missing"`
 }
 
 type Report struct {
@@ -101,15 +127,16 @@ type Source struct {
 	Attempts    int       `json:"attempts"`
 }
 type Finding struct {
-	Version        string                `json:"version"`
-	Reasons        []string              `json:"reasons"`
-	Missing        []string              `json:"missing"`
-	Advisories     []string              `json:"advisories"`
-	Decision       string                `json:"decision"`
-	Evidence       *Evidence             `json:"evidence,omitempty"`
-	AdvisoryGroups []AdvisoryGroup       `json:"advisory_groups,omitempty"`
-	Resolution     string                `json:"resolution,omitempty"`
-	Runtime        *RuntimeCompatibility `json:"runtime,omitempty"`
+	cargoMaintenance *cargoMaintenanceProof
+	Version          string                `json:"version"`
+	Reasons          []string              `json:"reasons"`
+	Missing          []string              `json:"missing"`
+	Advisories       []string              `json:"advisories"`
+	Decision         string                `json:"decision"`
+	Evidence         *Evidence             `json:"evidence,omitempty"`
+	AdvisoryGroups   []AdvisoryGroup       `json:"advisory_groups,omitempty"`
+	Resolution       string                `json:"resolution,omitempty"`
+	Runtime          *RuntimeCompatibility `json:"runtime,omitempty"`
 }
 
 // RuntimeCompatibility compares declared requirements; it does not attest to an
@@ -134,14 +161,15 @@ type FeatureActivation struct {
 	Features []string `json:"features"`
 }
 type Details struct {
-	Policy                Policy           `json:"policy"`
-	Sources               []Source         `json:"sources"`
-	Candidates            []Finding        `json:"candidates"`
-	Scorecards            []Scorecard      `json:"scorecards"`
-	ConfigPath            string           `json:"config_path"`
-	LimitReached          bool             `json:"limit_reached"`
-	Project               *ProjectSnapshot `json:"project,omitempty"`
-	RecommendationMissing []string         `json:"recommendation_missing,omitempty"`
+	Maintenance           []MaintenanceDetail `json:"maintenance,omitempty"`
+	Policy                Policy              `json:"policy"`
+	Sources               []Source            `json:"sources"`
+	Candidates            []Finding           `json:"candidates"`
+	Scorecards            []Scorecard         `json:"scorecards"`
+	ConfigPath            string              `json:"config_path"`
+	LimitReached          bool                `json:"limit_reached"`
+	Project               *ProjectSnapshot    `json:"project,omitempty"`
+	RecommendationMissing []string            `json:"recommendation_missing,omitempty"`
 }
 
 func NewReport(system, name string, requested *string, p Policy, now time.Time) Report {

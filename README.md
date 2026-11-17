@@ -359,8 +359,8 @@ changes. Both the project and every crate need compatible declared Rust minimums
 Unsupported contexts fail closed. Freshness, policy, input and target checks run
 again before commit; concurrent edits trigger rollback or retained recovery data.
 
-Conservative defaults require 100 stars, two independently established active
-maintainers and a Scorecard scan no older than 30 days. Individual Scorecard minimums
+Policy `conservative-v2` requires 100 stars, two active accounts with corroborated
+maintenance authority and a Scorecard scan no older than 30 days. Individual Scorecard minimums
 are Branch-Protection 6, Code-Review 7, Dangerous-Workflow 10, Maintained 5 and
 Token-Permissions 8. Scores are evaluated from one applicable snapshot. Public
 Scorecard date-only scan dates are interpreted as midnight UTC; RFC3339 timestamps
@@ -375,6 +375,20 @@ role data stays unknown, and contributor counts do not substitute for authority.
 That endpoint requires repository write/maintain/admin privileges and, for an
 organization repository, organization membership. Authentication alone cannot
 close this evidence gap for arbitrary third-party packages.
+Cargo additionally supports anonymous registry evidence: current crates.io user-owner
+IDs matched to release `published_by.id` records within the last 180 days. It samples
+at most 100 recent releases and rechecks the owner roster before qualifying the
+evidence. Two current owners must each have a matched recent upload. Teams, unrelated
+publishers, stale activity and incomplete evidence do not qualify; insufficient
+evidence stays unknown, without a single-developer claim. Distinct accounts do not
+prove distinct people. npm/PyPI retain the existing authority path.
+
+Compact Cargo reports can include `evidence.maintenance` with the basis
+`cargo-registry-publishers` and observed authority/active-authority counts.
+`--explain` adds registry account IDs, matched releases and remaining gaps under
+`details.maintenance`. Public evidence is cached per crate, never borrowed from
+another package sharing its repository. A new policy digest prevents earlier
+policy approvals from being reused for installation. All other safety gates apply.
 Checks recommend versions only when every required check passes. Unsupported
 ordering or unresolved newer candidates prevent a newest-version recommendation.
 
