@@ -383,6 +383,15 @@ publishers, stale activity and incomplete evidence do not qualify; insufficient
 evidence stays unknown, without a single-developer claim. Distinct accounts do not
 prove distinct people. npm/PyPI retain the existing authority path.
 
+When that path cannot establish active maintenance, npm/PyPI checks also report
+current registry roles as context. npm uses the package's current top-level owner
+list; PyPI uses `ownership.roles`. Author credits, version-level maintainer fields
+and unverified publisher names are ignored. `evidence.maintenance` reports observed
+named-account counts with `active_authority_accounts: null`; `--explain` includes
+the account/role list and opaque organization access. These observations cannot
+satisfy the active-maintainer gate or independently permit installation. An empty
+organization-managed role list stays unknown, without a zero-maintainer claim.
+
 Compact Cargo reports can include `evidence.maintenance` with the basis
 `cargo-registry-publishers` and observed authority/active-authority counts.
 `--explain` adds registry account IDs, matched releases and remaining gaps under

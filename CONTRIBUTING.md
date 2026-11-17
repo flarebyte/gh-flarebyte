@@ -118,6 +118,21 @@ GH_FLAREBYTE_DEP_LIVE=1 go test ./internal/dependencies -run '^TestCargoPublicMa
 It fetches public owners and bounded release records only, uses no credentials or
 native tools, and reports insufficient evidence without asserting inactivity.
 
+npm/PyPI registry role reporting is observational. Cover current top-level npm
+owners and PyPI `ownership.roles`, package identity, role/name validation, duplicate
+accounts, organization-only access, malformed/oversized rosters and per-package
+caching. Ignore author credits, version-level maintainer lists and `_npmUser` as
+activity proof. Assert that role counts never populate active-maintainer approval
+facts or change the verdict. Public role reads use no credentials or package tools.
+
+```bash
+GH_FLAREBYTE_DEP_LIVE=1 go test ./internal/dependencies -run '^TestPublicRegistryAuthorityLive$' -v
+```
+
+This opt-in probe reads only current public metadata for four npm/PyPI packages;
+default tests use fake HTTP transports. Missing account kinds or opaque organization
+access must not be inferred as a single developer or expanded into invented users.
+
 Cargo assessment tests use TOML fixtures and fake crates.io/deps.dev/OSV/GitHub
 responses. Cover root-lock agreement, version/source ambiguity, checksum and edge
 disagreement, build/dev dependencies, renamed crates, feature/compiler uncertainty,

@@ -159,7 +159,22 @@ func (c *Client) fillMaintainers(ctx context.Context, e *TrustEvidence, p Policy
 
 func (c *Client) fillMaintenance(ctx context.Context, system, name string, e *TrustEvidence, p Policy, now time.Time, r *Report, cache map[string]TrustEvidence) {
 	c.fillMaintainers(ctx, e, p, now, r, cache)
-	if system != "cargo" || p.ID != publicMaintenancePolicy || e.IndependentMaintainers != nil && *e.IndependentMaintainers >= p.MinMaintainers {
+	if p.ID != publicMaintenancePolicy || e.IndependentMaintainers != nil && *e.IndependentMaintainers >= p.MinMaintainers {
+		return
+	}
+	if system == "npm" || system == "pypi" {
+		key := "registry-authority:" + system + ":" + name
+		prior := cache[key]
+		if !prior.registryAuthorityChecked {
+			prior.registryAuthorityChecked = true
+			prior.registryAuthority = c.registryAuthorities(ctx, system, name, &r.Details.Sources)
+			cache[key] = prior
+			r.Details.Maintenance = append(r.Details.Maintenance, prior.registryAuthority.detail())
+		}
+		e.registryAuthority = prior.registryAuthority
+		return
+	}
+	if system != "cargo" {
 		return
 	}
 	key := "cargo-maintenance:" + name

@@ -89,6 +89,9 @@ func evaluateRelease(v Version, advisories []Advisory, osvErr error, e TrustEvid
 	}
 	identity := e.Identity
 	maintenance, publicActive := e.cargoMaintenance.evidence(p, now)
+	if maintenance == nil && e.registryAuthority != nil && strings.EqualFold(v.Key.System, e.registryAuthority.system) && equivalentName(e.registryAuthority.system, v.Key.Name, e.registryAuthority.name) {
+		maintenance = e.registryAuthority.evidence()
+	}
 	if publicActive {
 		maintainers = "multiple"
 		f.cargoMaintenance = e.cargoMaintenance

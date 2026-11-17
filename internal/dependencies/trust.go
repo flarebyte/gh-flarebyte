@@ -12,20 +12,22 @@ import (
 )
 
 type TrustEvidence struct {
-	cargoMaintenance        *cargoMaintenanceProof
-	cargoMaintenanceChecked bool
-	Identity                string
-	Repository              string
-	Stars                   *int
-	IndependentMaintainers  *int
-	LifecycleKnown          bool
-	Withdrawn               bool
-	NameScreened            bool
-	NameConflict            bool
-	ProjectResolved         bool
-	Scorecards              []Scorecard
-	RepositoryDescription   *string
-	MaintenanceChecked      bool
+	registryAuthority        *registryAuthorityObservation
+	registryAuthorityChecked bool
+	cargoMaintenance         *cargoMaintenanceProof
+	cargoMaintenanceChecked  bool
+	Identity                 string
+	Repository               string
+	Stars                    *int
+	IndependentMaintainers   *int
+	LifecycleKnown           bool
+	Withdrawn                bool
+	NameScreened             bool
+	NameConflict             bool
+	ProjectResolved          bool
+	Scorecards               []Scorecard
+	RepositoryDescription    *string
+	MaintenanceChecked       bool
 }
 
 func (e TrustEvidence) Evaluate(p Policy, now time.Time) ([]string, []string) {

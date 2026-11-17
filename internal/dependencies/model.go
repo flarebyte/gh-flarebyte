@@ -81,11 +81,18 @@ type MaintenanceActivity struct {
 }
 
 type MaintenanceDetail struct {
-	Package     string                 `json:"package"`
-	Evidence    MaintenanceEvidence    `json:"evidence"`
-	Authorities []MaintenanceAuthority `json:"authorities"`
-	Activities  []MaintenanceActivity  `json:"activities"`
-	Missing     []string               `json:"missing"`
+	Package       string                 `json:"package"`
+	Evidence      MaintenanceEvidence    `json:"evidence"`
+	Authorities   []MaintenanceAuthority `json:"authorities"`
+	Activities    []MaintenanceActivity  `json:"activities"`
+	Missing       []string               `json:"missing"`
+	RegistryRoles []RegistryRole         `json:"registry_roles,omitempty"`
+	Organization  string                 `json:"organization,omitempty"`
+}
+
+type RegistryRole struct {
+	Account string `json:"account"`
+	Role    string `json:"role"`
 }
 
 type Report struct {
