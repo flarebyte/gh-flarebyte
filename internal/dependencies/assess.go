@@ -173,14 +173,31 @@ func (c *Client) assess(ctx context.Context, system, name string, requested *str
 	r.Package = system + ":" + canonical
 	registryDescriptionSet := false
 	versions := []string{}
+	catalogUnavailable := map[string]bool{}
 	for _, v := range pack.Versions {
 		if _, ok := stableVersion(system, v.Key.Version); ok {
 			versions = append(versions, v.Key.Version)
 		} else if !knownPrerelease(system, v.Key.Version) && !v.Deprecated {
+			if system == "pypi" {
+				excluded, seen := catalogUnavailable[v.Key.Version]
+				if !seen && len(catalogUnavailable) < maxPythonCatalogProbes {
+					excluded = c.pythonCatalogUnavailable(ctx, canonical, v.Key.Version, &r.Details.Sources)
+					catalogUnavailable[v.Key.Version] = excluded
+					if excluded {
+						r.Details.CatalogExclusions = append(r.Details.CatalogExclusions, CatalogExclusion{Version: v.Key.Version, Reason: "WITHDRAWN_RELEASE"})
+					}
+				}
+				if excluded {
+					continue
+				}
+			}
 			r.Details.RecommendationMissing = []string{"VERSION_ORDERING"}
 		}
 	}
 	versions = unique(versions)
+	sort.Slice(r.Details.CatalogExclusions, func(i, j int) bool {
+		return r.Details.CatalogExclusions[i].Version < r.Details.CatalogExclusions[j].Version
+	})
 	sort.Slice(versions, func(i, j int) bool { return newer(system, versions[i], versions[j]) })
 	if requested != nil {
 		found := false

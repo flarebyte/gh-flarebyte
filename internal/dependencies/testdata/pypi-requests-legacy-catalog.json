@@ -1,0 +1,24 @@
+{
+  "source": "https://api.deps.dev/v3/systems/pypi/packages/requests",
+  "observed_at": "2026-11-17T20:32:34.267051Z",
+  "versions": [
+    "2.34.2",
+    "2.34.1",
+    "2.34.0",
+    "2.34.0.dev1",
+    "2.23.0-py2.7"
+  ],
+  "legacy_release": {
+    "lifecycle_known": true,
+    "reasons": [],
+    "version": "2.23.0-py2.7",
+    "withdrawn": true
+  },
+  "registry_source": {
+    "provider": "pypi-registry",
+    "url": "https://pypi.org/pypi/requests/2.23.0-py2.7/json",
+    "retrieved_at": "2026-11-17T20:32:34.463486Z",
+    "status": "http_404",
+    "attempts": 1
+  }
+}

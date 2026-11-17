@@ -287,6 +287,11 @@ and npm/Cargo build metadata. PyPI ordering also handles public epochs, longer
 numeric release tuples and stable `.postN` releases; canonical prerelease and
 development releases are excluded. Local versions and unsupported spellings remain
 unknown. Unsupported ordering prevents a newest-version claim.
+For PyPI catalog entries that cannot be ordered, checks make at most four distinct
+registry availability probes. An entry confirmed unavailable by HTTP 404 or fully
+yanked can be excluded from recommendation ordering; `--explain` records it under
+`catalog_exclusions`. Present or unresolved entries remain blocking. Exact-version
+checks preserve the original string and still assess the requested release.
 
 Npm checks inspect local lockfiles v2/v3 without executing tooling. They support an
 already locked runtime version or a dependency-free addition that preserves existing

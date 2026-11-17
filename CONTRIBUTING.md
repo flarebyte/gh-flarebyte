@@ -98,6 +98,20 @@ blocking. A successful HTTP response is not proof that the payload was decoded.
 Live checks should record exact package versions, provider statuses and local
 resolution limitations; do not weaken authority or policy gates to produce an allow.
 
+PyPI catalog regression tests include the indexed legacy requests identifier
+`2.23.0-py2.7`, observed unavailable at the registry. Exclude an unorderable entry
+only after registry-confirmed unavailability or complete yanking. Preserve ordering
+gaps on present, malformed, identity-conflicting, forbidden or unavailable-service
+responses. Bound/deduplicate the availability probes, record their exclusions, and
+keep explicit checks of unavailable versions denied with original identities.
+
+```bash
+GH_FLAREBYTE_DEP_LIVE=1 go test ./internal/dependencies -run '^TestPythonCatalogLive$' -v
+```
+
+The opt-in probe reads public catalogs and bounded exact-release metadata only;
+it does not run Python, install dependencies or broaden supported version syntax.
+
 The `conservative-v2` Cargo maintenance fallback must join current registry user-owner
 IDs to `published_by.id` for the same crate within 180 days. Test positive evidence,
 one owner, teams/bots, one active owner, unrelated publisher IDs with matching names,

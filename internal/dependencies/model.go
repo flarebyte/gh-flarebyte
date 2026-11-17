@@ -168,6 +168,7 @@ type FeatureActivation struct {
 	Features []string `json:"features"`
 }
 type Details struct {
+	CatalogExclusions     []CatalogExclusion  `json:"catalog_exclusions,omitempty"`
 	Maintenance           []MaintenanceDetail `json:"maintenance,omitempty"`
 	Policy                Policy              `json:"policy"`
 	Sources               []Source            `json:"sources"`
@@ -177,6 +178,11 @@ type Details struct {
 	LimitReached          bool                `json:"limit_reached"`
 	Project               *ProjectSnapshot    `json:"project,omitempty"`
 	RecommendationMissing []string            `json:"recommendation_missing,omitempty"`
+}
+
+type CatalogExclusion struct {
+	Version string `json:"version"`
+	Reason  string `json:"reason"`
 }
 
 func NewReport(system, name string, requested *string, p Policy, now time.Time) Report {
