@@ -24,7 +24,7 @@ func fixtureArtifact(t *testing.T) ([]byte, InstallArtifact) {
 	return b, InstallArtifact{Node: ProjectNode{Name: "fixture-lib", Version: "1.0.0", Path: "node_modules/fixture-lib", Resolved: "https://registry.npmjs.org/fixture-lib/-/fixture-lib-1.0.0.tgz", Integrity: "sha512-" + base64.StdEncoding.EncodeToString(h[:])}}
 }
 
-func archiveFixture(t *testing.T, entries []tar.Header, bodies []string, extra []byte) []byte {
+func archiveFixture(t testing.TB, entries []tar.Header, bodies []string, extra []byte) []byte {
 	t.Helper()
 	var raw bytes.Buffer
 	tw := tar.NewWriter(&raw)

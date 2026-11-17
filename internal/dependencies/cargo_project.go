@@ -33,6 +33,7 @@ type cargoGraph struct {
 }
 type cargoDeclaration struct {
 	name, requirement string
+	kind              string
 	runtime           bool
 	alias             string
 	optional          bool
@@ -173,7 +174,7 @@ func readCargoProject(dir string) *ProjectSnapshot {
 	g.root = rootPath
 	g.featurePackages = map[string]*cargoFeaturePackage{rootPath: {features: rootFeatures, complete: true}}
 	for _, d := range declarations {
-		g.featurePackages[rootPath].dependencies = append(g.featurePackages[rootPath].dependencies, cargoFeatureDependency{alias: d.alias, name: d.name, requirement: d.requirement, optional: d.optional, defaults: d.defaultFeatures, features: d.requested})
+		g.featurePackages[rootPath].dependencies = append(g.featurePackages[rootPath].dependencies, cargoFeatureDependency{alias: d.alias, name: d.name, requirement: d.requirement, kind: d.kind, optional: d.optional, defaults: d.defaultFeatures, features: d.requested})
 	}
 	paths := make([]string, 0, len(g.packages))
 	for path := range g.packages {
@@ -272,6 +273,7 @@ func cargoDeclarations(manifest map[string]any) ([]cargoDeclaration, bool) {
 		}
 		for alias, value := range entries {
 			d := cargoDeclaration{name: alias, alias: alias, defaultFeatures: true, runtime: group == "dependencies"}
+			d.kind = map[string]string{"dependencies": "normal", "dev-dependencies": "dev", "build-dependencies": "build"}[group]
 			if !cargoName.MatchString(alias) {
 				return nil, false
 			}

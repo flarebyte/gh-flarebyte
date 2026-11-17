@@ -38,7 +38,19 @@ func (c *Client) FetchArtifact(ctx context.Context, a InstallArtifact) ([]byte, 
 	if !npmArtifact(a.Node.Resolved, a.Node.Integrity) {
 		return nil, fmt.Errorf("artifact origin or integrity unsupported")
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, a.Node.Resolved, nil)
+	b, err := c.fetchArtifactBytes(ctx, a.Node.Resolved)
+	if err != nil {
+		return nil, err
+	}
+	if err := VerifyArtifact(b, a); err != nil {
+		return nil, err
+	}
+	return b, nil
+}
+
+// Callers validate a fixed registry origin before using this bounded downloader.
+func (c *Client) fetchArtifactBytes(ctx context.Context, endpoint string) ([]byte, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -57,9 +69,6 @@ func (c *Client) FetchArtifact(ctx context.Context, a InstallArtifact) ([]byte, 
 	}
 	if len(b) > MaxArtifactBytes {
 		return nil, fmt.Errorf("artifact exceeds compressed size limit")
-	}
-	if err := VerifyArtifact(b, a); err != nil {
-		return nil, err
 	}
 	return b, nil
 }

@@ -330,6 +330,14 @@ remain blocking, and inactive crates retain all security findings. This union do
 not establish a target-specific install plan; Cargo installation remains blocked
 pending archive verification, isolated tooling and exact execution-context checks.
 
+Cargo archive preflight is now implemented as a read-only backend component. It
+binds SHA-256 checksums and normalized manifests to an approved, unchanged graph,
+rejects links, escapes, control files and path collisions, and bounds archive
+expansion and metadata. It records build-script/proc-macro declarations without
+executing code. The initial verifier accepts a restricted portable filename and
+manifest subset. It is not yet wired into Cargo installation; SDK isolation,
+execution-context validation and staged application remain required.
+
 Conservative defaults require 100 stars, two independently established active
 maintainers and a Scorecard scan no older than 30 days. Individual Scorecard minimums
 are Branch-Protection 6, Code-Review 7, Dangerous-Workflow 10, Maintained 5 and

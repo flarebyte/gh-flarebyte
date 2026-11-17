@@ -112,6 +112,17 @@ scripts do not run, and preserves an unknown verdict for inactive weak contexts
 where metadata reports a broader union. These controlled path fixtures do not
 enable path dependencies in production assessment. Default tests never invoke Cargo.
 
+Cargo archive tests must bind downloads to sealed approval facts, reject changed
+projects and unsafe origins, compare dependency kinds/targets/features/runtime
+metadata, and cover archive escapes, aliases, links, embedded configuration,
+trailer corruption and resource budgets. Packaged `Cargo.lock`, `Cargo.toml.orig`
+and VCS information are inert and must not replace the approved resolution or
+provenance. Run the controlled archive oracle with
+`GH_FLAREBYTE_DEP_CARGO_INTEGRATION=1 go test ./internal/dependencies -run '^TestCargoArchiveOracle$'`.
+It packages only generated fixtures offline with `--no-verify`, checks the resulting
+crate, and asserts that its build script did not run. Archive preflight never extracts
+files or authorizes a native install; do not wire it past the remaining SDK/context gates.
+
 [Design notes](doc/design/gh-flarebyte.md) are generated from
 [app.cue](doc/design-meta/app.cue) and its example inputs. Change the authored inputs
 and use `make doc-design` (requires `flyb`) to validate and regenerate them. Do not

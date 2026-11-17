@@ -15,13 +15,15 @@ var cargoFeatureName = regexp.MustCompile(`^[A-Za-z0-9_][A-Za-z0-9_+.-]{0,127}$`
 
 type cargoFeatureDependency struct {
 	alias, name, requirement string
+	kind, target             string
 	optional, defaults       bool
 	features                 []string
 }
 type cargoFeaturePackage struct {
-	complete     bool
-	features     map[string][]string
-	dependencies []cargoFeatureDependency
+	rustVersion, edition string
+	complete             bool
+	features             map[string][]string
+	dependencies         []cargoFeatureDependency
 }
 type cargoFeatureEvent struct{ path, feature string }
 type cargoFeatureState struct {

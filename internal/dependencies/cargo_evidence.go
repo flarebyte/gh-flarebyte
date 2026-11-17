@@ -25,6 +25,7 @@ func (c *Client) checkCargoNode(ctx context.Context, project *ProjectSnapshot, n
 			RustVersion string               `json:"rust_version"`
 			Yanked      *bool                `json:"yanked"`
 			Features    *map[string][]string `json:"features"`
+			Edition     string               `json:"edition"`
 		} `json:"version"`
 	}
 	if err := c.read(ctx, "cargo-registry", base, nil, &release, sources); err != nil {
@@ -36,6 +37,8 @@ func (c *Client) checkCargoNode(ctx context.Context, project *ProjectSnapshot, n
 	} else {
 		if featurePackage != nil && release.Version.Features != nil {
 			featurePackage.features = *release.Version.Features
+			featurePackage.rustVersion = release.Version.RustVersion
+			featurePackage.edition = release.Version.Edition
 		}
 		if release.Version.Yanked == nil {
 			f.Missing = unique(append(f.Missing, "RELEASE_LIFECYCLE"))
@@ -60,6 +63,7 @@ func (c *Client) checkCargoNode(ctx context.Context, project *ProjectSnapshot, n
 			Defaults    *bool     `json:"default_features"`
 			Features    *[]string `json:"features"`
 			Alias       string    `json:"explicit_name"`
+			Target      string    `json:"target"`
 		} `json:"dependencies"`
 	}
 	if err := c.read(ctx, "cargo-registry", base+"/dependencies", nil, &result, sources); err != nil {
@@ -91,7 +95,7 @@ func (c *Client) checkCargoNode(ctx context.Context, project *ProjectSnapshot, n
 			if alias == "" {
 				alias = d.Name
 			}
-			featurePackage.dependencies = append(featurePackage.dependencies, cargoFeatureDependency{alias: alias, name: d.Name, requirement: d.Requirement, optional: *d.Optional, defaults: *d.Defaults, features: *d.Features})
+			featurePackage.dependencies = append(featurePackage.dependencies, cargoFeatureDependency{alias: alias, name: d.Name, requirement: d.Requirement, kind: d.Kind, target: d.Target, optional: *d.Optional, defaults: *d.Defaults, features: *d.Features})
 		}
 		matched := false
 		for _, edge := range g.edges[node.Path] {
