@@ -1,0 +1,213 @@
+{
+  "artifacts": {
+    "child": "H4sIAAAAAAAA/+zTv+rCMBAH8M55it+Wqen38qvFpZOPIQ6xDTXYP5KkPr+YQUoVBK2IkM9y16NwObirDqatUxIQyDbKNoPwQ9cmiwKAIs9DBDCPIJK3PNRJXn//w7LPeGx0XtkEb/eaD/cjtidVHVWjd6xXnS552AfOzto6M/QlD5vBmR2dTyfF9YozXRsfPiUkcfbtSaJXTO/f2SprzV5Yt2yPZ/d/l5Ms6D/efxRF0SddAgAA//9tcUNLAAoAAA==",
+    "pkg": "H4sIAAAAAAAA/+zTsWrGIBAA4Mw+RTenmNMkpUumPkbIYPWwksSImj5/wSEtaUuHpvz84LfceSDngednU3MGDJpnGczG0rYu1cUAAB67LkcAOEfgXX/kuc5F20P1AFc/5Dt7TDJU8Ode5+HuxOilmqXBiTi54kD9bCh5wxDt5gaafwYlYY+p/lR86ilBbVM+ChCcklGjR6fRKYtxIurVLvq4f+shix997H8MqlnsCwvx6h6/7f+XnIuW87L/RVEU/+k9AAD//2A6kfkACgAA"
+  },
+  "lockfile": "version = 4\n\n[[package]]\nname = 'local'\nversion = '1.0.0'\ndependencies = ['pkg']\n\n[[package]]\nname = 'pkg'\nversion = '1.0.0'\nsource = 'registry+https://github.com/rust-lang/crates.io-index'\nchecksum = '91a78db9db522c0e9da44116b97b3730e0d843fc6f5b298774b058749ebaa650'\ndependencies = ['child']\n\n[[package]]\nname = 'child'\nversion = '1.0.0'\nsource = 'registry+https://github.com/rust-lang/crates.io-index'\nchecksum = '1faa91dab5954f20964eb4744867c87c83aa769a88312a3bc752714d2c346a1a'\ndependencies = []\n",
+  "manifest": "[package]\nrust-version='1.85'\nedition='2021'\nname = 'local'\nversion = '1.0.0'\n[dependencies]\npkg = '1.0'\n",
+  "responses": {
+    "https://api.deps.dev/v3/projects/github.com%2Forg%2Frepo": {
+      "projectKey": {
+        "id": "github.com/org/repo"
+      },
+      "starsCount": 4200
+    },
+    "https://api.deps.dev/v3/systems/cargo/packages/child/versions/1.0.0": {
+      "versionKey": {
+        "system": "CARGO",
+        "name": "child",
+        "version": "1.0.0"
+      },
+      "publishedAt": "2025-11-15T12:00:00Z",
+      "isDeprecated": false,
+      "attestations": [
+        {
+          "type": "https://slsa.dev/provenance/v1",
+          "verified": true,
+          "sourceRepository": "https://github.com/org/repo",
+          "commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ],
+      "slsaProvenances": null,
+      "advisoryKeys": null,
+      "relatedProjects": null
+    },
+    "https://api.deps.dev/v3/systems/cargo/packages/pkg": {
+      "packageKey": {
+        "name": "pkg"
+      },
+      "versions": [
+        {
+          "versionKey": {
+            "version": "1.0.0"
+          }
+        }
+      ]
+    },
+    "https://api.deps.dev/v3/systems/cargo/packages/pkg/versions/1.0.0": {
+      "versionKey": {
+        "system": "CARGO",
+        "name": "pkg",
+        "version": "1.0.0"
+      },
+      "publishedAt": "2025-11-15T12:00:00Z",
+      "isDeprecated": false,
+      "attestations": [
+        {
+          "type": "https://slsa.dev/provenance/v1",
+          "verified": true,
+          "sourceRepository": "https://github.com/org/repo",
+          "commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ],
+      "slsaProvenances": null,
+      "advisoryKeys": null,
+      "relatedProjects": null
+    },
+    "https://api.github.com/repos/org/repo/collaborators?affiliation=all\u0026per_page=100\u0026page=1": [
+      {
+        "id": 1,
+        "login": "first",
+        "permissions": {
+          "push": true
+        },
+        "type": "User"
+      },
+      {
+        "id": 2,
+        "login": "second",
+        "permissions": {
+          "push": true
+        },
+        "type": "User"
+      },
+      {
+        "id": 3,
+        "login": "third",
+        "permissions": {
+          "push": false
+        },
+        "type": "User"
+      },
+      {
+        "id": 4,
+        "login": "automation[bot]",
+        "permissions": {
+          "push": true
+        },
+        "type": "Bot"
+      }
+    ],
+    "https://api.github.com/repos/org/repo/pulls/1/reviews?per_page=100\u0026page=1": [
+      {
+        "state": "APPROVED",
+        "submitted_at": "2026-11-15T11:00:00Z",
+        "user": {
+          "id": 2,
+          "login": "second",
+          "type": "User"
+        }
+      }
+    ],
+    "https://api.github.com/repos/org/repo/pulls?state=all\u0026sort=updated\u0026direction=desc\u0026per_page=10": [
+      {
+        "created_at": "2026-11-15T11:00:00Z",
+        "number": 1,
+        "updated_at": "2026-11-15T11:00:00Z",
+        "user": {
+          "id": 1,
+          "login": "first",
+          "type": "User"
+        }
+      }
+    ],
+    "https://api.osv.dev/v1/query": {},
+    "https://api.scorecard.dev/projects/github.com/org/repo": {
+      "date": "2026-11-15T11:00:00Z",
+      "repo": {
+        "name": "github.com/org/repo",
+        "commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "scorecard": {
+        "version": "v5.5.0",
+        "commit": ""
+      },
+      "score": 0,
+      "checks": [
+        {
+          "name": "Branch-Protection",
+          "score": 10,
+          "reason": ""
+        },
+        {
+          "name": "Code-Review",
+          "score": 10,
+          "reason": ""
+        },
+        {
+          "name": "Dangerous-Workflow",
+          "score": 10,
+          "reason": ""
+        },
+        {
+          "name": "Maintained",
+          "score": 10,
+          "reason": ""
+        },
+        {
+          "name": "Token-Permissions",
+          "score": 10,
+          "reason": ""
+        }
+      ]
+    },
+    "https://crates.io/api/v1/crates/child/1.0.0": {
+      "version": {
+        "checksum": "1faa91dab5954f20964eb4744867c87c83aa769a88312a3bc752714d2c346a1a",
+        "crate": "child",
+        "edition": "2021",
+        "features": {},
+        "num": "1.0.0",
+        "rust_version": "1.85",
+        "yanked": false
+      }
+    },
+    "https://crates.io/api/v1/crates/child/1.0.0/dependencies": {
+      "dependencies": []
+    },
+    "https://crates.io/api/v1/crates/pkg": {
+      "version": {
+        "checksum": "91a78db9db522c0e9da44116b97b3730e0d843fc6f5b298774b058749ebaa650",
+        "crate": "pkg",
+        "edition": "2021",
+        "features": {},
+        "num": "1.0.0",
+        "rust_version": "1.85",
+        "yanked": false
+      }
+    },
+    "https://crates.io/api/v1/crates/pkg/1.0.0": {
+      "version": {
+        "checksum": "91a78db9db522c0e9da44116b97b3730e0d843fc6f5b298774b058749ebaa650",
+        "crate": "pkg",
+        "edition": "2021",
+        "features": {},
+        "num": "1.0.0",
+        "rust_version": "1.85",
+        "yanked": false
+      }
+    },
+    "https://crates.io/api/v1/crates/pkg/1.0.0/dependencies": {
+      "dependencies": [
+        {
+          "crate_id": "child",
+          "default_features": true,
+          "features": [],
+          "kind": "normal",
+          "optional": false,
+          "req": "^1.0.0"
+        }
+      ]
+    }
+  }
+}

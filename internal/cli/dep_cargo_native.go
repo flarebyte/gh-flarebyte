@@ -72,6 +72,11 @@ func prepareDependencyCargo(root, stage string, validate func(string, string) er
 	// Cargo searches ancestor configuration even with a separate CARGO_HOME.
 	// Refuse it instead of inheriting source replacements or executable helpers.
 	for dir := filepath.Join(stage, "project"); ; dir = filepath.Dir(dir) {
+		if dir != filepath.Join(stage, "project") {
+			if _, err := os.Lstat(filepath.Join(dir, "Cargo.toml")); !os.IsNotExist(err) {
+				return nil, fmt.Errorf("%w: ancestor Cargo manifest", dependencies.ErrInstallUnsupported)
+			}
+		}
 		for _, name := range []string{".cargo/config", ".cargo/config.toml"} {
 			if _, err := os.Lstat(filepath.Join(dir, name)); !os.IsNotExist(err) {
 				return nil, fmt.Errorf("%w: ancestor Cargo configuration", dependencies.ErrInstallUnsupported)

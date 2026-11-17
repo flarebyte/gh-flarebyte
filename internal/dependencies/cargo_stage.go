@@ -20,14 +20,16 @@ import (
 )
 
 type CargoStage struct {
-	dir        string
-	original   *ProjectSnapshot
-	artifacts  []CargoArtifact
-	files      map[string]string
-	written    map[string]bool
-	features   map[string][]string
-	compressed int
-	expanded   int64
+	dir            string
+	original       *ProjectSnapshot
+	artifacts      []CargoArtifact
+	files          map[string]string
+	written        map[string]bool
+	features       map[string][]string
+	compressed     int
+	expanded       int64
+	installSources []string
+	installEdition string
 }
 
 // PrepareCargoStage requires an empty private directory outside the repository.
@@ -181,6 +183,9 @@ func (s *CargoStage) AddArtifact(b []byte, a CargoArtifact) error {
 	info, err := VerifyCargoArtifact(b, a)
 	if err != nil {
 		return err
+	}
+	if len(s.installSources) > 0 && (info.BuildScript || info.ProcMacro) {
+		return fmt.Errorf("%w: Cargo build scripts or proc macros", ErrInstallUnsupported)
 	}
 	if s.compressed+len(b) > 100<<20 || s.expanded+info.ExpandedBytes > 300<<20 {
 		return fmt.Errorf("Cargo staging artifact budget exceeded")

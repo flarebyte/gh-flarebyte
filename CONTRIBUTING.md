@@ -139,6 +139,23 @@ Only generated fixtures and a standalone SDK are used. Build-script/proc-macro
 fixtures must remain unexecuted. The synthetic root proves a staged resolution;
 it does not prove original project target/unit equivalence or authorize installation.
 
+The guarded Cargo installer additionally binds the original pinned manifest and
+default source target shape. Keep its initial scope to ordinary runtime library
+graphs without custom targets, root dev/build dependencies, build scripts or proc
+macros. Test string, inline, dotted and dependency-table pins without rewriting
+comments/options. Preserve the locked graph, refuse stale/changed policy and
+inputs, and retain user edits and backups on rollback conflicts. Synthetic provider
+responses and archives are in `internal/dependencies/testdata/cargo-install.json`;
+the approval boundary uses the real assessor with a fake HTTP transport.
+Run the complete offline native install oracle with:
+
+```bash
+GH_FLAREBYTE_DEP_CARGO_INTEGRATION=1 go test ./internal/cli -run '^TestCargoDependencyInstallIntegration$'
+```
+
+It covers library, binary, mixed and renamed dependencies with the standalone SDK.
+No registry network access or shared Cargo cache is used.
+
 [Design notes](doc/design/gh-flarebyte.md) are generated from
 [app.cue](doc/design-meta/app.cue) and its example inputs. Change the authored inputs
 and use `make doc-design` (requires `flyb`) to validate and regenerate them. Do not

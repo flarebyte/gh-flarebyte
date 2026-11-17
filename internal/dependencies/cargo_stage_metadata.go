@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 )
 
 type cargoNativeMetadata struct {
@@ -16,6 +17,13 @@ type cargoNativeMetadata struct {
 		Version  string  `json:"version"`
 		Source   *string `json:"source"`
 		Manifest string  `json:"manifest_path"`
+		Targets  []struct {
+			Name       string   `json:"name"`
+			Kind       []string `json:"kind"`
+			CrateTypes []string `json:"crate_types"`
+			Source     string   `json:"src_path"`
+			Edition    string   `json:"edition"`
+		} `json:"targets"`
 	} `json:"packages"`
 	WorkspaceMembers []string `json:"workspace_members"`
 	Resolve          *struct {
@@ -63,6 +71,28 @@ func (s *CargoStage) VerifyMetadata(data []byte) error {
 				return fmt.Errorf("Cargo root source changed")
 			}
 			manifest = filepath.Join(s.dir, "project", "Cargo.toml")
+			if len(s.installSources) > 0 {
+				if len(p.Targets) != len(s.installSources) {
+					return fmt.Errorf("Cargo root targets changed")
+				}
+				seen := map[string]bool{}
+				for _, target := range p.Targets {
+					matched := false
+					for _, source := range s.installSources {
+						kind, name := "bin", p.Name
+						if source == "src/lib.rs" {
+							kind, name = "lib", strings.ReplaceAll(p.Name, "-", "_")
+						}
+						if target.Source == filepath.Join(s.dir, "project", source) && target.Name == name && sameCargoSet(target.Kind, []string{kind}) && sameCargoSet(target.CrateTypes, []string{kind}) && target.Edition == s.installEdition && !seen[source] {
+							seen[source], matched = true, true
+							break
+						}
+					}
+					if !matched {
+						return fmt.Errorf("Cargo root target context changed")
+					}
+				}
+			}
 		} else if p.Source == nil || *p.Source != cargoRegistry {
 			return fmt.Errorf("Cargo dependency source changed")
 		}

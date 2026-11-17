@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/flarebyte/gh-flarebyte/internal/dependencies"
@@ -17,7 +18,14 @@ import (
 var dependencyArtifact = func(ctx context.Context, a dependencies.InstallArtifact) ([]byte, error) {
 	return dependencies.NewClient().FetchArtifact(ctx, a)
 }
-var installDependency = installNPMDependency
+var installDependency = installRecommendedDependency
+
+func installRecommendedDependency(ctx context.Context, root string, report *dependencies.Report) error {
+	if strings.HasPrefix(report.Package, "cargo:") {
+		return installCargoDependency(ctx, root, report)
+	}
+	return installNPMDependency(ctx, root, report)
+}
 
 func installNPMDependency(ctx context.Context, root string, report *dependencies.Report) error {
 	plan, err := dependencies.PrepareInstall(root, *report)

@@ -311,7 +311,7 @@ Workspaces, target tables, patches, path/Git dependencies, alternate registries 
 local Cargo configuration remain unsupported. Feature activation, missing optional
 resolution and Rust compiler requirements can leave the verdict unknown. Cargo
 bare versions use caret semantics; unsupported ranges remain blocking. Checks
-never execute Cargo or package code. Cargo installation remains unavailable.
+never execute Cargo or package code.
 
 If `[package].rust-version` is declared, Cargo checks compare each locked crate's
 published minimum Rust version against that baseline. A newer requirement denies
@@ -327,8 +327,8 @@ features, disabled defaults, optional dependencies, renamed crates and forwardin
 any minimum Cargo syntax requirement. Cycles, ambiguous mappings, missing metadata
 and inactive weak-feature contexts stay unknown. Missing optional locked packages
 remain blocking, and inactive crates retain all security findings. This union does
-not establish a target-specific install plan; Cargo installation remains blocked
-pending exact execution-context checks and guarded project application.
+not establish a general target-specific install plan. Installation uses the
+narrower supported context described below.
 
 Cargo archive preflight is now implemented as a read-only backend component. It
 binds SHA-256 checksums and normalized manifests to an approved, unchanged graph,
@@ -343,9 +343,21 @@ checksums. An isolated standalone Cargo 1.85+ SDK can validate the staged defaul
 feature graph with `metadata --offline --locked`. The adapter clears inherited
 credentials/options/wrappers, rejects ancestor Cargo configuration and Rustup
 proxies, and checks the actual Rust version against declared requirements. It
-does not compile packages. This stage uses a synthetic root for resolution checks;
-Cargo installation still requires original project context validation, exact
-pinning and a guarded commit before the command can be enabled.
+does not compile packages.
+
+`gh flarebyte dep install cargo <crate>` now supports an already locked runtime
+dependency in a single-package project with default `src/lib.rs` and/or
+`src/main.rs` targets. It validates the original pinned manifest and target shape
+offline, then changes only that dependency's version value to `=recommended-version`.
+Comments, aliases, feature options and unrelated formatting are preserved;
+`Cargo.lock` stays byte-for-byte unchanged. Applying a library dependency updates
+the manifest; it does not compile code or populate a shared Cargo cache.
+
+This initial install scope excludes custom targets, root dev/build dependencies,
+build scripts, proc macros, inherited Cargo configuration/workspaces, and graph
+changes. Both the project and every crate need compatible declared Rust minimums.
+Unsupported contexts fail closed. Freshness, policy, input and target checks run
+again before commit; concurrent edits trigger rollback or retained recovery data.
 
 Conservative defaults require 100 stars, two independently established active
 maintainers and a Scorecard scan no older than 30 days. Individual Scorecard minimums
@@ -371,7 +383,8 @@ unexpected metadata and expansion limits before native tooling runs. npm uses an
 isolated cache, offline mode and disabled hooks; credential variables and Node preload
 options are not inherited. Installation stages the tree before committing files and
 preserves recovery files if rollback encounters concurrent edits. Avoid running other
-package managers concurrently. Other ecosystems remain unsupported for installation.
+package managers concurrently. Installation is limited to the npm and Cargo scopes
+described here.
 
 `--explain` reports candidate findings, grouped advisories, source timestamps,
 concrete npm plans and transitive paths. JSON reports
