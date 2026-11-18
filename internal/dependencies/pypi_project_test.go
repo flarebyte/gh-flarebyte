@@ -132,6 +132,9 @@ func pythonInventoryClient(t *testing.T, dir, mode string) *Client {
 			}
 			info := map[string]any{"name": name, "version": "1.0.0", "summary": "Synthetic library"}
 			file := map[string]any{"filename": name + "-1.0.0-py3-none-any.whl", "url": "https://files.pythonhosted.org/packages/ab/" + name + "-1.0.0-py3-none-any.whl", "digests": map[string]string{"sha256": strings.Repeat("a", 64)}, "yanked": false, "size": 123}
+			if mode == "python runtime" {
+				file["requires_python"] = ">=3.10"
+			}
 			files := []any{file}
 			if name == "child" {
 				switch mode {
@@ -163,6 +166,22 @@ func pythonInventoryClient(t *testing.T, dir, mode string) *Client {
 		}
 		return response(string(b), 200), nil
 	})}
+}
+
+func TestPythonInventoryRuntimeDenial(t *testing.T) {
+	m, l := pythonInventoryDocuments()
+	m = strings.Replace(m, "[project]", "[project]\nrequires-python='>=3.9'", 1)
+	dir := writePythonInventory(t, m, l)
+	version := "1.0.0"
+	r := pythonInventoryClient(t, dir, "python runtime").AssessLocal(context.Background(), dir, "pypi", "pkg", &version, DefaultPolicy(14), checked)
+	if r.Decision != Deny || !slices.Contains(r.Reasons, "PYTHON_VERSION_INCOMPATIBLE") || !slices.Contains(r.Reasons, "LOCKED_INVENTORY_VIOLATION") || r.Recommendation != nil {
+		t.Fatal(r)
+	}
+	for _, node := range r.Details.Project.Findings {
+		if node.Finding.Runtime == nil || node.Finding.Runtime.Status != "incompatible" {
+			t.Fatal(node)
+		}
+	}
 }
 
 func TestAssessPythonInventory(t *testing.T) {

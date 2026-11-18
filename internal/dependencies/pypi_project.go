@@ -17,8 +17,10 @@ import (
 var pythonExactRequirement = regexp.MustCompile(`^([A-Za-z0-9][A-Za-z0-9._-]*)\s*==\s*([A-Za-z0-9][A-Za-z0-9.!+_-]*)$`)
 
 type pypiLockedArtifact struct {
-	Filename string
-	Size     int64
+	Filename       string
+	Size           int64
+	LockPython     string
+	ManifestPython string
 }
 
 func readPyPIProject(dir string) *ProjectSnapshot {
@@ -81,6 +83,11 @@ func readPyPIProject(dir string) *ProjectSnapshot {
 		return fail("PROJECT_GRAPH_LIMIT")
 	}
 	locked := map[string]string{}
+	manifestPython, _ := project["requires-python"].(string)
+	lockPython, lockPythonString := lock["requires-python"].(string)
+	if _, exists := lock["requires-python"]; exists && (!lockPythonString || strings.TrimSpace(lockPython) == "") {
+		lockPython = "unsupported"
+	}
 	for _, entry := range entries {
 		pkg, ok := entry.(map[string]any)
 		if !ok {
@@ -144,7 +151,7 @@ func readPyPIProject(dir string) *ProjectSnapshot {
 		id := "pylock.toml#" + name + "@" + version
 		locked[name] = version
 		s.Nodes = append(s.Nodes, ProjectNode{Path: id, Name: name, Version: version, Resolved: resolved, Integrity: "sha256-" + hash})
-		s.pypi[id] = pypiLockedArtifact{Filename: filename, Size: size}
+		s.pypi[id] = pypiLockedArtifact{Filename: filename, Size: size, ManifestPython: manifestPython, LockPython: lockPython}
 	}
 	declarations, ok := project["dependencies"].([]any)
 	if !ok || len(declarations) == 0 || len(declarations) > maxProjectNodes {

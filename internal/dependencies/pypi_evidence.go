@@ -17,11 +17,12 @@ func (c *Client) checkPyPINode(ctx context.Context, project *ProjectSnapshot, no
 			Version string `json:"version"`
 		} `json:"info"`
 		URLs *[]struct {
-			Filename string `json:"filename"`
-			URL      string `json:"url"`
-			Size     *int64 `json:"size"`
-			Yanked   *bool  `json:"yanked"`
-			Digests  struct {
+			Filename       string  `json:"filename"`
+			URL            string  `json:"url"`
+			Size           *int64  `json:"size"`
+			Yanked         *bool   `json:"yanked"`
+			RequiresPython *string `json:"requires_python"`
+			Digests        struct {
 				SHA256 string `json:"sha256"`
 			} `json:"digests"`
 		} `json:"urls"`
@@ -65,6 +66,7 @@ func (c *Client) checkPyPINode(ctx context.Context, project *ProjectSnapshot, no
 		return
 	}
 	file := (*body.URLs)[index]
+	checkPythonCompatibility(expected.ManifestPython, expected.LockPython, file.RequiresPython, f)
 	if file.Filename == "" || !cargoChecksum.MatchString(file.Digests.SHA256) || expected.Size != 0 && (file.Size == nil || *file.Size <= 0) {
 		f.Missing = unique(append(f.Missing, "PYPI_ARTIFACT_SCHEMA"))
 		return

@@ -320,6 +320,16 @@ extras, groups, alternate sources, source distributions and multiple wheel choic
 remain unsupported. The lock's informational dependency tables do not establish
 an installation graph. PyPI installation remains gated.
 
+For `project.requires-python = ">=3.9"` (or another numeric minor/patch lower
+bound), PyPI checks compare that declared baseline with the selected wheel's
+`requires_python` and the lock's optional `requires-python`. A definite mismatch
+denies with `PYTHON_VERSION_INCOMPATIBLE` or
+`PYTHON_LOCK_BASELINE_INCOMPATIBLE`. Explained per-package `runtime` evidence uses
+the basis `manifest-python-lower-bound`. Wheel/lock requirements support numeric
+comparisons joined by commas; unsupported syntax or absent wheel evidence stays
+unknown. A compatible baseline does not verify the installed interpreter, the
+full supported Python range, wheel platform tags or dependency resolution.
+
 Cargo checks inspect `Cargo.toml` and lockfiles v3/v4 for single-package crates.io
 projects and already locked runtime dependencies. Every locked crate is assessed,
 including build/development dependencies, as a conservative superset rather than
