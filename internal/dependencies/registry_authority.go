@@ -39,11 +39,23 @@ func (c *Client) registryAuthorities(ctx context.Context, system, name string, s
 	o := &registryAuthorityObservation{system: system, name: name, basis: system + "-registry-roles", roles: []RegistryRole{}, missing: []string{"REGISTRY_ACTIVE_AUTHORITY_UNSUPPORTED"}}
 	fail := func(code string) *registryAuthorityObservation { o.missing = unique(append(o.missing, code)); return o }
 	parsed, version, err := Parse(system, name)
-	if err != nil || version != nil || parsed != name || system != "npm" && system != "pypi" && system != "cargo" {
+	if err != nil || version != nil || parsed != name || system != "npm" && system != "pypi" && system != "cargo" && system != "pub" {
 		return fail("REGISTRY_AUTHORITY_UNSUPPORTED")
 	}
 	var roles []RegistryRole
 	switch system {
+	case "pub":
+		o.basis = "pub-publisher-context"
+		var body struct {
+			PublisherID *string `json:"publisherId"`
+		}
+		if c.read(ctx, "pub-publisher", "https://pub.dev/api/packages/"+url.PathEscape(name)+"/publisher", nil, &body, sources) != nil {
+			return fail("REGISTRY_AUTHORITY_LOOKUP")
+		}
+		if body.PublisherID != nil && len(*body.PublisherID) <= 253 && pubPublisherID.MatchString(*body.PublisherID) {
+			o.organization = *body.PublisherID
+		}
+		return fail("PUB_MAINTAINER_COUNT_UNKNOWN")
 	case "cargo":
 		o.basis = "cargo-registry-owners"
 		var body struct {

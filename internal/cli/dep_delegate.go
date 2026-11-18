@@ -20,6 +20,7 @@ var delegateNPM = runDelegatedNPM
 var delegateGo = runDelegatedGo
 var delegatePyPI = runDelegatedPyPI
 var delegateCargo = runDelegatedCargo
+var delegatePub = runDelegatedPub
 
 func runDelegatedNPM(ctx context.Context, dir, name, version string, stdin io.Reader, stdout, stderr io.Writer) Result {
 	return runDelegatedPackage(ctx, dir, "npm", name, version, stdin, stdout, stderr)
@@ -37,6 +38,10 @@ func runDelegatedCargo(ctx context.Context, dir, name, version string, stdin io.
 	return runDelegatedPackage(ctx, dir, "cargo", name, version, stdin, stdout, stderr)
 }
 
+func runDelegatedPub(ctx context.Context, dir, name, version string, stdin io.Reader, stdout, stderr io.Writer) Result {
+	return runDelegatedPackage(ctx, dir, "pub", name, version, stdin, stdout, stderr)
+}
+
 func runDelegatedPackage(ctx context.Context, dir, system, name, version string, stdin io.Reader, stdout, stderr io.Writer) Result {
 	var executable string
 	var args []string
@@ -50,6 +55,9 @@ func runDelegatedPackage(ctx context.Context, dir, system, name, version string,
 	case "pypi":
 		executable = "uv"
 		args = []string{"add", name + "==" + version}
+	case "pub":
+		executable = "dart"
+		args = []string{"pub", "add", name + ":" + version}
 	case "cargo":
 		executable = "cargo"
 		args = []string{"add", name + "@=" + version}

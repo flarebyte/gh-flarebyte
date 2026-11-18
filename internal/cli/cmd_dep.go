@@ -136,6 +136,8 @@ func runDependency(ctx context.Context, action, system, arg string, jsonOutput, 
 			return delegateGo(ctx, dir, name, selected, os.Stdin, stdout, stderr)
 		case "pypi":
 			return delegatePyPI(ctx, dir, name, selected, os.Stdin, stdout, stderr)
+		case "pub":
+			return delegatePub(ctx, dir, name, selected, os.Stdin, stdout, stderr)
 		case "cargo":
 			return delegateCargo(ctx, dir, name, selected, os.Stdin, stdout, stderr)
 		case "swift":

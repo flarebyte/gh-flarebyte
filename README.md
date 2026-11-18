@@ -285,7 +285,15 @@ beyond 500 releases remain unverified. Swift maintainer count is unknown; adviso
 matching uses the canonical repository URL, with alias coverage explicitly limited.
 For example, `gh flarebyte dep check swift https://github.com/apple/swift-nio --json`.
 Swift install prints an exact `Package.swift` declaration and changes no files.
-Exact Dart/pub versions can receive OSV advisory findings. Registry
+Dart/pub checks read pub.dev release dates, descriptions, retractions and package
+discontinuation, query OSV Pub advisories and record optional publisher context.
+Publisher domains do not establish maintainer counts or verify source ownership.
+Self-declared GitHub links remain review with a candidate version; they do not
+unlock installation. The native adapter runs `dart pub add NAME:VERSION` only
+after approval, using the normal environment and raw native output. Dart ordering
+currently supports numeric three-part stable versions; unsupported build metadata
+prevents a newest-version claim. For example,
+`gh flarebyte dep check pub http --json`. Registry
 lookups corroborate npm, Cargo and PyPI release availability, deprecation or yanking.
 Verified provenance can corroborate a GitHub source repository; self-declared links
 cannot borrow its reputation. Advisory aliases are grouped, and withdrawal conflicts

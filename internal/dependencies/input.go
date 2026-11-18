@@ -12,6 +12,7 @@ import (
 
 var systems = map[string]string{"npm": "npm", "cargo": "crates.io", "pypi": "PyPI", "go": "Go", "maven": "Maven", "pub": "Pub", "swift": "SwiftURL"}
 var npmName = regexp.MustCompile(`^(?:@[a-z0-9][a-z0-9._-]*/)?[a-z0-9][a-z0-9._-]*$`)
+var pubName = regexp.MustCompile(`^[a-z][a-z0-9_]*$`)
 var simpleName = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]*$`)
 var mavenName = regexp.MustCompile(`^[A-Za-z0-9_.-]+:[A-Za-z0-9_.-]+$`)
 var goName = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._~/-]*$`)
@@ -49,7 +50,9 @@ func Parse(system, arg string) (string, *string, error) {
 	switch system {
 	case "npm":
 		ok = npmName.MatchString(name)
-	case "cargo", "pypi", "pub":
+	case "pub":
+		ok = pubName.MatchString(name)
+	case "cargo", "pypi":
 		ok = simpleName.MatchString(name)
 	case "maven":
 		ok = mavenName.MatchString(name)
@@ -113,7 +116,7 @@ func stableVersion(system, version string) ([]uint64, bool) {
 		}
 	}
 	parts := strings.Split(version, ".")
-	if len(parts) > 4 || ((system == "npm" || system == "cargo" || system == "go" || system == "swift") && len(parts) != 3) {
+	if len(parts) > 4 || ((system == "npm" || system == "cargo" || system == "go" || system == "swift" || system == "pub") && len(parts) != 3) {
 		return nil, false
 	}
 	values := make([]uint64, 4)
@@ -139,7 +142,7 @@ func knownPrerelease(system, version string) bool {
 	if system == "maven" {
 		return mavenPrerelease.MatchString(version)
 	}
-	if system == "npm" || system == "cargo" || system == "go" || system == "swift" {
+	if system == "npm" || system == "cargo" || system == "go" || system == "swift" || system == "pub" {
 		return semverPrerelease.MatchString(version)
 	}
 	return system == "pypi" && pythonPrerelease(version)

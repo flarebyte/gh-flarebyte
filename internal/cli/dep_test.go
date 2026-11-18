@@ -98,7 +98,7 @@ func TestDepOutputAndInput(t *testing.T) {
 		{[]string{"dep", "check", "npm", "pkg@1.2.3", "--json"}, 8, true},
 		{[]string{"dep", "check", "npm", "pkg@1.2.3"}, 8, false},
 		{[]string{"dep", "check", "npm", "pkg", "--explain"}, 8, false},
-		{[]string{"dep", "check", "pub", "archive", "--json"}, 9, true},
+		{[]string{"dep", "check", "pub", "archive", "--json"}, 8, true},
 		{[]string{"dep", "check", "npm", "pkg@123", "--json"}, 2, true},
 		{[]string{"dep", "install", "npm", "pkg@1.2.3", "--json"}, 2, false},
 		{[]string{"dep", "check", "npm", "pkg@^1", "--json"}, 2, true},
@@ -210,7 +210,7 @@ func TestDepWriteFailures(t *testing.T) {
 	}
 }
 
-func TestDepLegacyStillRequiresProjectEvidence(t *testing.T) {
+func TestDepPubUsesPackageScope(t *testing.T) {
 	localDependencyRepo(t, "")
 	stubDependencyAssessment(t, dependencies.Allow)
 	prior := assessDependency
@@ -221,7 +221,7 @@ func TestDepLegacyStillRequiresProjectEvidence(t *testing.T) {
 	}
 	var out bytes.Buffer
 	r := runDependency(context.Background(), "check", "pub", "pkg", true, false, &out, io.Discard)
-	if r.ExitCode != ExitDependencyUnsupported || !strings.Contains(out.String(), "PROJECT_RESOLUTION") {
+	if r.ExitCode != ExitOK || strings.Contains(out.String(), "PROJECT_RESOLUTION") {
 		t.Fatalf("%+v %s", r, out.String())
 	}
 }
