@@ -330,6 +330,16 @@ comparisons joined by commas; unsupported syntax or absent wheel evidence stays
 unknown. A compatible baseline does not verify the installed interpreter, the
 full supported Python range, wheel platform tags or dependency resolution.
 
+PyPI checks also read hashed per-wheel core metadata advertised by the public
+Simple API. They verify the selected wheel's URL and SHA-256, then download only
+its bounded `.metadata` sidecar and verify that separate SHA-256 and package
+identity. Unconditional dependency declarations are compared with the inventory;
+missing dependencies or incompatible numeric constraints deny. Markers, extras,
+direct URLs and unsupported version syntax keep metadata evidence incomplete.
+Explained per-package `distribution` evidence reports its basis, hash, dependency
+count and status. This never downloads a wheel or resolves a new graph; a clean
+inventory still returns `unknown`, and installation remains gated.
+
 Cargo checks inspect `Cargo.toml` and lockfiles v3/v4 for single-package crates.io
 projects and already locked runtime dependencies. Every locked crate is assessed,
 including build/development dependencies, as a conservative superset rather than

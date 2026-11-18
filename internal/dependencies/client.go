@@ -45,6 +45,10 @@ func (e *LookupError) Error() string {
 }
 
 func (c *Client) read(ctx context.Context, provider, endpoint string, body any, out any, sources *[]Source) error {
+	return c.readAccept(ctx, provider, endpoint, body, out, sources, "application/json")
+}
+
+func (c *Client) readAccept(ctx context.Context, provider, endpoint string, body any, out any, sources *[]Source, accept string) error {
 	var input io.Reader
 	method := http.MethodGet
 	if body != nil {
@@ -59,7 +63,7 @@ func (c *Client) read(ctx context.Context, provider, endpoint string, body any, 
 	if err != nil {
 		return err
 	}
-	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Accept", accept)
 	req.Header.Set("User-Agent", "gh-flarebyte-dep/1")
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")

@@ -73,12 +73,14 @@ func (c *Client) checkPyPINode(ctx context.Context, project *ProjectSnapshot, no
 	}
 	if file.Filename != expected.Filename || "sha256-"+file.Digests.SHA256 != node.Integrity || expected.Size != 0 && *file.Size != expected.Size {
 		f.Reasons = unique(append(f.Reasons, "ARTIFACT_MISMATCH"))
+		return
 	}
 	if file.Yanked == nil {
 		f.Missing = unique(append(f.Missing, "RELEASE_LIFECYCLE"))
 	} else if *file.Yanked {
 		f.Reasons = unique(append(f.Reasons, "WITHDRAWN_RELEASE"))
 	}
+	c.checkPyPIMetadata(ctx, project, node, f, sources)
 }
 
 func mergePythonInventory(r *Report, project *ProjectSnapshot) {

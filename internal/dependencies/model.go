@@ -144,6 +144,14 @@ type Finding struct {
 	AdvisoryGroups   []AdvisoryGroup       `json:"advisory_groups,omitempty"`
 	Resolution       string                `json:"resolution,omitempty"`
 	Runtime          *RuntimeCompatibility `json:"runtime,omitempty"`
+	Distribution     *DistributionMetadata `json:"distribution,omitempty"`
+}
+
+type DistributionMetadata struct {
+	Basis           string `json:"basis"`
+	SHA256          string `json:"sha256"`
+	DependencyCount int    `json:"dependency_count"`
+	Status          string `json:"status"`
 }
 
 // RuntimeCompatibility compares declared requirements; it does not attest to an

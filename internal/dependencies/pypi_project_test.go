@@ -122,6 +122,9 @@ func pythonInventoryClient(t *testing.T, dir, mode string) *Client {
 			}
 			body = map[string]any{}
 		case "pypi.org":
+			if strings.HasPrefix(req.URL.Path, "/simple/") {
+				return response(`{}`, 404), nil
+			}
 			parts := strings.Split(req.URL.Path, "/")
 			name := parts[2]
 			if mode == "unavailable" && name == "child" {
