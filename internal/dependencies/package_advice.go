@@ -10,7 +10,9 @@ import (
 
 const PackageAdvicePolicyID = "package-advice-v1"
 
-func SupportsPackageAdvice(system string) bool { return system == "npm" || system == "go" }
+func SupportsPackageAdvice(system string) bool {
+	return system == "npm" || system == "go" || system == "maven"
+}
 
 func PackageAdvicePolicy(days int) Policy {
 	p := DefaultPolicy(days)

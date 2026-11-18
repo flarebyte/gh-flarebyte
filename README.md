@@ -339,6 +339,27 @@ raw output to stdout and native exit status. Go owns go.mod/go.sum updates,
 retraction warnings, toolchain selection and compatibility failures. Like npm,
 `--json` and `--explain` are check-only for Go. Other ecosystem paths are unchanged.
 
+Kotlin/JVM dependencies now use package advice through the `maven` selector and
+`group:artifact` coordinates. Numeric releases with one to four components are
+ordered numerically; clearly marked alpha/beta/milestone/RC/SNAPSHOT releases are
+excluded from stable recommendations. Unrecognized qualifiers (for example `.Final`
+or `-jre`) leave ordering unresolved rather than claiming full Maven ordering.
+Checks use indexed deps.dev release/deprecation evidence and Maven OSV findings,
+with explicit `MAVEN_LIFECYCLE_COVERAGE_LIMITED` warnings. Repository corroboration
+and reputation follow the same advice policy; no group-to-repository guess is made.
+
+```sh
+gh flarebyte dep check maven org.slf4j:slf4j-api --json
+gh flarebyte dep install maven org.slf4j:slf4j-api
+```
+
+Maven installation is **print-only**: after a recommendation, a single regular
+`build.gradle.kts`, `build.gradle` or `pom.xml` in the current directory selects a
+Kotlin DSL, Groovy DSL or XML declaration. Missing/ambiguous formats and symlinks
+produce labelled manual guidance. No files are edited and no build tool is run.
+The printed version is an explicit request; native dependency mediation remains
+Maven/Gradle's responsibility. `--json` and `--explain` are check-only here too.
+
 The retained legacy npm assessor inspects local lockfiles v2/v3 without executing tooling. They support an
 already locked runtime version or a dependency-free addition that preserves existing
 versions and peer constraints. Dependency-free runtime packages can also be upgraded

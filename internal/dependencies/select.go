@@ -12,7 +12,7 @@ import (
 func finishAssessment(r *Report, published map[string]time.Time, now time.Time) {
 	findings := r.Details.Candidates
 	if len(findings) == 0 {
-		r.Evidence.Missing = []string{"VERSION_CANDIDATES"}
+		r.Evidence.Missing = unique(append([]string{"VERSION_CANDIDATES"}, r.Details.RecommendationMissing...))
 		r.Reasons = []string{"INSUFFICIENT_EVIDENCE"}
 		return
 	}

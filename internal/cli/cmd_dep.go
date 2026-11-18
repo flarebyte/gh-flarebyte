@@ -72,7 +72,7 @@ func runDependency(ctx context.Context, action, system, arg string, jsonOutput, 
 		return dependencyError(system+":"+arg, "INVALID_INPUT", err, ExitUsage, jsonOutput, stdout, stderr)
 	}
 	if action == "install" && dependencies.SupportsPackageAdvice(system) && (jsonOutput || explain) {
-		return dependencyError(system+":"+name, "INVALID_INPUT", fmt.Errorf("%s install streams native output; --json and --explain are check-only", system), ExitUsage, false, stdout, stderr)
+		return dependencyError(system+":"+name, "INVALID_INPUT", fmt.Errorf("%s install uses plain output; --json and --explain are check-only", system), ExitUsage, false, stdout, stderr)
 	}
 	if action == "install" && version != nil && !dependencies.SupportsPackageAdvice(system) {
 		return dependencyError(system+":"+name, "INVALID_INPUT", fmt.Errorf("install selects a recommendation; use check for exact versions"), ExitUsage, jsonOutput, stdout, stderr)
@@ -131,6 +131,9 @@ func runDependency(ctx context.Context, action, system, arg string, jsonOutput, 
 		}
 		if system == "go" {
 			return delegateGo(ctx, dir, name, selected, os.Stdin, stdout, stderr)
+		}
+		if system == "maven" {
+			return printMavenDependency(dir, name, selected, stdout, stderr)
 		}
 		return delegateNPM(ctx, dir, name, selected, os.Stdin, stdout, stderr)
 	}

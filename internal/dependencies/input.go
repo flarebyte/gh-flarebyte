@@ -87,7 +87,7 @@ func stableVersion(system, version string) ([]uint64, bool) {
 	if system == "pypi" {
 		return pythonStableVersion(version)
 	}
-	if system == "maven" || system == "swift" {
+	if system == "swift" {
 		return nil, false
 	}
 	if system == "go" {
@@ -129,6 +129,9 @@ func stableVersion(system, version string) ([]uint64, bool) {
 }
 
 func knownPrerelease(system, version string) bool {
+	if system == "maven" {
+		return mavenPrerelease.MatchString(version)
+	}
 	if system == "npm" || system == "cargo" || system == "go" {
 		return semverPrerelease.MatchString(version)
 	}

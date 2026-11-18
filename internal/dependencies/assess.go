@@ -112,6 +112,9 @@ func evaluateRelease(v Version, advisories []Advisory, osvErr error, e TrustEvid
 		if strings.EqualFold(v.Key.System, "go") {
 			f.Warnings = unique(append(f.Warnings, "GO_RETRACTIONS_UNCHECKED"))
 		}
+		if strings.EqualFold(v.Key.System, "maven") {
+			f.Warnings = unique(append(f.Warnings, "MAVEN_LIFECYCLE_COVERAGE_LIMITED"))
+		}
 	}
 	return f
 }
@@ -303,7 +306,7 @@ func (c *Client) assess(ctx context.Context, system, name string, requested *str
 			advisories, osvErr = c.OSV(ctx, systems[system], name, version, &r.Details.Sources)
 		}
 		e, npm, description, releaseReasons := c.releaseEvidence(ctx, system, name, version, &r.Details.Sources)
-		if p.ID == PackageAdvicePolicyID && system == "go" {
+		if p.ID == PackageAdvicePolicyID && (system == "go" || system == "maven") {
 			e.LifecycleKnown = true
 		} // Exact indexed release exists; retractions are explicitly not checked.
 		c.fillRepository(ctx, v, &e, &r, cache)
