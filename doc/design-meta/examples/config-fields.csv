@@ -50,3 +50,4 @@ script.runtime,string,.gh-flarebyte.cue,local-only,Optional independent script r
 script.root,string,.gh-flarebyte.cue,local-only,Repository-relative script folder; defaults to script.
 script.dependencies.manager,string,.gh-flarebyte.cue,local-only,Optional dependency preparation: bun or npm for Bun; uv for Python.
 script.dependencies.root,string,.gh-flarebyte.cue,local-only,Dependency root defaults to .; matching JavaScript roots share one manager.
+dependencies.minAgeDays,integer,.gh-flarebyte.cue,local-only,Release waiting period for named-package advice; default 14; explicit zero disables only the wait; discovered at the local Git repository root.

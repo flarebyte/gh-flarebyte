@@ -11,3 +11,5 @@ gh flarebyte repo audit,compare local config with remote GitHub state,read,.gh-f
 gh flarebyte repos mine,list repositories the user contributes to within an org,read,none,relevant repo list
 gh flarebyte e2e,run an independent Bun or Python e2e suite,write,e2e.*,Bun JUnit or Python unittest discovery; empty suites fail.
 gh flarebyte script,execute a Bun TypeScript or Python file with forwarded arguments,write,script.*,Child output and exit status; no shell interpolation.
+gh flarebyte dep check,assess a named public package and exact-version candidates,read,dependencies.minAgeDays at local Git root,Package-only RECOMMEND/REVIEW/AVOID; JSON allow/unknown/deny; seven ecosystem selectors; no resolver or language tool required.
+gh flarebyte dep install,check then delegate an approved exact version or print manifest guidance,write,dependencies.minAgeDays and normal native manager configuration,Native npm/Cargo/uv/Go/Dart output and exit status; Maven/Swift print-only. Unverified identity blocks install; current Pub metadata cannot authorize it.

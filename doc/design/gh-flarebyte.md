@@ -176,6 +176,7 @@ How config fields map onto GitHub sync targets and extension-local automation se
 | script.root | string | .gh-flarebyte.cue | Repository-relative script folder; defaults to script. | local-only |
 | script.dependencies.manager | string | .gh-flarebyte.cue | Optional dependency preparation: bun or npm for Bun; uv for Python. | local-only |
 | script.dependencies.root | string | .gh-flarebyte.cue | Dependency root defaults to .; matching JavaScript roots share one manager. | local-only |
+| dependencies.minAgeDays | integer | .gh-flarebyte.cue | Release waiting period for named-package advice; default 14; explicit zero disables only the wait; discovered at the local Git repository root. | local-only |
 
 ### 03 Topics
 
@@ -395,6 +396,8 @@ User-facing extension actions and their purpose.
 | gh flarebyte repos mine | none | relevant repo list | list repositories the user contributes to within an org | read |
 | gh flarebyte e2e | e2e.* | Bun JUnit or Python unittest discovery; empty suites fail. | run an independent Bun or Python e2e suite | write |
 | gh flarebyte script | script.* | Child output and exit status; no shell interpolation. | execute a Bun TypeScript or Python file with forwarded arguments | write |
+| gh flarebyte dep check | dependencies.minAgeDays at local Git root | Package-only RECOMMEND/REVIEW/AVOID; JSON allow/unknown/deny; seven ecosystem selectors; no resolver or language tool required. | assess a named public package and exact-version candidates | read |
+| gh flarebyte dep install | dependencies.minAgeDays and normal native manager configuration | Native npm/Cargo/uv/Go/Dart output and exit status; Maven/Swift print-only. Unverified identity blocks install; current Pub metadata cannot authorize it. | check then delegate an approved exact version or print manifest guidance | write |
 
 ### 02 Command Flows
 
@@ -484,6 +487,8 @@ CLI flags supported by the current command surface.
 | script-friendly | gh flarebyte repo audit | --repo | string | Override the GitHub repository compared with the local config. | optional; defaults to project.org/project.repo |
 | script-friendly | gh flarebyte repos mine | --org | string | Organization queried for contributor repositories. | always |
 | script-friendly | gh flarebyte config validate | --config | string | Validate another file; other commands continue to read .gh-flarebyte.cue in the working directory. | optional |
+| script-friendly | gh flarebyte dep check | --json | boolean | Preserve the existing package report schema and allow/unknown/deny decisions. | optional |
+| script-friendly | gh flarebyte dep check | --explain | boolean | Add checked candidates and provider sources/evidence; may be combined with --json. | optional |
 
 ### 04 Automation
 
@@ -549,6 +554,11 @@ Stable process exit behavior for humans, scripts, and CI.
 | gh flarebyte release | 7 | GitHub release creation or asset upload failed. | release publish failed after version resolution and build |
 | gh flarebyte script | child exit code | Preserve the script exit status; dependency or launch failures use 1. | script process fails |
 | gh flarebyte e2e | child exit code | Preserve suite exit status; empty suites or invalid reports use 1. | suite process fails |
+| gh flarebyte dep check | 0 | Named-package recommendation; not an installation certification. | required package evidence passes |
+| gh flarebyte dep check | 1 | Known findings remain rejection even when better versions exist. | adoption policy rejects the package or requested release |
+| gh flarebyte dep check | 2 | No range expansion attempted. | invalid input/configuration or exact version absent from catalog |
+| gh flarebyte dep check | 8 | Review; a candidate alone does not authorize installation. | required evidence is missing or ambiguous |
+| gh flarebyte dep install | child exit code | Preserve native exit status; cancellation uses 130 and wrapper launch/output failure uses 10. Review prevents launch; presentation flags are rejected. | native tool runs |
 
 ### 08 Structured Output
 
@@ -864,3 +874,4 @@ Unsupported features and automation requirements.
 #### Current Limitations
 
 Repository sync is push-only. Unattended updates require the same explicit deletion and visibility flags as interactive use. Python dynamic versions and native wheel target matrices, package-registry publication, and custom Rust target triples are unsupported. Release notes support generate-notes, notes-from-tag, and notes-file; no template engine is configured.
+

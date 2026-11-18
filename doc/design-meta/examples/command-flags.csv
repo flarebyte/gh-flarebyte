@@ -16,3 +16,5 @@ gh flarebyte repo init,--repo,string,always,script-friendly,Repository owner/nam
 gh flarebyte repo audit,--repo,string,optional; defaults to project.org/project.repo,script-friendly,Override the GitHub repository compared with the local config.
 gh flarebyte repos mine,--org,string,always,script-friendly,Organization queried for contributor repositories.
 gh flarebyte config validate,--config,string,optional,script-friendly,Validate another file; other commands continue to read .gh-flarebyte.cue in the working directory.
+gh flarebyte dep check,--json,boolean,optional,script-friendly,Preserve the existing package report schema and allow/unknown/deny decisions.
+gh flarebyte dep check,--explain,boolean,optional,script-friendly,Add checked candidates and provider sources/evidence; may be combined with --json.

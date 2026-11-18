@@ -68,11 +68,46 @@ execution, output, coverage, checksum, and artifact-staging helpers. For a langu
 change, keep help, config validation, README examples, and the shared contract tests
 consistent; add real-toolchain coverage in the corresponding fixture when needed.
 
+### Dependency advice and delegation
+
+The current [dependency command guide](doc/dependencies.md) describes the public
+contract. Default checks assess the named package only; do not add graph, artifact,
+runtime or transitive-proof prerequisites. Native managers own installation.
+
+Policy, providers and selection live in `internal/dependencies`; `cmd_dep.go` wires
+checks and `dep_delegate.go` owns native execution in `internal/cli`. Pub and Swift
+have their own catalog adapters. Tests must preserve review for unverified source
+links, including Dart's current inability to approve installation from pub.dev
+metadata alone. Never use synthetic approval outside test fixtures.
+
+Use `go test ./internal/dependencies ./internal/config` and
+`go test ./internal/cli -run '^TestDep'`. Provider tests use fake HTTP transports;
+native delegation tests use stub executables. Cover exact arguments, caller working
+directory, blocked checks, raw streams, stdin/environment, cancellation and native
+exit status. Maven/Swift print-only tests must verify no file changes or tool launch.
+Bun dependency smoke regressions live in `e2e/dependency.test.ts`; `make e2e` builds
+the checkout binary before running them.
+
+For this dependency project, the ignored `temp/validation/` scripts select focused
+tests and retain bounded logs. Run `validate-typescript.sh`, `validate-go.sh`,
+`validate-python.sh`, `validate-rust.sh`, `validate-kotlin.sh`, `validate-dart.sh` or
+`validate-swift.sh` with Bash, plus `validate-shared.sh` for shared changes. The
+broader developer check is `bash temp/validation/validate-final.sh`; it includes
+race/coverage and a 90% dependency statement-coverage floor. These ignored scripts
+are local working artifacts, not prerequisites available in every clean checkout.
+The committed CI also enforces the dependency coverage floor.
+
+### Retained dependency inspection regression tests
+
+The following notes cover [retained strict components](doc/dependency-legacy.md),
+not the default package advice or delegated installation path. Keep these tests;
+new feature work does not require extending the old proof machinery.
+
 Dependency tests use fake HTTP transports and temporary repositories; they never
 call live registries or install third-party packages. Run focused checks with
 `go test ./internal/dependencies ./internal/config` and
 `go test ./internal/cli -run '^TestDep'`.
-The new dependency core has a 90% statement coverage floor in CI; security failure
+The dependency core has a 90% statement coverage floor in CI; security failure
 cases still require explicit tests regardless of that percentage. Seeded fuzz
 tests cover package inputs, descriptions, dependency policy parsing, project JSON
 and npm range/Python version parsing. Python ordering tests cover epochs, numeric
@@ -147,12 +182,12 @@ This opt-in probe reads only current public metadata for four npm/PyPI packages;
 default tests use fake HTTP transports. Missing account kinds or opaque organization
 access must not be inferred as a single developer or expanded into invented users.
 
-Cargo assessment tests use TOML fixtures and fake crates.io/deps.dev/OSV/GitHub
+Retained Cargo assessment tests use TOML fixtures and fake crates.io/deps.dev/OSV/GitHub
 responses. Cover root-lock agreement, version/source ambiguity, checksum and edge
 disagreement, build/dev dependencies, renamed crates, feature/compiler uncertainty,
 configuration changes and malformed or linked files. The existing TOML dependency
 is reused. Fuzz Cargo requirement parsing and bounded manifest/lock parsing without
-invoking Cargo. Keep Cargo native installation gated independently of check success.
+invoking Cargo. Keep retained strict installation approval separate from package-advice approval.
 Compiler-baseline tests cover numeric/partial Rust versions, transitive requirements,
 edition floors, missing/invalid declarations, unchanged security verdicts and
 malicious upstream text that must not enter explained evidence. Keep the comparison

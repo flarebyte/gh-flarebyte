@@ -10,3 +10,8 @@ gh flarebyte build,6,build failed for one or more requested targets,Compilation 
 gh flarebyte release,7,release publish failed after version resolution and build,GitHub release creation or asset upload failed.
 gh flarebyte script,child exit code,script process fails,Preserve the script exit status; dependency or launch failures use 1.
 gh flarebyte e2e,child exit code,suite process fails,Preserve suite exit status; empty suites or invalid reports use 1.
+gh flarebyte dep check,0,required package evidence passes,Named-package recommendation; not an installation certification.
+gh flarebyte dep check,1,adoption policy rejects the package or requested release,Known findings remain rejection even when better versions exist.
+gh flarebyte dep check,2,invalid input/configuration or exact version absent from catalog,No range expansion attempted.
+gh flarebyte dep check,8,required evidence is missing or ambiguous,Review; a candidate alone does not authorize installation.
+gh flarebyte dep install,child exit code,native tool runs,Preserve native exit status; cancellation uses 130 and wrapper launch/output failure uses 10. Review prevents launch; presentation flags are rejected.
