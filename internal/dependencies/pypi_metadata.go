@@ -102,6 +102,7 @@ func (c *Client) checkPyPIMetadata(ctx context.Context, project *ProjectSnapshot
 		f.Runtime = runtime.Runtime
 	}
 	complete := true
+	edges := []string{}
 	for _, requirement := range metadata.Dependencies {
 		if strings.Contains(requirement, ";") {
 			f.Distribution.MarkerBasis = "manifest-python-range"
@@ -135,6 +136,8 @@ func (c *Client) checkPyPIMetadata(ctx context.Context, project *ProjectSnapshot
 		}
 		if !matches {
 			f.Reasons = unique(append(f.Reasons, "DEPENDENCY_METADATA_MISMATCH"))
+		} else {
+			edges = append(edges, name)
 		}
 	}
 	if complete {
@@ -143,6 +146,12 @@ func (c *Client) checkPyPIMetadata(ctx context.Context, project *ProjectSnapshot
 	}
 	if slices.Contains(f.Reasons, "PYPI_LOCK_DEPENDENCY_MISSING") || slices.Contains(f.Reasons, "DEPENDENCY_METADATA_MISMATCH") {
 		f.Distribution.Status = "conflict"
+	}
+	if f.Distribution.Status == "verified" {
+		if project.pypiGraph == nil {
+			project.pypiGraph = map[string]pythonGraphProof{}
+		}
+		project.pypiGraph[node.Path] = pythonGraphProof{Node: node, Dependencies: unique(edges), MetadataSHA256: hashes["sha256"]}
 	}
 }
 

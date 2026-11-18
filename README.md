@@ -359,6 +359,14 @@ inactive and unresolved dependency counts with marker basis
 `manifest-python-range`. These counts describe applicability; all locked packages
 retain their security assessments, and installation remains gated.
 
+Explained `project.python_graph` now reports structural closure separately. A
+`closed` graph requires registry-bound hashed metadata and compatible generic
+wheel tags for every assessed node, matching active dependencies, valid manifest
+roots and reachability of every locked package. Missing evidence, unresolved
+conditions, native targets and unused lock entries keep it incomplete. Closure
+does not change `project.complete`, resolve an environment, recommend a version
+or approve installation; vulnerabilities and other security failures still deny.
+
 Cargo checks inspect `Cargo.toml` and lockfiles v3/v4 for single-package crates.io
 projects and already locked runtime dependencies. Every locked crate is assessed,
 including build/development dependencies, as a conservative superset rather than

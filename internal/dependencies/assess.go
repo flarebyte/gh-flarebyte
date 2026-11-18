@@ -115,11 +115,16 @@ func (c *Client) AssessLocal(ctx context.Context, dir, system, name string, requ
 		if len(project.Findings) == 0 {
 			c.assessProject(ctx, project, p, now, &r, map[string]TrustEvidence{})
 		}
+		finishPythonGraph(project)
 		mergePythonInventory(&r, project)
 	}
 	if (project.Complete || project.InventoryComplete) && !project.unchanged(dir) {
 		project.Complete = false
 		project.InventoryComplete = false
+		if project.PythonGraph != nil {
+			project.PythonGraph.Status = "incomplete"
+			project.PythonGraph.Missing = unique(append(project.PythonGraph.Missing, "PROJECT_CHANGED_DURING_ASSESSMENT"))
+		}
 		project.Missing = unique(append(project.Missing, "PROJECT_CHANGED_DURING_ASSESSMENT"))
 		r.Scope = "package"
 		r.Recommendation = nil

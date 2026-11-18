@@ -10,6 +10,7 @@ import (
 )
 
 func (c *Client) checkPyPINode(ctx context.Context, project *ProjectSnapshot, node ProjectNode, f *Finding, sources *[]Source) {
+	delete(project.pypiGraph, node.Path)
 	f.Missing = unique(append(f.Missing, "PYPI_DISTRIBUTION_METADATA", "PYTHON_ENVIRONMENT_CONTEXT"))
 	var body struct {
 		Info struct {
@@ -82,6 +83,11 @@ func (c *Client) checkPyPINode(ctx context.Context, project *ProjectSnapshot, no
 		f.Reasons = unique(append(f.Reasons, "WITHDRAWN_RELEASE"))
 	}
 	c.checkPyPIMetadata(ctx, project, node, f, sources)
+	if proof, ok := project.pypiGraph[node.Path]; ok && proof.Node == node {
+		proof.RegistryBound = true
+		proof.WheelCompatible = f.Wheel != nil && f.Wheel.Status == "compatible"
+		project.pypiGraph[node.Path] = proof
+	}
 }
 
 func mergePythonInventory(r *Report, project *ProjectSnapshot) {
