@@ -340,6 +340,15 @@ Explained per-package `distribution` evidence reports its basis, hash, dependenc
 count and status. This never downloads a wheel or resolves a new graph; a clean
 inventory still returns `unknown`, and installation remains gated.
 
+Corroborated wheel filenames are also checked for package identity and generic
+Python tags against the declared lower bound. Pure-Python alternatives such as
+`py3-none-any` and `py39-none-any` can establish tag compatibility; a supported
+generic mismatch denies with `PYPI_WHEEL_TAG_INCOMPATIBLE`. Explained `wheel`
+evidence includes the parsed Python/ABI/platform tags and comparison status.
+Native ABI/platform tags, unsupported alternatives and ambiguous declarations
+stay unknown. The CLI host is never assumed to be the Python target, and matching
+tags do not clear environment or project-resolution gaps.
+
 Cargo checks inspect `Cargo.toml` and lockfiles v3/v4 for single-package crates.io
 projects and already locked runtime dependencies. Every locked crate is assessed,
 including build/development dependencies, as a conservative superset rather than

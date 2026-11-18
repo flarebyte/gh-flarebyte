@@ -75,6 +75,7 @@ func (c *Client) checkPyPINode(ctx context.Context, project *ProjectSnapshot, no
 		f.Reasons = unique(append(f.Reasons, "ARTIFACT_MISMATCH"))
 		return
 	}
+	checkPythonWheel(expected.Filename, node.Name, node.Version, expected.ManifestPython, f)
 	if file.Yanked == nil {
 		f.Missing = unique(append(f.Missing, "RELEASE_LIFECYCLE"))
 	} else if *file.Yanked {

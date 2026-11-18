@@ -145,6 +145,16 @@ type Finding struct {
 	Resolution       string                `json:"resolution,omitempty"`
 	Runtime          *RuntimeCompatibility `json:"runtime,omitempty"`
 	Distribution     *DistributionMetadata `json:"distribution,omitempty"`
+	Wheel            *WheelCompatibility   `json:"wheel,omitempty"`
+}
+
+type WheelCompatibility struct {
+	Basis        string   `json:"basis"`
+	Status       string   `json:"status"`
+	Baseline     string   `json:"baseline,omitempty"`
+	PythonTags   []string `json:"python_tags,omitempty"`
+	ABITags      []string `json:"abi_tags,omitempty"`
+	PlatformTags []string `json:"platform_tags,omitempty"`
 }
 
 type DistributionMetadata struct {
