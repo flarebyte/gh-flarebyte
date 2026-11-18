@@ -334,7 +334,7 @@ PyPI checks also read hashed per-wheel core metadata advertised by the public
 Simple API. They verify the selected wheel's URL and SHA-256, then download only
 its bounded `.metadata` sidecar and verify that separate SHA-256 and package
 identity. Unconditional dependency declarations are compared with the inventory;
-missing dependencies or incompatible numeric constraints deny. Markers, extras,
+missing dependencies or incompatible numeric constraints deny. Unresolved markers, extras,
 direct URLs and unsupported version syntax keep metadata evidence incomplete.
 Explained per-package `distribution` evidence reports its basis, hash, dependency
 count and status. This never downloads a wheel or resolves a new graph; a clean
@@ -348,6 +348,16 @@ evidence includes the parsed Python/ABI/platform tags and comparison status.
 Native ABI/platform tags, unsupported alternatives and ambiguous declarations
 stay unknown. The CLI host is never assumed to be the Python target, and matching
 tags do not clear environment or project-resolution gaps.
+
+Wheel dependency markers support numeric `python_version` and
+`python_full_version` comparisons, `and`/`or`, parentheses and reversed operands.
+They are evaluated conservatively across the manifest's entire inclusive Python
+lower-bound range. Only definitely inactive dependencies are skipped; partially
+applicable conditions remain unresolved. Platform and extras values are never
+inferred from the CLI host. Explained `distribution` evidence includes active,
+inactive and unresolved dependency counts with marker basis
+`manifest-python-range`. These counts describe applicability; all locked packages
+retain their security assessments, and installation remains gated.
 
 Cargo checks inspect `Cargo.toml` and lockfiles v3/v4 for single-package crates.io
 projects and already locked runtime dependencies. Every locked crate is assessed,

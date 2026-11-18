@@ -13,6 +13,7 @@ import (
 	"net/url"
 	"regexp"
 	"slices"
+	"strings"
 	"time"
 )
 
@@ -102,11 +103,20 @@ func (c *Client) checkPyPIMetadata(ctx context.Context, project *ProjectSnapshot
 	}
 	complete := true
 	for _, requirement := range metadata.Dependencies {
-		name, constraint, supported := pythonDistributionRequirement(requirement)
-		if !supported {
+		if strings.Contains(requirement, ";") {
+			f.Distribution.MarkerBasis = "manifest-python-range"
+		}
+		name, constraint, applicability := pythonMarkedRequirement(requirement, expected.ManifestPython)
+		if applicability == markerFalse {
+			f.Distribution.InactiveDependencies++
+			continue
+		}
+		if applicability == markerUnknown {
+			f.Distribution.UnresolvedDependencies++
 			complete = false
 			continue
 		}
+		f.Distribution.ActiveDependencies++
 		var locked string
 		for _, item := range project.Nodes {
 			if item.Name == name {

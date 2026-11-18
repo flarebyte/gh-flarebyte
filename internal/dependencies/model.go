@@ -158,10 +158,14 @@ type WheelCompatibility struct {
 }
 
 type DistributionMetadata struct {
-	Basis           string `json:"basis"`
-	SHA256          string `json:"sha256"`
-	DependencyCount int    `json:"dependency_count"`
-	Status          string `json:"status"`
+	Basis                  string `json:"basis"`
+	SHA256                 string `json:"sha256"`
+	DependencyCount        int    `json:"dependency_count"`
+	Status                 string `json:"status"`
+	ActiveDependencies     int    `json:"active_dependencies"`
+	InactiveDependencies   int    `json:"inactive_dependencies"`
+	UnresolvedDependencies int    `json:"unresolved_dependencies"`
+	MarkerBasis            string `json:"marker_basis,omitempty"`
 }
 
 // RuntimeCompatibility compares declared requirements; it does not attest to an

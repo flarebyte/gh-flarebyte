@@ -59,12 +59,16 @@ func TestPythonWheelMetadataEvidence(t *testing.T) {
 		{"hash conflict", "METADATA_HASH_MISMATCH", false, true},
 		{"wheel hash", "ARTIFACT_MISMATCH", false, false},
 		{"marker", "", false, true}, {"malformed", "", false, true},
+		{"inactive marker", "", true, true},
+		{"active marker", "PYPI_LOCK_DEPENDENCY_MISSING", true, true},
+		{"partial marker", "", false, true},
 		{"duplicate file", "", false, false}, {"unhashed", "", false, false},
 		{"legacy conflict", "", false, false}, {"unavailable", "", false, true},
 		{"oversized", "", false, true},
 	} {
 		t.Run(tt.mode, func(t *testing.T) {
 			manifest, lock := pythonInventoryDocuments()
+			manifest = strings.Replace(manifest, "[project]", "[project]\nrequires-python='>=3.9'", 1)
 			project := ReadProject(writePythonInventory(t, manifest, lock), "pypi")
 			var node ProjectNode
 			for _, n := range project.Nodes {
@@ -80,6 +84,12 @@ func TestPythonWheelMetadataEvidence(t *testing.T) {
 				body = strings.Replace(body, ">=1.0,<2.0", ">=2.0", 1)
 			case "marker":
 				body = strings.Replace(body, "child (>=1.0,<2.0)", "missing; extra == 'optional'", 1)
+			case "inactive marker":
+				body = strings.Replace(body, "child (>=1.0,<2.0)", "missing; python_version < '3.8'", 1)
+			case "active marker":
+				body = strings.Replace(body, "child (>=1.0,<2.0)", "missing; python_version >= '3.8'", 1)
+			case "partial marker":
+				body = strings.Replace(body, "child (>=1.0,<2.0)", "missing; python_version >= '3.10'", 1)
 			case "identity":
 				body = strings.Replace(body, "Name: pkg", "Name: other", 1)
 			case "malformed":
