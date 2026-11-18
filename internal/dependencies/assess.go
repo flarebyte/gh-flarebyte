@@ -109,6 +109,9 @@ func evaluateRelease(v Version, advisories []Advisory, osvErr error, e TrustEvid
 	f.Evidence.IdentityBasis = e.IdentityBasis
 	if p.ID == PackageAdvicePolicyID {
 		f.Warnings = packageAdviceWarnings(e, p, now)
+		if strings.EqualFold(v.Key.System, "swift") {
+			f.Warnings = unique(append(f.Warnings, "GITHUB_RELEASE_DATES", "TYPOSQUATTING_SCREEN_LIMITED", "SWIFT_OSV_CANONICAL_URL_ONLY"))
+		}
 		if strings.EqualFold(v.Key.System, "go") {
 			f.Warnings = unique(append(f.Warnings, "GO_RETRACTIONS_UNCHECKED"))
 		}
@@ -160,7 +163,7 @@ func (c *Client) assess(ctx context.Context, system, name string, requested *str
 	r.Details.Project = project
 	cache := map[string]TrustEvidence{}
 	published := map[string]time.Time{}
-	if system == "pub" || system == "swift" {
+	if system == "pub" || (system == "swift" && p.ID != PackageAdvicePolicyID) {
 		r.Reasons = append(r.Reasons, "UNSUPPORTED_COVERAGE")
 		r.Evidence.Missing = []string{"RELEASE_CATALOG", "PACKAGE_IDENTITY", "ACTIVE_MAINTAINERS", "PROJECT_RESOLUTION"}
 		if requested != nil {
@@ -177,14 +180,28 @@ func (c *Client) assess(ctx context.Context, system, name string, requested *str
 		}
 		return r
 	}
-	pack, err := c.Package(ctx, system, name, &r.Details.Sources)
+	var pack Package
+	var err error
+	var swiftVersions map[string]Version
+	if system == "swift" && p.ID == PackageAdvicePolicyID {
+		pack, swiftVersions, err = c.swiftCatalog(ctx, name, &r.Details.Sources)
+	} else {
+		pack, err = c.Package(ctx, system, name, &r.Details.Sources)
+	}
 	if err != nil {
 		var lookup *LookupError
 		if errors.As(err, &lookup) && lookup.Status == http.StatusNotFound {
-			r.Error = &ReportError{"PACKAGE_NOT_FOUND", "Package not indexed by deps.dev; existence is unverified"}
+			message := "Package not indexed by deps.dev; existence is unverified"
+			if system == "swift" {
+				message = "Public GitHub release catalog not found; package existence is unverified"
+			}
+			r.Error = &ReportError{"PACKAGE_NOT_FOUND", message}
 		}
 		r.Reasons = []string{"INSUFFICIENT_EVIDENCE"}
 		r.Evidence.Missing = []string{"PACKAGE_LOOKUP"}
+		if system == "swift" {
+			r.Evidence.Missing = []string{"SWIFT_RELEASE_CATALOG"}
+		}
 		return r
 	}
 	if pack.PackageKey.Name == "" || len(pack.Versions) == 0 {
@@ -288,9 +305,18 @@ func (c *Client) assess(ctx context.Context, system, name string, requested *str
 		var advisories []Advisory
 		var osvErr error
 		if p.ID == PackageAdvicePolicyID {
-			advisories, osvErr = c.OSV(ctx, systems[system], name, version, &r.Details.Sources)
+			advisoryName := name
+			if system == "swift" {
+				advisoryName = strings.TrimPrefix(name, "https://")
+			}
+			advisories, osvErr = c.OSV(ctx, systems[system], advisoryName, version, &r.Details.Sources)
 		}
-		v, err := c.Version(ctx, system, name, version, &r.Details.Sources)
+		var v Version
+		if swiftVersions != nil {
+			v, err = swiftVersions[version], nil
+		} else {
+			v, err = c.Version(ctx, system, name, version, &r.Details.Sources)
+		}
 		if err != nil || v.Key.Name != pack.PackageKey.Name || v.Key.Version != version || !strings.EqualFold(v.Key.System, system) {
 			f := Finding{Version: version, Decision: Unknown, Reasons: []string{}, Missing: []string{"VERSION_LOOKUP"}, Advisories: []string{}}
 			if p.ID == PackageAdvicePolicyID {
@@ -306,9 +332,9 @@ func (c *Client) assess(ctx context.Context, system, name string, requested *str
 			advisories, osvErr = c.OSV(ctx, systems[system], name, version, &r.Details.Sources)
 		}
 		e, npm, description, releaseReasons := c.releaseEvidence(ctx, system, name, version, &r.Details.Sources)
-		if p.ID == PackageAdvicePolicyID && (system == "go" || system == "maven") {
+		if p.ID == PackageAdvicePolicyID && (system == "go" || system == "maven" || system == "swift") {
 			e.LifecycleKnown = true
-		} // Exact indexed release exists; retractions are explicitly not checked.
+		} // Exact indexed release (or public Swift release) exists; no build resolution.
 		c.fillRepository(ctx, v, &e, &r, cache)
 		if p.ID == PackageAdvicePolicyID {
 			if (system == "npm" || system == "pypi" || system == "cargo") && adviceOwners == nil {
@@ -374,6 +400,9 @@ func (c *Client) fillRepository(ctx context.Context, v Version, e *TrustEvidence
 	if r.Policy == PackageAdvicePolicyID && strings.EqualFold(v.Key.System, "go") {
 		repo, identity, e.IdentityBasis = goAdviceRepository(v.Key.Name, repo, identity)
 	}
+	if r.Policy == PackageAdvicePolicyID && strings.EqualFold(v.Key.System, "swift") {
+		repo, identity, e.IdentityBasis = strings.TrimPrefix(v.Key.Name, "https://"), "verified", "github-repository-url"
+	}
 	e.Repository = repo
 	e.Identity = identity
 	if repo == "" {
@@ -388,7 +417,12 @@ func (c *Client) fillRepository(ctx context.Context, v Version, e *TrustEvidence
 		return
 	}
 	evidence := TrustEvidence{}
-	project, err := c.Project(ctx, repo, &r.Details.Sources)
+	var project Project
+	var err error
+	// Swift repository identity comes directly from its package URL.
+	if !(strings.EqualFold(v.Key.System, "swift") && r.Policy == PackageAdvicePolicyID) {
+		project, err = c.Project(ctx, repo, &r.Details.Sources)
+	}
 	if err == nil && strings.EqualFold(project.Key.ID, repo) {
 		evidence.RepositoryDescription = Description(project.Description)
 		evidence.Stars = project.Stars
@@ -418,6 +452,9 @@ func (c *Client) fillRepository(ctx context.Context, v Version, e *TrustEvidence
 		if err == nil && strings.EqualFold(card.Repo.Name, repo) && !card.Date.IsZero() {
 			evidence.Scorecards = append(evidence.Scorecards, card)
 		}
+	}
+	if r.Description == nil && identity == "verified" {
+		r.Description = evidence.RepositoryDescription
 	}
 	cache[repo] = evidence
 	e.Stars = evidence.Stars

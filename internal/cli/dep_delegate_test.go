@@ -46,6 +46,10 @@ func stubPackageAdviceAPI(t *testing.T, vulnerable bool) {
 		client := &dependencies.Client{HTTP: cargoInstallHTTP(func(req *http.Request) (*http.Response, error) {
 			var body any
 			switch {
+			case req.URL.Host == "api.github.com" && strings.HasSuffix(req.URL.Path, "/releases"):
+				body = []any{map[string]any{"tag_name": "v1.2.3", "draft": false, "prerelease": false, "published_at": now.AddDate(-1, 0, 0)}}
+			case req.URL.Host == "api.github.com":
+				body = map[string]any{"full_name": strings.TrimPrefix(name, "https://github.com/"), "stargazers_count": 1000, "description": "Swift fixture"}
 			case req.URL.Host == "api.osv.dev":
 				body = map[string]any{}
 				if vulnerable {

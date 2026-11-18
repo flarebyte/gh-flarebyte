@@ -8,6 +8,7 @@ import "strings"
 const nameReferenceRevision = "curated-v1"
 
 var nameReferences = map[string][]string{
+	"swift": {"https://github.com/apple/swift-nio", "https://github.com/apple/swift-crypto", "https://github.com/alamofire/alamofire", "https://github.com/vapor/vapor"},
 	"npm":   {"lodash", "react", "express", "axios", "typescript", "commander", "chalk", "zod"},
 	"cargo": {"serde", "tokio", "clap", "anyhow", "reqwest"},
 	"pypi":  {"requests", "numpy", "pandas", "django", "flask", "pydantic"},

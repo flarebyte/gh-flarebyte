@@ -56,7 +56,7 @@ func TestVersionOrdering(t *testing.T) {
 		{"go", "v2.0.0+incompatible", true}, {"go", "2.0.0", false},
 		{"pypi", "1.2.3.4", true}, {"pypi", "1.2rc1", false}, {"pypi", "1..2", false},
 		{"npm", "01.2.3", false}, {"npm", "1.a.3", false}, {"npm", "99999999999999999999999999.2.3", false},
-		{"maven", "1.2.3", true}, {"swift", "1.2.3", false}, {"pypi", "1.2.3.4.5", true},
+		{"maven", "1.2.3", true}, {"swift", "1.2.3", true}, {"pypi", "1.2.3.4.5", true},
 	} {
 		_, ok := stableVersion(tt.system, tt.version)
 		if ok != tt.valid {

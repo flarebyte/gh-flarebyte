@@ -67,6 +67,16 @@ func Parse(system, arg string) (string, *string, error) {
 	if system == "cargo" {
 		name = strings.ToLower(name)
 	}
+	if system == "swift" {
+		name = "https://" + strings.TrimSuffix(strings.ToLower(strings.TrimPrefix(name, "https://")), ".git")
+		if Repository(strings.TrimPrefix(name, "https://")) == "" {
+			return "", nil, fmt.Errorf("invalid Swift repository")
+		}
+		if version != nil {
+			v := strings.TrimPrefix(*version, "v")
+			version = &v
+		}
+	}
 	return name, version, nil
 }
 
@@ -87,9 +97,6 @@ func stableVersion(system, version string) ([]uint64, bool) {
 	if system == "pypi" {
 		return pythonStableVersion(version)
 	}
-	if system == "swift" {
-		return nil, false
-	}
 	if system == "go" {
 		if !strings.HasPrefix(version, "v") {
 			return nil, false
@@ -106,7 +113,7 @@ func stableVersion(system, version string) ([]uint64, bool) {
 		}
 	}
 	parts := strings.Split(version, ".")
-	if len(parts) > 4 || ((system == "npm" || system == "cargo" || system == "go") && len(parts) != 3) {
+	if len(parts) > 4 || ((system == "npm" || system == "cargo" || system == "go" || system == "swift") && len(parts) != 3) {
 		return nil, false
 	}
 	values := make([]uint64, 4)
@@ -132,7 +139,7 @@ func knownPrerelease(system, version string) bool {
 	if system == "maven" {
 		return mavenPrerelease.MatchString(version)
 	}
-	if system == "npm" || system == "cargo" || system == "go" {
+	if system == "npm" || system == "cargo" || system == "go" || system == "swift" {
 		return semverPrerelease.MatchString(version)
 	}
 	return system == "pypi" && pythonPrerelease(version)

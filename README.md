@@ -277,8 +277,15 @@ The default is 14 days; explicit zero removes only that waiting period. Invalid
 policy values fail validation. The configuration is discovered at the local Git
 repository root, including when invoked from a subdirectory.
 
-Current coverage is partial: npm, Cargo, PyPI, Go and Maven metadata can be checked;
-exact Dart/pub and SwiftURL versions can receive OSV advisory findings. Registry
+Current coverage is partial: npm, Cargo, PyPI, Go and Maven metadata can be checked.
+Swift checks accept public GitHub repository URLs and use a bounded GitHub release
+catalog, repository stars/description, OSV SwiftURL and optional Scorecard. Dates
+mean GitHub release publication dates; bare tags, non-GitHub hosts and catalogs
+beyond 500 releases remain unverified. Swift maintainer count is unknown; advisory
+matching uses the canonical repository URL, with alias coverage explicitly limited.
+For example, `gh flarebyte dep check swift https://github.com/apple/swift-nio --json`.
+Swift install prints an exact `Package.swift` declaration and changes no files.
+Exact Dart/pub versions can receive OSV advisory findings. Registry
 lookups corroborate npm, Cargo and PyPI release availability, deprecation or yanking.
 Verified provenance can corroborate a GitHub source repository; self-declared links
 cannot borrow its reputation. Advisory aliases are grouped, and withdrawal conflicts

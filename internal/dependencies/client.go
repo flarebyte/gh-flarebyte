@@ -117,12 +117,14 @@ func (c *Client) readAccept(ctx context.Context, provider, endpoint string, body
 		source.Status = "response_too_large"
 		return fmt.Errorf("%s response exceeds size limit", provider)
 	}
-	if trimmed := bytes.TrimSpace(b); len(trimmed) == 0 || (trimmed[0] != '{' && !(provider == "github" && trimmed[0] == '[')) {
+	if trimmed := bytes.TrimSpace(b); len(trimmed) == 0 || (trimmed[0] != '{' && !((provider == "github" || provider == "github-releases") && trimmed[0] == '[')) {
 		source.Status = "invalid_response"
 		return fmt.Errorf("%s invalid response object", provider)
 	}
 	var decodeErr error
-	if provider == "github" {
+	if provider == "github-releases" {
+		decodeErr = decodeGitHubArray(b, out)
+	} else if provider == "github" {
 		decodeErr = json.Unmarshal(b, out)
 	} else {
 		decodeErr = uniqueJSON(b, out)

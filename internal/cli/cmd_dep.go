@@ -107,7 +107,7 @@ func runDependency(ctx context.Context, action, system, arg string, jsonOutput, 
 		code = ExitFailure
 	} else if report.Decision == dependencies.Allow {
 		code = ExitOK
-	} else if system == "pub" || system == "swift" {
+	} else if (system == "pub" || system == "swift") && !dependencies.SupportsPackageAdvice(system) {
 		code = ExitDependencyUnsupported
 	}
 	if action == "install" && dependencies.SupportsPackageAdvice(system) {
@@ -138,6 +138,8 @@ func runDependency(ctx context.Context, action, system, arg string, jsonOutput, 
 			return delegatePyPI(ctx, dir, name, selected, os.Stdin, stdout, stderr)
 		case "cargo":
 			return delegateCargo(ctx, dir, name, selected, os.Stdin, stdout, stderr)
+		case "swift":
+			return printSwiftDependency(name, selected, stdout, stderr)
 		case "maven":
 			return printMavenDependency(dir, name, selected, stdout, stderr)
 		default:

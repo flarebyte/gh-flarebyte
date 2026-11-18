@@ -11,7 +11,7 @@ import (
 const PackageAdvicePolicyID = "package-advice-v1"
 
 func SupportsPackageAdvice(system string) bool {
-	return system == "npm" || system == "go" || system == "maven" || system == "pypi" || system == "cargo"
+	return system == "npm" || system == "go" || system == "maven" || system == "pypi" || system == "cargo" || system == "swift"
 }
 
 func PackageAdvicePolicy(days int) Policy {

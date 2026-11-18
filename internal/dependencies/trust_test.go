@@ -181,7 +181,7 @@ func TestNameScreen(t *testing.T) {
 		system, name      string
 		known, suspicious bool
 	}{
-		{"npm", "lodash", true, false}, {"npm", "lodahs", true, true}, {"npm", "lodas", true, true}, {"npm", "loodash", true, true}, {"npm", "lodasx", true, true}, {"npm", "@unknown/lodash", true, true}, {"npm", "unrelated-package", true, false}, {"swift", "https://github.com/org/repo", false, false},
+		{"npm", "lodash", true, false}, {"npm", "lodahs", true, true}, {"npm", "lodas", true, true}, {"npm", "loodash", true, true}, {"npm", "lodasx", true, true}, {"npm", "@unknown/lodash", true, true}, {"npm", "unrelated-package", true, false}, {"swift", "https://github.com/org/repo", true, false},
 		{"npm", "@types/react", true, false},
 	} {
 		known, suspicious := screenName(tt.system, tt.name)
