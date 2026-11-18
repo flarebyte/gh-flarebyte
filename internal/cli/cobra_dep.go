@@ -16,7 +16,7 @@ func newDepCommand(stdout, stderr io.Writer) *cobra.Command {
 		var jsonOutput, explain bool
 		cmd := &cobra.Command{
 			Use:   action + " <ecosystem> <package>",
-			Short: map[string]string{"check": "Assess a package or exact version in the local repository", "install": "Install a recommended version only when all safety gates pass"}[action],
+			Short: map[string]string{"check": "Assess a package or exact version in the local repository", "install": "Install a recommended version using the supported ecosystem workflow"}[action],
 			Args:  cobra.ExactArgs(2),
 			RunE: func(cmd *cobra.Command, args []string) error {
 				return resultToError(runDependency(cmd.Context(), action, args[0], args[1], jsonOutput, explain, stdout, stderr))

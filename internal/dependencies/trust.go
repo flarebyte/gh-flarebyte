@@ -31,6 +31,9 @@ type TrustEvidence struct {
 }
 
 func (e TrustEvidence) Evaluate(p Policy, now time.Time) ([]string, []string) {
+	if p.ID == PackageAdvicePolicyID {
+		return e.evaluatePackageAdvice(p)
+	}
 	reasons, missing := []string{}, []string{}
 	if e.Identity == "conflict" {
 		reasons = append(reasons, "IDENTITY_CONFLICT")

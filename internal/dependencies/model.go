@@ -96,22 +96,25 @@ type RegistryRole struct {
 }
 
 type Report struct {
-	Schema         int           `json:"schema"`
-	Package        string        `json:"package"`
-	Description    *string       `json:"description"`
-	Requested      *string       `json:"requested"`
-	Scope          string        `json:"scope"`
-	Decision       string        `json:"decision"`
-	Reasons        []string      `json:"reasons"`
-	Recommendation *Candidate    `json:"recommendation"`
-	Alternatives   []Candidate   `json:"alternatives"`
-	Evidence       Evidence      `json:"evidence"`
-	Policy         string        `json:"policy"`
-	PolicyDigest   string        `json:"policy_digest"`
-	CheckedAt      time.Time     `json:"checked_at"`
-	Details        *Details      `json:"details,omitempty"`
-	Error          *ReportError  `json:"error,omitempty"`
-	Installation   *Installation `json:"installation,omitempty"`
+	Coverage         string        `json:"coverage,omitempty"`
+	Warnings         []string      `json:"warnings,omitempty"`
+	CandidateVersion *string       `json:"candidate_version,omitempty"`
+	Schema           int           `json:"schema"`
+	Package          string        `json:"package"`
+	Description      *string       `json:"description"`
+	Requested        *string       `json:"requested"`
+	Scope            string        `json:"scope"`
+	Decision         string        `json:"decision"`
+	Reasons          []string      `json:"reasons"`
+	Recommendation   *Candidate    `json:"recommendation"`
+	Alternatives     []Candidate   `json:"alternatives"`
+	Evidence         Evidence      `json:"evidence"`
+	Policy           string        `json:"policy"`
+	PolicyDigest     string        `json:"policy_digest"`
+	CheckedAt        time.Time     `json:"checked_at"`
+	Details          *Details      `json:"details,omitempty"`
+	Error            *ReportError  `json:"error,omitempty"`
+	Installation     *Installation `json:"installation,omitempty"`
 }
 
 type Installation struct {
@@ -134,6 +137,7 @@ type Source struct {
 	Attempts    int       `json:"attempts"`
 }
 type Finding struct {
+	Warnings         []string `json:"warnings,omitempty"`
 	cargoMaintenance *cargoMaintenanceProof
 	Version          string                `json:"version"`
 	Reasons          []string              `json:"reasons"`

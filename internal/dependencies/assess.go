@@ -49,7 +49,11 @@ func evaluateRelease(v Version, advisories []Advisory, osvErr error, e TrustEvid
 	if v.PublishedAt.IsZero() || v.PublishedAt.After(now) {
 		f.Missing = append(f.Missing, "PUBLICATION_TIME")
 	} else if daysOld(now, v.PublishedAt) < int64(p.MinAgeDays) {
-		f.Reasons = append(f.Reasons, "RELEASE_TOO_NEW")
+		if p.ID == PackageAdvicePolicyID {
+			f.Missing = append(f.Missing, "RELEASE_TOO_NEW")
+		} else {
+			f.Reasons = append(f.Reasons, "RELEASE_TOO_NEW")
+		}
 	}
 	if v.Deprecated {
 		f.Reasons = append(f.Reasons, "DEPRECATED_RELEASE")
@@ -100,6 +104,9 @@ func evaluateRelease(v Version, advisories []Advisory, osvErr error, e TrustEvid
 		identity = "unknown"
 	}
 	f.Evidence = &Evidence{Identity: identity, Stars: e.Stars, Maintainers: maintainers, Advisories: f.Advisories, Missing: f.Missing, Maintenance: maintenance}
+	if p.ID == PackageAdvicePolicyID {
+		f.Warnings = packageAdviceWarnings(e, p, now)
+	}
 	return f
 }
 
@@ -185,10 +192,14 @@ func (c *Client) assess(ctx context.Context, system, name string, requested *str
 	}
 	r.Package = system + ":" + canonical
 	registryDescriptionSet := false
+	var adviceOwners *registryAuthorityObservation
 	versions := []string{}
 	catalogUnavailable := map[string]bool{}
 	for _, v := range pack.Versions {
 		if _, ok := stableVersion(system, v.Key.Version); ok {
+			if p.ID == PackageAdvicePolicyID && !v.PublishedAt.IsZero() && (v.PublishedAt.After(now) || daysOld(now, v.PublishedAt) < int64(p.MinAgeDays)) {
+				continue
+			}
 			versions = append(versions, v.Key.Version)
 		} else if !knownPrerelease(system, v.Key.Version) && !v.Deprecated {
 			if system == "pypi" {
@@ -225,6 +236,9 @@ func (c *Client) assess(ctx context.Context, system, name string, requested *str
 		filtered := []string{*requested}
 		for _, v := range versions {
 			if v != *requested {
+				if p.ID == PackageAdvicePolicyID && !newer(system, v, *requested) {
+					continue
+				}
 				filtered = append(filtered, v)
 			}
 		}
@@ -257,16 +271,37 @@ func (c *Client) assess(ctx context.Context, system, name string, requested *str
 			r.Details.LimitReached = true
 			break
 		}
+		var advisories []Advisory
+		var osvErr error
+		if p.ID == PackageAdvicePolicyID {
+			advisories, osvErr = c.OSV(ctx, systems[system], name, version, &r.Details.Sources)
+		}
 		v, err := c.Version(ctx, system, name, version, &r.Details.Sources)
 		if err != nil || v.Key.Name != pack.PackageKey.Name || v.Key.Version != version || !strings.EqualFold(v.Key.System, system) {
-			r.Details.Candidates = append(r.Details.Candidates, Finding{Version: version, Decision: Unknown, Reasons: []string{}, Missing: []string{"VERSION_LOOKUP"}, Advisories: []string{}})
+			f := Finding{Version: version, Decision: Unknown, Reasons: []string{}, Missing: []string{"VERSION_LOOKUP"}, Advisories: []string{}}
+			if p.ID == PackageAdvicePolicyID {
+				f = evaluateRelease(Version{Key: VersionKey{System: system, Name: name, Version: version}}, advisories, osvErr, TrustEvidence{}, p, now)
+				f.Missing = unique(append(f.Missing, "VERSION_LOOKUP"))
+				f.Evidence.Missing = f.Missing
+			}
+			r.Details.Candidates = append(r.Details.Candidates, f)
 			continue
 		}
 
-		advisories, osvErr := c.OSV(ctx, systems[system], name, version, &r.Details.Sources)
+		if p.ID != PackageAdvicePolicyID {
+			advisories, osvErr = c.OSV(ctx, systems[system], name, version, &r.Details.Sources)
+		}
 		e, npm, description, releaseReasons := c.releaseEvidence(ctx, system, name, version, &r.Details.Sources)
 		c.fillRepository(ctx, v, &e, &r, cache)
-		c.fillMaintenance(ctx, system, v.Key.Name, &e, p, now, &r, cache)
+		if p.ID == PackageAdvicePolicyID {
+			if adviceOwners == nil {
+				adviceOwners = c.registryAuthorities(ctx, system, name, &r.Details.Sources)
+				r.Details.Maintenance = append(r.Details.Maintenance, adviceOwners.detail())
+			}
+			e.registryAuthority = adviceOwners
+		} else {
+			c.fillMaintenance(ctx, system, v.Key.Name, &e, p, now, &r, cache)
+		}
 		e.NameScreened, e.NameConflict = screenName(system, name)
 		resolution := ""
 		inventory := project != nil && project.System == "pypi" && project.InventoryComplete && project.runtime[name] == version
@@ -347,9 +382,22 @@ func (c *Client) fillRepository(ctx context.Context, v Version, e *TrustEvidence
 			r.Description = evidence.RepositoryDescription
 		}
 	}
-	card, err := c.Scorecard(ctx, repo, &r.Details.Sources)
-	if err == nil && strings.EqualFold(card.Repo.Name, repo) && !card.Date.IsZero() {
-		evidence.Scorecards = append(evidence.Scorecards, card)
+	if r.Policy == PackageAdvicePolicyID && evidence.Stars == nil {
+		var public struct {
+			FullName    string `json:"full_name"`
+			Stars       *int   `json:"stargazers_count"`
+			Description string `json:"description"`
+		}
+		if c.read(ctx, "github-public", "https://api.github.com/repos/"+strings.TrimPrefix(repo, "github.com/"), nil, &public, &r.Details.Sources) == nil && strings.EqualFold("github.com/"+public.FullName, repo) {
+			evidence.Stars = public.Stars
+			evidence.RepositoryDescription = Description(public.Description)
+		}
+	}
+	if r.Policy != PackageAdvicePolicyID || len(evidence.Scorecards) == 0 {
+		card, err := c.Scorecard(ctx, repo, &r.Details.Sources)
+		if err == nil && strings.EqualFold(card.Repo.Name, repo) && !card.Date.IsZero() {
+			evidence.Scorecards = append(evidence.Scorecards, card)
+		}
 	}
 	cache[repo] = evidence
 	e.Stars = evidence.Stars

@@ -36,6 +36,9 @@ func finishAssessment(r *Report, published map[string]time.Time, now time.Time) 
 			continue
 		}
 		candidate := Candidate{Version: f.Version, AgeDays: daysOld(now, date), Compatibility: "constraints-satisfied"}
+		if r.Policy == PackageAdvicePolicyID {
+			candidate.Compatibility = "package-only"
+		}
 		if r.Recommendation == nil {
 			if !higherUnknown {
 				r.Recommendation = &candidate
@@ -85,6 +88,12 @@ func finishAssessment(r *Report, published map[string]time.Time, now time.Time) 
 	} else {
 		r.Evidence.Missing = append([]string{}, summary.Missing...)
 		r.Evidence.Advisories = append([]string{}, summary.Advisories...)
+	}
+	if r.Policy == PackageAdvicePolicyID {
+		r.Warnings = append([]string{}, summary.Warnings...)
+		if r.Decision == Deny && r.Requested == nil {
+			r.Reasons = unique(append(r.Reasons, summary.Reasons...))
+		}
 	}
 	if r.Decision == Unknown && r.Details.LimitReached {
 		r.Evidence.Missing = unique(append(r.Evidence.Missing, "CANDIDATE_SEARCH_INCOMPLETE"))

@@ -293,7 +293,30 @@ yanked can be excluded from recommendation ordering; `--explain` records it unde
 `catalog_exclusions`. Present or unresolved entries remain blocking. Exact-version
 checks preserve the original string and still assess the requested release.
 
-Npm checks inspect local lockfiles v2/v3 without executing tooling. They support an
+Npm now uses package-level policy `package-advice-v1`. It checks direct advisories,
+release age/lifecycle, repository identity/reputation and the current registry owner
+roster without reading a manifest/lockfile, resolving dependencies or querying
+privileged GitHub maintenance feeds. Missing maintainer activity or Scorecard data
+is a warning; a known single registry owner or fewer than 100 verified-repository
+stars denies adoption. Uncorroborated repository identity stays unknown and may
+include a mature advisory-clean `candidate_version`. Reports label coverage
+`direct-package-only`; recommendations use compatibility `package-only`.
+
+```sh
+gh flarebyte dep check npm lodash --json
+gh flarebyte dep install npm lodash
+```
+
+Npm installation delegates the recommended exact version to
+`npm install --save-exact -- NAME@VERSION` in the invocation's working directory.
+An explicit version must itself pass the check; it is never silently replaced.
+Native stdout and stderr stream unchanged to stdout; stdin, normal npm configuration
+and environment are inherited, and the native exit status is preserved. `--json`
+and `--explain` are check-only for npm. A denied/unknown assessment starts no tool.
+Npm owns hooks, resolution and file changes; there is no staging, rollback or
+transitive-installation safety claim. Other ecosystems retain their existing paths.
+
+The retained legacy npm assessor inspects local lockfiles v2/v3 without executing tooling. They support an
 already locked runtime version or a dependency-free addition that preserves existing
 versions and peer constraints. Dependency-free runtime packages can also be upgraded
 when both versions have no outgoing dependency or peer edges, no nested subtree
@@ -425,7 +448,7 @@ changes. Both the project and every crate need compatible declared Rust minimums
 Unsupported contexts fail closed. Freshness, policy, input and target checks run
 again before commit; concurrent edits trigger rollback or retained recovery data.
 
-Policy `conservative-v2` requires 100 stars, two active accounts with corroborated
+The retained strict policy `conservative-v2` requires 100 stars, two active accounts with corroborated
 maintenance authority and a Scorecard scan no older than 30 days. Individual Scorecard minimums
 are Branch-Protection 6, Code-Review 7, Dangerous-Workflow 10, Maintained 5 and
 Token-Permissions 8. Scores are evaluated from one applicable snapshot. Public
@@ -447,9 +470,10 @@ at most 100 recent releases and rechecks the owner roster before qualifying the
 evidence. Two current owners must each have a matched recent upload. Teams, unrelated
 publishers, stale activity and incomplete evidence do not qualify; insufficient
 evidence stays unknown, without a single-developer claim. Distinct accounts do not
-prove distinct people. npm/PyPI retain the existing authority path.
+prove distinct people. The strict PyPI and retained legacy npm paths keep the
+existing authority checks; default npm advice uses the lighter policy above.
 
-When that path cannot establish active maintenance, npm/PyPI checks also report
+When the strict path cannot establish active maintenance, it also reports
 current registry roles as context. npm uses the package's current top-level owner
 list; PyPI uses `ownership.roles`. Author credits, version-level maintainer fields
 and unverified publisher names are ignored. `evidence.maintenance` reports observed
@@ -467,8 +491,8 @@ policy approvals from being reused for installation. All other safety gates appl
 Checks recommend versions only when every required check passes. Unsupported
 ordering or unresolved newer candidates prevent a newest-version recommendation.
 
-`gh flarebyte dep install npm lodash` assesses first and installs only a fully approved
-npm plan. The initial installer requires Node 24+, npm 10+, lockfile v3 and a supported
+The retained legacy npm installer (not the default npm command route) installs
+only a fully approved project plan. It requires Node 24+, npm 10+, lockfile v3 and a supported
 locked version, dependency-free addition or the guarded upgrade described above.
 Executable-bin packages, links, bundled
 dependencies and embedded shrinkwrap are unsupported. Artifacts are downloaded from
@@ -477,20 +501,23 @@ unexpected metadata and expansion limits before native tooling runs. npm uses an
 isolated cache, offline mode and disabled hooks; credential variables and Node preload
 options are not inherited. Installation stages the tree before committing files and
 preserves recovery files if rollback encounters concurrent edits. Avoid running other
-package managers concurrently. Installation is limited to the npm and Cargo scopes
-described here.
+package managers concurrently. These retained strict execution components cover the limited npm and Cargo
+scopes described here; default npm delegation is described above.
 
 `--explain` reports candidate findings, grouped advisories, source timestamps,
 concrete npm plans and transitive paths. JSON reports
 `scope: "project-resolution"` only for supported plans; partial package findings
-use `scope: "package"` and cannot approve a project installation. Provider work is
+use `scope: "package"`. Npm package advice authorizes native delegation only; it
+does not approve or verify the resulting project installation. Provider work is
 bounded to 128 requests and 32 MiB of input per assessment, with one bounded retry
 for transient HTTP statuses. Exhausted budgets remain unknown.
 
 Dependency exit codes are `0` for approval/success,
 `1` for policy denial, `2` for invalid input/configuration or an unindexed exact
 version, `8` for insufficient evidence, `9` for unsupported coverage/installation,
-and `10` for output/operational failure. Existing command exit codes are unchanged.
+and `10` for output/operational failure. After npm starts, its native exit status
+is returned instead; interrupted/cancelled delegation returns 130. Other existing
+command exit codes are unchanged.
 
 ### Dart
 

@@ -134,19 +134,11 @@ func TestDependencyNPMOfflineUpgradeIntegration(t *testing.T) {
 	}
 }
 
-func TestDepInstallCommandApproved(t *testing.T) {
-	_, r, b := approvedDependencyInstall(t)
+func TestLegacyNPMInstallApproved(t *testing.T) {
+	root, r, b := approvedDependencyInstall(t)
 	stubDependencyNative(t, b, "success")
-	old := assessDependency
-	t.Cleanup(func() { assessDependency = old })
-	assessDependency = func(_ context.Context, _ string, _ string, _ string, _ *string, _ dependencies.Policy, _ time.Time) dependencies.Report {
-		return r
-	}
-	var out, stderr bytes.Buffer
-	result := Run([]string{"dep", "install", "npm", "fixture-lib", "--json"}, &out, &stderr)
-	var report dependencies.Report
-	if result.ExitCode != 0 || stderr.Len() != 0 || json.Unmarshal(out.Bytes(), &report) != nil || report.Installation == nil || report.Installation.Version != "1.0.0" {
-		t.Fatalf("%+v %s %s", result, out.String(), stderr.String())
+	if err := installRecommendedDependency(context.Background(), root, &r); err != nil || r.Installation == nil || r.Installation.Version != "1.0.0" {
+		t.Fatalf("legacy install: %v %+v", err, r.Installation)
 	}
 }
 

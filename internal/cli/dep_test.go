@@ -57,7 +57,6 @@ func TestDepCommands(t *testing.T) {
 		code             int
 	}{
 		{"check", dependencies.Unknown, 8}, {"check", dependencies.Deny, 1}, {"check", dependencies.Allow, 0},
-		{"install", dependencies.Unknown, 9}, {"install", dependencies.Allow, 9}, {"install", dependencies.Deny, 1},
 	} {
 		t.Run(tt.action+tt.decision, func(t *testing.T) {
 			root := localDependencyRepo(t, testConfigCue()+"\ndependencies: { minAgeDays: 30 }\n")
@@ -101,7 +100,7 @@ func TestDepOutputAndInput(t *testing.T) {
 		{[]string{"dep", "check", "npm", "pkg", "--explain"}, 8, false},
 		{[]string{"dep", "check", "pub", "archive", "--json"}, 9, true},
 		{[]string{"dep", "check", "npm", "pkg@123", "--json"}, 2, true},
-		{[]string{"dep", "install", "npm", "pkg@1.2.3", "--json"}, 2, true},
+		{[]string{"dep", "install", "npm", "pkg@1.2.3", "--json"}, 2, false},
 		{[]string{"dep", "check", "npm", "pkg@^1", "--json"}, 2, true},
 		{[]string{"dep", "check", "bad", "pkg", "--json"}, 2, true},
 		{[]string{"dep", "check", "npm", "pkg@^1"}, 2, false},
@@ -211,7 +210,7 @@ func TestDepWriteFailures(t *testing.T) {
 	}
 }
 
-func TestDepNeverApprovesPackageOnlyEvidence(t *testing.T) {
+func TestDepLegacyStillRequiresProjectEvidence(t *testing.T) {
 	localDependencyRepo(t, "")
 	stubDependencyAssessment(t, dependencies.Allow)
 	prior := assessDependency
@@ -221,7 +220,7 @@ func TestDepNeverApprovesPackageOnlyEvidence(t *testing.T) {
 		return r
 	}
 	var out bytes.Buffer
-	r := runDependency(context.Background(), "check", "npm", "pkg", true, false, &out, io.Discard)
+	r := runDependency(context.Background(), "check", "cargo", "pkg", true, false, &out, io.Discard)
 	if r.ExitCode != ExitDependencyUnknown || !strings.Contains(out.String(), "PROJECT_RESOLUTION") {
 		t.Fatalf("%+v %s", r, out.String())
 	}
