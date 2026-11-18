@@ -11,7 +11,7 @@ import (
 const PackageAdvicePolicyID = "package-advice-v1"
 
 func SupportsPackageAdvice(system string) bool {
-	return system == "npm" || system == "go" || system == "maven" || system == "pypi"
+	return system == "npm" || system == "go" || system == "maven" || system == "pypi" || system == "cargo"
 }
 
 func PackageAdvicePolicy(days int) Policy {
@@ -76,7 +76,7 @@ func (e TrustEvidence) evaluatePackageAdvice(p Policy) ([]string, []string) {
 	} else {
 		missing = append(missing, "REPOSITORY_REPUTATION")
 	}
-	if o := e.registryAuthority; o != nil && o.known && o.organization == "" && len(o.roles) == 1 {
+	if o := e.registryAuthority; o != nil && o.known && o.organization == "" && !o.opaqueAuthority && len(o.roles) == 1 {
 		reasons = append(reasons, "SINGLE_REGISTRY_OWNER")
 	}
 	return unique(reasons), unique(missing)
@@ -84,7 +84,7 @@ func (e TrustEvidence) evaluatePackageAdvice(p Policy) ([]string, []string) {
 
 func packageAdviceWarnings(e TrustEvidence, p Policy, now time.Time) []string {
 	warnings := []string{"MAINTAINER_ACTIVITY_UNKNOWN"}
-	if e.registryAuthority == nil || !e.registryAuthority.known || len(e.registryAuthority.roles) == 0 || e.registryAuthority.organization != "" {
+	if e.registryAuthority == nil || !e.registryAuthority.known || len(e.registryAuthority.roles) == 0 || e.registryAuthority.organization != "" || e.registryAuthority.opaqueAuthority {
 		warnings = append(warnings, "MAINTAINER_COUNT_UNKNOWN")
 	}
 	if len(e.Scorecards) == 0 {

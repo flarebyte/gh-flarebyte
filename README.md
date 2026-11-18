@@ -381,6 +381,27 @@ without pip fallback or tool installation. uv owns Python selection, compatibili
 resolution, lockfile changes and backend execution. Retained deep Python inspection
 components below are not prerequisites for this default workflow.
 
+Rust/Cargo now uses the shared package-advice policy and native runner. Checks
+reuse exact crates.io release/yanking evidence, direct advisories and repository
+reputation without inspecting Cargo.toml/Cargo.lock, computing features/MSRV,
+reading archives or staging an SDK. Current owner context is fetched once; no
+publisher-history or privileged activity investigation is required. A confirmed
+single user owner denies adoption. Teams, incomplete/ambiguous rosters and unknown
+team membership remain unknown-count warnings rather than single-developer claims.
+
+```sh
+gh flarebyte dep check cargo serde --json
+gh flarebyte dep install cargo serde
+```
+
+Installation delegates `cargo add NAME@=VERSION` in the caller's directory using
+normal Cargo/Rustup configuration, stdin and raw native output/status. Explicit
+versions must pass their own check; `--json`/`--explain` are check-only. Missing
+Cargo fails without tool bootstrap. Cargo owns feature/workspace handling,
+resolution, lockfile updates and any toolchain/compatibility failures. The strict
+Cargo archive/staging/install components below are retained separately and do not
+gate this default path.
+
 The retained legacy npm assessor inspects local lockfiles v2/v3 without executing tooling. They support an
 already locked runtime version or a dependency-free addition that preserves existing
 versions and peer constraints. Dependency-free runtime packages can also be upgraded
@@ -455,7 +476,7 @@ conditions, native targets and unused lock entries keep it incomplete. Closure
 does not change `project.complete`, resolve an environment, recommend a version
 or approve installation; vulnerabilities and other security failures still deny.
 
-Cargo checks inspect `Cargo.toml` and lockfiles v3/v4 for single-package crates.io
+The retained legacy Cargo assessor inspects `Cargo.toml` and lockfiles v3/v4 for single-package crates.io
 projects and already locked runtime dependencies. Every locked crate is assessed,
 including build/development dependencies, as a conservative superset rather than
 an activated target/feature graph. Checks compare registry SHA-256 checksums and
@@ -467,15 +488,15 @@ resolution and Rust compiler requirements can leave the verdict unknown. Cargo
 bare versions use caret semantics; unsupported ranges remain blocking. Checks
 never execute Cargo or package code.
 
-If `[package].rust-version` is declared, Cargo checks compare each locked crate's
-published minimum Rust version against that baseline. A newer requirement denies
+In that retained path, each locked crate's declared minimum Rust version is compared
+with the project's `[package].rust-version` baseline. A newer requirement denies
 with `RUST_VERSION_INCOMPATIBLE`; a missing baseline or unrecognised requirement
 stays unknown. Invalid edition/baseline combinations are blocked. `--explain`
 includes `runtime_baseline` and per-crate `runtime` evidence with the basis
 `manifest-rust-version`. This compares declared requirements; it does not verify
 the installed compiler, compilation or feature activation.
 
-Cargo checks now resolve a bounded default-feature union, including explicit
+The retained Cargo components resolve a bounded default-feature union, including explicit
 features, disabled defaults, optional dependencies, renamed crates and forwarding.
 `--explain` includes `project.features` with enabled names, resolution status and
 any minimum Cargo syntax requirement. Cycles, ambiguous mappings, missing metadata
@@ -499,7 +520,7 @@ credentials/options/wrappers, rejects ancestor Cargo configuration and Rustup
 proxies, and checks the actual Rust version against declared requirements. It
 does not compile packages.
 
-`gh flarebyte dep install cargo <crate>` now supports an already locked runtime
+The retained legacy Cargo installer supports an already locked runtime
 dependency in a single-package project with default `src/lib.rs` and/or
 `src/main.rs` targets. It validates the original pinned manifest and target shape
 offline, then changes only that dependency's version value to `=recommended-version`.
@@ -529,14 +550,14 @@ role data stays unknown, and contributor counts do not substitute for authority.
 That endpoint requires repository write/maintain/admin privileges and, for an
 organization repository, organization membership. Authentication alone cannot
 close this evidence gap for arbitrary third-party packages.
-Cargo additionally supports anonymous registry evidence: current crates.io user-owner
+The retained strict Cargo path additionally supports anonymous registry evidence: current crates.io user-owner
 IDs matched to release `published_by.id` records within the last 180 days. It samples
 at most 100 recent releases and rechecks the owner roster before qualifying the
 evidence. Two current owners must each have a matched recent upload. Teams, unrelated
 publishers, stale activity and incomplete evidence do not qualify; insufficient
 evidence stays unknown, without a single-developer claim. Distinct accounts do not
-prove distinct people. The retained strict PyPI/npm components keep the
-existing authority checks; default npm advice uses the lighter policy above.
+prove distinct people. Retained strict components keep these authority checks;
+default package advice uses the lighter policy above.
 
 When the strict path cannot establish active maintenance, it also reports
 current registry roles as context. npm uses the package's current top-level owner
@@ -547,7 +568,7 @@ the account/role list and opaque organization access. These observations cannot
 satisfy the active-maintainer gate or independently permit installation. An empty
 organization-managed role list stays unknown, without a zero-maintainer claim.
 
-Compact Cargo reports can include `evidence.maintenance` with the basis
+Retained strict Cargo reports can include `evidence.maintenance` with the basis
 `cargo-registry-publishers` and observed authority/active-authority counts.
 `--explain` adds registry account IDs, matched releases and remaining gaps under
 `details.maintenance`. Public evidence is cached per crate, never borrowed from
@@ -580,7 +601,7 @@ for transient HTTP statuses. Exhausted budgets remain unknown.
 Dependency exit codes are `0` for approval/success,
 `1` for policy denial, `2` for invalid input/configuration or an unindexed exact
 version, `8` for insufficient evidence, `9` for unsupported coverage/installation,
-and `10` for output/operational failure. After npm, Go or uv starts, the native exit status
+and `10` for output/operational failure. After npm, Cargo, Go or uv starts, the native exit status
 is returned instead; interrupted/cancelled delegation returns 130. Other existing
 command exit codes are unchanged.
 

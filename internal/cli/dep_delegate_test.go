@@ -67,6 +67,10 @@ func stubPackageAdviceAPI(t *testing.T, vulnerable bool) {
 				body = map[string]any{"info": map[string]string{"name": name}, "ownership": map[string]any{"roles": []any{map[string]string{"role": "Owner", "user": "one"}, map[string]string{"role": "Maintainer", "user": "two"}}, "organization": nil}}
 			case req.URL.Host == "pypi.org" && req.URL.Path == "/pypi/"+name+"/"+selected+"/json":
 				body = map[string]any{"info": map[string]string{"name": name, "version": selected, "summary": "Fixture", "requires_python": ">=999"}, "urls": []any{map[string]any{"filename": "fixture.whl", "yanked": false}}}
+			case req.URL.Host == "crates.io" && strings.HasSuffix(req.URL.Path, "/owners"):
+				body = map[string]any{"users": []any{map[string]any{"id": 1, "login": "one", "kind": "user"}, map[string]any{"id": 2, "login": "two", "kind": "user"}}}
+			case req.URL.Host == "crates.io":
+				body = map[string]any{"version": map[string]any{"crate": name, "num": selected, "description": "Fixture", "yanked": false}}
 			default:
 				t.Fatal("unexpected request", req.URL)
 			}
@@ -141,6 +145,9 @@ func testPackageAdviceAndDelegation(t *testing.T, system, name, version string) 
 				}
 				if system == "pypi" {
 					expectedArgs = "add\n" + name + "==" + version + "\n"
+				}
+				if system == "cargo" {
+					expectedArgs = "add\n" + name + "@=" + version + "\n"
 				}
 				b, err := os.ReadFile("native-args")
 				if err != nil || string(b) != expectedArgs {

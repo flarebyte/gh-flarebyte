@@ -129,16 +129,20 @@ func runDependency(ctx context.Context, action, system, arg string, jsonOutput, 
 		if err != nil {
 			return dependencyError(report.Package, "INSTALL_FAILED", err, ExitDependencyFailure, false, stdout, stderr)
 		}
-		if system == "go" {
+		switch system {
+		case "npm":
+			return delegateNPM(ctx, dir, name, selected, os.Stdin, stdout, stderr)
+		case "go":
 			return delegateGo(ctx, dir, name, selected, os.Stdin, stdout, stderr)
-		}
-		if system == "pypi" {
+		case "pypi":
 			return delegatePyPI(ctx, dir, name, selected, os.Stdin, stdout, stderr)
-		}
-		if system == "maven" {
+		case "cargo":
+			return delegateCargo(ctx, dir, name, selected, os.Stdin, stdout, stderr)
+		case "maven":
 			return printMavenDependency(dir, name, selected, stdout, stderr)
+		default:
+			return Result{ExitCode: ExitDependencyUnsupported}
 		}
-		return delegateNPM(ctx, dir, name, selected, os.Stdin, stdout, stderr)
 	}
 	if action == "install" && code == ExitOK {
 		if err := installDependency(ctx, root, &report); err != nil {

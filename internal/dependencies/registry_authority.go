@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"net/url"
 	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -16,6 +17,7 @@ type registryAuthorityObservation struct {
 	system, name, basis, organization string
 	roles                             []RegistryRole
 	known                             bool
+	opaqueAuthority                   bool
 	missing                           []string
 }
 
@@ -37,11 +39,42 @@ func (c *Client) registryAuthorities(ctx context.Context, system, name string, s
 	o := &registryAuthorityObservation{system: system, name: name, basis: system + "-registry-roles", roles: []RegistryRole{}, missing: []string{"REGISTRY_ACTIVE_AUTHORITY_UNSUPPORTED"}}
 	fail := func(code string) *registryAuthorityObservation { o.missing = unique(append(o.missing, code)); return o }
 	parsed, version, err := Parse(system, name)
-	if err != nil || version != nil || parsed != name || system != "npm" && system != "pypi" {
+	if err != nil || version != nil || parsed != name || system != "npm" && system != "pypi" && system != "cargo" {
 		return fail("REGISTRY_AUTHORITY_UNSUPPORTED")
 	}
 	var roles []RegistryRole
 	switch system {
+	case "cargo":
+		o.basis = "cargo-registry-owners"
+		var body struct {
+			Users *[]cargoOwner `json:"users"`
+		}
+		if c.read(ctx, "cargo-authority", "https://crates.io/api/v1/crates/"+url.PathEscape(name)+"/owners", nil, &body, sources) != nil {
+			return fail("REGISTRY_AUTHORITY_LOOKUP")
+		}
+		if body.Users == nil || len(*body.Users) > 1000 {
+			return fail("REGISTRY_AUTHORITY_SCHEMA")
+		}
+		seen := map[string]bool{}
+		logins := map[string]int64{}
+		for _, owner := range *body.Users {
+			key := owner.Kind + ":" + strconv.FormatInt(owner.ID, 10)
+			if owner.ID <= 0 || owner.Login == "" || len(owner.Login) > 128 || seen[key] || owner.Kind != "user" && owner.Kind != "team" {
+				return fail("REGISTRY_AUTHORITY_SCHEMA")
+			}
+			seen[key] = true
+			if owner.Kind == "team" {
+				o.opaqueAuthority = true
+				o.missing = unique(append(o.missing, "REGISTRY_TEAM_MEMBERS_UNKNOWN"))
+				continue
+			}
+			login := strings.ToLower(owner.Login)
+			if previous, exists := logins[login]; exists && previous != owner.ID {
+				return fail("REGISTRY_AUTHORITY_SCHEMA")
+			}
+			logins[login] = owner.ID
+			roles = append(roles, RegistryRole{Account: owner.Login, Role: "Owner"})
+		}
 	case "npm":
 		o.basis = "npm-registry-owners"
 		var body struct {
@@ -120,7 +153,7 @@ func (c *Client) registryAuthorities(ctx context.Context, system, name string, s
 	sort.Slice(o.roles, func(i, j int) bool { return strings.ToLower(o.roles[i].Account) < strings.ToLower(o.roles[j].Account) })
 	o.known = true
 	if len(o.roles) == 0 {
-		if o.organization != "" {
+		if o.organization != "" || o.opaqueAuthority {
 			return fail("REGISTRY_ORGANIZATION_AUTHORITY")
 		}
 		return fail("REGISTRY_AUTHORITY_ROSTER_EMPTY")

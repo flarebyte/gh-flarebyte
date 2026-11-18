@@ -220,8 +220,8 @@ func TestDepLegacyStillRequiresProjectEvidence(t *testing.T) {
 		return r
 	}
 	var out bytes.Buffer
-	r := runDependency(context.Background(), "check", "cargo", "pkg", true, false, &out, io.Discard)
-	if r.ExitCode != ExitDependencyUnknown || !strings.Contains(out.String(), "PROJECT_RESOLUTION") {
+	r := runDependency(context.Background(), "check", "pub", "pkg", true, false, &out, io.Discard)
+	if r.ExitCode != ExitDependencyUnsupported || !strings.Contains(out.String(), "PROJECT_RESOLUTION") {
 		t.Fatalf("%+v %s", r, out.String())
 	}
 }

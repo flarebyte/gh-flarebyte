@@ -322,51 +322,32 @@ func TestCargoDependencyInstallIntegration(t *testing.T) {
 	}
 }
 
-func TestCargoDependencyCommand(t *testing.T) {
+func TestLegacyCargoDependencyInstallation(t *testing.T) {
 	for _, mode := range []string{"allow", "deny", "unsupported", "failure"} {
 		t.Run(mode, func(t *testing.T) {
 			root, r, blobs := approvedCargoInstall(t)
 			nativeMode := "success"
-			expected := ExitOK
 			switch mode {
 			case "deny":
 				r.Decision = dependencies.Deny
-				expected = ExitFailure
 			case "unsupported":
 				if err := os.WriteFile("build.rs", nil, 0600); err != nil {
 					t.Fatal(err)
 				}
-				expected = ExitDependencyUnsupported
 			case "failure":
 				nativeMode = "artifact"
-				expected = ExitDependencyFailure
 			}
 			stubCargoInstall(t, root, blobs, nativeMode)
-			old := assessDependency
-			t.Cleanup(func() { assessDependency = old })
-			assessDependency = func(context.Context, string, string, string, *string, dependencies.Policy, time.Time) dependencies.Report {
-				return r
+			err := installCargoDependency(context.Background(), root, &r)
+			if mode == "allow" {
+				if err != nil || r.Installation == nil || r.Installation.Version != "1.0.0" {
+					t.Fatal(err, r.Installation)
+				}
+			} else if err == nil || r.Installation != nil {
+				t.Fatal("legacy precondition bypassed", mode, err)
 			}
-			var stdout, stderr bytes.Buffer
-			result := Run([]string{"dep", "install", "cargo", "pkg", "--json"}, &stdout, &stderr)
-			if result.ExitCode != expected || stderr.Len() != 0 {
-				t.Fatal(result.ExitCode, stdout.String(), stderr.String())
-			}
-			var report dependencies.Report
-			if json.Unmarshal(stdout.Bytes(), &report) != nil {
-				t.Fatal("invalid JSON")
-			}
-			if mode == "allow" && (report.Installation == nil || report.Installation.Version != "1.0.0" || report.Decision != dependencies.Allow) {
-				t.Fatal(report)
-			}
-			if mode == "deny" && report.Decision != dependencies.Deny {
-				t.Fatal(report)
-			}
-			if mode == "unsupported" && (report.Error == nil || report.Error.Code != "INSTALL_UNSUPPORTED") {
-				t.Fatal(report)
-			}
-			if mode == "failure" && (report.Error == nil || report.Error.Code != "INSTALL_FAILED") {
-				t.Fatal(report)
+			if mode == "unsupported" && !errors.Is(err, dependencies.ErrInstallUnsupported) {
+				t.Fatal(err)
 			}
 		})
 	}
