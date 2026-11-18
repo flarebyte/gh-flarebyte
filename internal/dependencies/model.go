@@ -55,12 +55,13 @@ type Candidate struct {
 }
 
 type Evidence struct {
-	Identity    string               `json:"identity"`
-	Stars       *int                 `json:"stars"`
-	Maintainers string               `json:"maintainers"`
-	Advisories  []string             `json:"advisories"`
-	Missing     []string             `json:"missing"`
-	Maintenance *MaintenanceEvidence `json:"maintenance,omitempty"`
+	IdentityBasis string               `json:"identity_basis,omitempty"`
+	Identity      string               `json:"identity"`
+	Stars         *int                 `json:"stars"`
+	Maintainers   string               `json:"maintainers"`
+	Advisories    []string             `json:"advisories"`
+	Missing       []string             `json:"missing"`
+	Maintenance   *MaintenanceEvidence `json:"maintenance,omitempty"`
 }
 
 type MaintenanceEvidence struct {

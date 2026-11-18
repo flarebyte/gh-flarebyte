@@ -27,7 +27,7 @@ const (
 var assessDependency = func(ctx context.Context, root, system, name string, version *string, policy dependencies.Policy, now time.Time) dependencies.Report {
 	client := dependencies.NewClient()
 	client.GitHubToken = dependencyGitHubToken(root)
-	if system == "npm" {
+	if dependencies.SupportsPackageAdvice(system) {
 		return client.AssessPackage(ctx, system, name, version, policy, now)
 	}
 	return client.AssessLocal(ctx, root, system, name, version, policy, now)
@@ -71,10 +71,10 @@ func runDependency(ctx context.Context, action, system, arg string, jsonOutput, 
 	if err != nil {
 		return dependencyError(system+":"+arg, "INVALID_INPUT", err, ExitUsage, jsonOutput, stdout, stderr)
 	}
-	if action == "install" && system == "npm" && (jsonOutput || explain) {
-		return dependencyError(system+":"+name, "INVALID_INPUT", fmt.Errorf("npm install streams native output; --json and --explain are check-only"), ExitUsage, false, stdout, stderr)
+	if action == "install" && dependencies.SupportsPackageAdvice(system) && (jsonOutput || explain) {
+		return dependencyError(system+":"+name, "INVALID_INPUT", fmt.Errorf("%s install streams native output; --json and --explain are check-only", system), ExitUsage, false, stdout, stderr)
 	}
-	if action == "install" && version != nil && system != "npm" {
+	if action == "install" && version != nil && !dependencies.SupportsPackageAdvice(system) {
 		return dependencyError(system+":"+name, "INVALID_INPUT", fmt.Errorf("install selects a recommendation; use check for exact versions"), ExitUsage, jsonOutput, stdout, stderr)
 	}
 	root, err := dependencyRoot()
@@ -85,13 +85,13 @@ func runDependency(ctx context.Context, action, system, arg string, jsonOutput, 
 	if err != nil {
 		return dependencyError(system+":"+name, "INVALID_CONFIG", err, ExitUsage, jsonOutput, stdout, stderr)
 	}
-	if system == "npm" {
+	if dependencies.SupportsPackageAdvice(system) {
 		policy = dependencies.PackageAdvicePolicy(policy.MinAgeDays)
 	}
 	assessmentCtx, cancel := context.WithTimeout(ctx, 45*time.Second)
 	report := assessDependency(assessmentCtx, root, system, name, version, policy, time.Now().UTC())
 	cancel()
-	if system != "npm" && report.Decision == dependencies.Allow && report.Scope != "project-resolution" {
+	if !dependencies.SupportsPackageAdvice(system) && report.Decision == dependencies.Allow && report.Scope != "project-resolution" {
 		report.Decision = dependencies.Unknown
 		report.Recommendation = nil
 		report.Reasons = append(report.Reasons, "INSUFFICIENT_EVIDENCE")
@@ -110,14 +110,14 @@ func runDependency(ctx context.Context, action, system, arg string, jsonOutput, 
 	} else if system == "pub" || system == "swift" {
 		code = ExitDependencyUnsupported
 	}
-	if action == "install" && system == "npm" {
+	if action == "install" && dependencies.SupportsPackageAdvice(system) {
 		if code != ExitOK || report.Recommendation == nil || report.Scope != "package" || report.Policy != dependencies.PackageAdvicePolicyID || len(report.Evidence.Missing) > 0 {
 			if err := writeDependencyReport(stderr, report, false); err != nil {
 				return Result{ExitCode: ExitDependencyFailure, Err: err}
 			}
 			if code == ExitOK {
 				code = ExitDependencyUnknown
-				_, _ = fmt.Fprintln(stderr, "No complete package recommendation; npm was not started.")
+				_, _ = fmt.Fprintf(stderr, "No complete package recommendation; %s was not started.\n", system)
 			}
 			return Result{ExitCode: code}
 		}
@@ -128,6 +128,9 @@ func runDependency(ctx context.Context, action, system, arg string, jsonOutput, 
 		dir, err := os.Getwd()
 		if err != nil {
 			return dependencyError(report.Package, "INSTALL_FAILED", err, ExitDependencyFailure, false, stdout, stderr)
+		}
+		if system == "go" {
+			return delegateGo(ctx, dir, name, selected, os.Stdin, stdout, stderr)
 		}
 		return delegateNPM(ctx, dir, name, selected, os.Stdin, stdout, stderr)
 	}

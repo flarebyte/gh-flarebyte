@@ -19,21 +19,30 @@ import (
 
 func stubNPMExecutable(t *testing.T, script string) {
 	t.Helper()
+	stubDependencyExecutable(t, "npm", script)
+}
+
+func stubDependencyExecutable(t *testing.T, name, script string) {
+	t.Helper()
 	if runtime.GOOS == "windows" {
 		t.Skip("POSIX executable fixture")
 	}
 	dir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(dir, "npm"), []byte("#!/bin/sh\n"+script), 0755); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, name), []byte("#!/bin/sh\n"+script), 0755); err != nil {
 		t.Fatal(err)
 	}
 	t.Setenv("PATH", dir+string(os.PathListSeparator)+"/usr/bin"+string(os.PathListSeparator)+"/bin")
 }
 
-func stubNPMAdviceAPI(t *testing.T, vulnerable bool) {
+func stubPackageAdviceAPI(t *testing.T, vulnerable bool) {
 	t.Helper()
 	old := assessDependency
 	t.Cleanup(func() { assessDependency = old })
 	assessDependency = func(ctx context.Context, _ string, system, name string, v *string, p dependencies.Policy, now time.Time) dependencies.Report {
+		selected := "1.2.3"
+		if system == "go" {
+			selected = "v1.2.3"
+		}
 		client := &dependencies.Client{HTTP: cargoInstallHTTP(func(req *http.Request) (*http.Response, error) {
 			var body any
 			switch {
@@ -47,13 +56,13 @@ func stubNPMAdviceAPI(t *testing.T, vulnerable bool) {
 			case req.URL.Host == "api.deps.dev" && strings.Contains(req.URL.Path, "/projects/"):
 				body = map[string]any{"projectKey": map[string]string{"id": "github.com/org/repo"}, "starsCount": 1000}
 			case req.URL.Host == "api.deps.dev" && strings.Contains(req.URL.Path, "/versions/"):
-				body = dependencies.Version{Key: dependencies.VersionKey{System: "NPM", Name: name, Version: "1.2.3"}, PublishedAt: now.AddDate(-1, 0, 0), Attestations: []dependencies.Attestation{{Type: "https://slsa.dev/provenance/v1", Verified: true, SourceRepository: "https://github.com/org/repo", Commit: strings.Repeat("a", 40)}}}
+				body = dependencies.Version{Key: dependencies.VersionKey{System: strings.ToUpper(system), Name: name, Version: selected}, PublishedAt: now.AddDate(-1, 0, 0), Attestations: []dependencies.Attestation{{Type: "https://slsa.dev/provenance/v1", Verified: true, SourceRepository: "https://github.com/org/repo", Commit: strings.Repeat("a", 40)}}}
 			case req.URL.Host == "api.deps.dev":
-				body = map[string]any{"packageKey": map[string]string{"name": name}, "versions": []any{map[string]any{"versionKey": map[string]string{"version": "1.2.3"}}}}
+				body = map[string]any{"packageKey": map[string]string{"name": name}, "versions": []any{map[string]any{"versionKey": map[string]string{"version": selected}}}}
 			case req.URL.Host == "registry.npmjs.org" && req.URL.Path == "/pkg":
 				body = map[string]any{"name": name, "maintainers": []any{map[string]string{"name": "one"}, map[string]string{"name": "two"}}}
 			case req.URL.Host == "registry.npmjs.org":
-				body = map[string]any{"name": name, "version": "1.2.3", "description": "Fixture", "dependencies": map[string]string{"child": "^1"}}
+				body = map[string]any{"name": name, "version": selected, "description": "Fixture", "dependencies": map[string]string{"child": "^1"}}
 			default:
 				t.Fatal("unexpected request", req.URL)
 			}
@@ -68,6 +77,10 @@ func stubNPMAdviceAPI(t *testing.T, vulnerable bool) {
 }
 
 func TestDepNPMAdviceAndDelegation(t *testing.T) {
+	testPackageAdviceAndDelegation(t, "npm", "pkg", "1.2.3")
+}
+
+func testPackageAdviceAndDelegation(t *testing.T, system, name, version string) {
 	for _, mode := range []string{"check", "install", "exact", "blocked", "native failure", "flags"} {
 		t.Run(mode, func(t *testing.T) {
 			root := localDependencyRepo(t, "")
@@ -82,14 +95,14 @@ func TestDepNPMAdviceAndDelegation(t *testing.T) {
 			if mode == "native failure" {
 				exit = "37"
 			}
-			stubNPMExecutable(t, "printf '%s\\n' \"$@\" > native-args\nprintf '%s' \"$PWD\" > native-dir\nprintf 'native stdout\\n'\nprintf 'native stderr\\n' >&2\nexit "+exit+"\n")
-			stubNPMAdviceAPI(t, mode == "blocked")
-			args := []string{"dep", "install", "npm", "pkg"}
+			stubDependencyExecutable(t, system, "printf '%s\\n' \"$@\" > native-args\nprintf '%s' \"$PWD\" > native-dir\nprintf 'native stdout\\n'\nprintf 'native stderr\\n' >&2\nexit "+exit+"\n")
+			stubPackageAdviceAPI(t, mode == "blocked")
+			args := []string{"dep", "install", system, name}
 			if mode == "check" {
-				args = []string{"dep", "check", "npm", "pkg", "--json"}
+				args = []string{"dep", "check", system, name, "--json"}
 			}
 			if mode == "exact" {
-				args[3] = "pkg@1.2.3"
+				args[3] = name + "@" + version
 			}
 			if mode == "flags" {
 				args = append(args, "--json")
@@ -114,8 +127,12 @@ func TestDepNPMAdviceAndDelegation(t *testing.T) {
 				if r.ExitCode != want || out.String() != "native stdout\nnative stderr\n" || stderr.Len() != 0 {
 					t.Fatal(r, out.String(), stderr.String())
 				}
+				expectedArgs := "install\n--save-exact\n--\n" + name + "@" + version + "\n"
+				if system == "go" {
+					expectedArgs = "get\n" + name + "@" + version + "\n"
+				}
 				b, err := os.ReadFile("native-args")
-				if err != nil || string(b) != "install\n--save-exact\n--\npkg@1.2.3\n" {
+				if err != nil || string(b) != expectedArgs {
 					t.Fatal(string(b), err)
 				}
 				b, err = os.ReadFile("native-dir")

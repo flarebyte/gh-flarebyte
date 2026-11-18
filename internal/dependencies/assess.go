@@ -58,7 +58,9 @@ func evaluateRelease(v Version, advisories []Advisory, osvErr error, e TrustEvid
 	if v.Deprecated {
 		f.Reasons = append(f.Reasons, "DEPRECATED_RELEASE")
 	}
-	if system := strings.ToLower(v.Key.System); knownPrerelease(system, v.Key.Version) {
+	if p.ID == PackageAdvicePolicyID && strings.EqualFold(v.Key.System, "go") && goPseudoVersion.MatchString(v.Key.Version) {
+		f.Missing = append(f.Missing, "STABLE_VERSION_SEMANTICS")
+	} else if system := strings.ToLower(v.Key.System); knownPrerelease(system, v.Key.Version) {
 		f.Reasons = append(f.Reasons, "PRERELEASE")
 	} else if _, ok := stableVersion(system, v.Key.Version); !ok {
 		f.Missing = append(f.Missing, "STABLE_VERSION_SEMANTICS")
@@ -104,8 +106,12 @@ func evaluateRelease(v Version, advisories []Advisory, osvErr error, e TrustEvid
 		identity = "unknown"
 	}
 	f.Evidence = &Evidence{Identity: identity, Stars: e.Stars, Maintainers: maintainers, Advisories: f.Advisories, Missing: f.Missing, Maintenance: maintenance}
+	f.Evidence.IdentityBasis = e.IdentityBasis
 	if p.ID == PackageAdvicePolicyID {
 		f.Warnings = packageAdviceWarnings(e, p, now)
+		if strings.EqualFold(v.Key.System, "go") {
+			f.Warnings = unique(append(f.Warnings, "GO_RETRACTIONS_UNCHECKED"))
+		}
 	}
 	return f
 }
@@ -234,6 +240,11 @@ func (c *Client) assess(ctx context.Context, system, name string, requested *str
 			return r
 		}
 		filtered := []string{*requested}
+		if p.ID == PackageAdvicePolicyID {
+			if _, ok := stableVersion(system, *requested); !ok {
+				r.Details.RecommendationMissing = unique(append(r.Details.RecommendationMissing, "VERSION_ORDERING"))
+			}
+		}
 		for _, v := range versions {
 			if v != *requested {
 				if p.ID == PackageAdvicePolicyID && !newer(system, v, *requested) {
@@ -292,9 +303,12 @@ func (c *Client) assess(ctx context.Context, system, name string, requested *str
 			advisories, osvErr = c.OSV(ctx, systems[system], name, version, &r.Details.Sources)
 		}
 		e, npm, description, releaseReasons := c.releaseEvidence(ctx, system, name, version, &r.Details.Sources)
+		if p.ID == PackageAdvicePolicyID && system == "go" {
+			e.LifecycleKnown = true
+		} // Exact indexed release exists; retractions are explicitly not checked.
 		c.fillRepository(ctx, v, &e, &r, cache)
 		if p.ID == PackageAdvicePolicyID {
-			if adviceOwners == nil {
+			if system == "npm" && adviceOwners == nil {
 				adviceOwners = c.registryAuthorities(ctx, system, name, &r.Details.Sources)
 				r.Details.Maintenance = append(r.Details.Maintenance, adviceOwners.detail())
 			}
@@ -354,6 +368,9 @@ func (c *Client) assess(ctx context.Context, system, name string, requested *str
 
 func (c *Client) fillRepository(ctx context.Context, v Version, e *TrustEvidence, r *Report, cache map[string]TrustEvidence) {
 	repo, identity := versionRepository(v)
+	if r.Policy == PackageAdvicePolicyID && strings.EqualFold(v.Key.System, "go") {
+		repo, identity, e.IdentityBasis = goAdviceRepository(v.Key.Name, repo, identity)
+	}
 	e.Repository = repo
 	e.Identity = identity
 	if repo == "" {

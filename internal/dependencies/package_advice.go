@@ -1,4 +1,4 @@
-// purpose: Assess named npm releases without requiring proof of a local installation.
+// purpose: Assess named releases without requiring proof of a local installation.
 // responsibilities: Separate advisory adoption policy from retained strict installers.
 package dependencies
 
@@ -10,6 +10,8 @@ import (
 
 const PackageAdvicePolicyID = "package-advice-v1"
 
+func SupportsPackageAdvice(system string) bool { return system == "npm" || system == "go" }
+
 func PackageAdvicePolicy(days int) Policy {
 	p := DefaultPolicy(days)
 	p.ID = PackageAdvicePolicyID
@@ -19,8 +21,7 @@ func PackageAdvicePolicy(days int) Policy {
 }
 
 func (c *Client) AssessPackage(ctx context.Context, system, name string, requested *string, p Policy, now time.Time) Report {
-	// The first delivery slice deliberately supports npm only.
-	if system != "npm" || p.ID != PackageAdvicePolicyID {
+	if !SupportsPackageAdvice(system) || p.ID != PackageAdvicePolicyID {
 		r := NewReport(system, name, requested, p, now)
 		r.Reasons = []string{"UNSUPPORTED_PACKAGE_ADVICE"}
 		return r

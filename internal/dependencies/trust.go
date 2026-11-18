@@ -17,6 +17,7 @@ type TrustEvidence struct {
 	cargoMaintenance         *cargoMaintenanceProof
 	cargoMaintenanceChecked  bool
 	Identity                 string
+	IdentityBasis            string
 	Repository               string
 	Stars                    *int
 	IndependentMaintainers   *int

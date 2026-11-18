@@ -314,7 +314,30 @@ Native stdout and stderr stream unchanged to stdout; stdin, normal npm configura
 and environment are inherited, and the native exit status is preserved. `--json`
 and `--explain` are check-only for npm. A denied/unknown assessment starts no tool.
 Npm owns hooks, resolution and file changes; there is no staging, rollback or
-transitive-installation safety claim. Other ecosystems retain their existing paths.
+transitive-installation safety claim. Go delegation is described below; other ecosystems retain their existing paths.
+
+Go module checks now use the same package-advice policy and direct-package-only
+coverage. GitHub module paths corroborate their repository association with
+`evidence.identity_basis: "github-module-path"`; this is path-based evidence, not
+artifact provenance. Conflicting source associations deny; vanity paths remain
+unknown unless existing provenance corroborates them. Checks use deps.dev and OSV,
+without reading go.mod/go.sum, fetching vanity metadata or resolving a module graph.
+Maintainer counts remain unknown warnings. `GO_RETRACTIONS_UNCHECKED` makes clear
+that indexed availability/deprecation evidence does not establish retraction status.
+Pseudo-version ordering is unsupported: explicit pseudo-versions stay review and
+cannot authorize installation. Stable releases retain their exact `v` prefix and
+`+incompatible` suffix where supported.
+
+```sh
+gh flarebyte dep check go github.com/spf13/cobra --json
+gh flarebyte dep install go github.com/spf13/cobra
+```
+
+Go installation uses `go get MODULE@VERSION` through the same native runner as npm,
+with the caller's working directory, stdin, normal Go configuration/environment,
+raw output to stdout and native exit status. Go owns go.mod/go.sum updates,
+retraction warnings, toolchain selection and compatibility failures. Like npm,
+`--json` and `--explain` are check-only for Go. Other ecosystem paths are unchanged.
 
 The retained legacy npm assessor inspects local lockfiles v2/v3 without executing tooling. They support an
 already locked runtime version or a dependency-free addition that preserves existing
@@ -515,7 +538,7 @@ for transient HTTP statuses. Exhausted budgets remain unknown.
 Dependency exit codes are `0` for approval/success,
 `1` for policy denial, `2` for invalid input/configuration or an unindexed exact
 version, `8` for insufficient evidence, `9` for unsupported coverage/installation,
-and `10` for output/operational failure. After npm starts, its native exit status
+and `10` for output/operational failure. After npm or Go starts, the native exit status
 is returned instead; interrupted/cancelled delegation returns 130. Other existing
 command exit codes are unchanged.
 
