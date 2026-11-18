@@ -314,7 +314,7 @@ Native stdout and stderr stream unchanged to stdout; stdin, normal npm configura
 and environment are inherited, and the native exit status is preserved. `--json`
 and `--explain` are check-only for npm. A denied/unknown assessment starts no tool.
 Npm owns hooks, resolution and file changes; there is no staging, rollback or
-transitive-installation safety claim. Go delegation is described below; other ecosystems retain their existing paths.
+transitive-installation safety claim. Go and Python delegation are described below.
 
 Go module checks now use the same package-advice policy and direct-package-only
 coverage. GitHub module paths corroborate their repository association with
@@ -360,6 +360,27 @@ produce labelled manual guidance. No files are edited and no build tool is run.
 The printed version is an explicit request; native dependency mediation remains
 Maven/Gradle's responsibility. `--json` and `--explain` are check-only here too.
 
+Python/PyPI now uses the same package-advice policy and native runner. Package
+names are normalized; supported public epochs/post releases retain their exact
+version spelling. Checks use direct PyPI release/yanking evidence and available
+registry roles without inspecting pyproject.toml, pylock.toml, wheels, dependency
+markers or the local Python environment. Missing/null yanking evidence stays
+unknown. An organization with one visible account is not classified as a confirmed
+single-maintainer package; unknown counts remain warnings.
+
+```sh
+gh flarebyte dep check pypi requests --json
+gh flarebyte dep install pypi requests
+```
+
+Installation delegates `uv add NAME==VERSION` from the invocation directory with
+normal uv configuration/environment, stdin, raw stdout/stderr to stdout and native
+exit status. Names are canonicalized before constructing the literal argument;
+there is no shell. `--json` and `--explain` are check-only. Missing uv fails clearly
+without pip fallback or tool installation. uv owns Python selection, compatibility,
+resolution, lockfile changes and backend execution. Retained deep Python inspection
+components below are not prerequisites for this default workflow.
+
 The retained legacy npm assessor inspects local lockfiles v2/v3 without executing tooling. They support an
 already locked runtime version or a dependency-free addition that preserves existing
 versions and peer constraints. Dependency-free runtime packages can also be upgraded
@@ -373,7 +394,7 @@ conjunctions, bare partial versions (`1`, `1.2`), trailing wildcards and `||`
 alternatives. Every alternative must use supported syntax; prereleases remain gated.
 General upgrades and runtime/platform constraints may still require further evidence.
 
-PyPI checks can also audit a restricted `pyproject.toml`/`pylock.toml` inventory:
+The retained legacy PyPI assessor can audit a restricted `pyproject.toml`/`pylock.toml` inventory:
 exact root pins, lock format 1.0, and one public PyPI wheel with SHA-256 per
 package. Each locked version receives advisory checks; wheel URLs, filenames,
 hashes, optional sizes and yanking are corroborated with PyPI. A locked problem
@@ -385,10 +406,10 @@ dependency resolution or Python/platform compatibility: a clean inventory still
 returns `unknown`, with no recommended version or installation approval. Markers,
 extras, groups, alternate sources, source distributions and multiple wheel choices
 remain unsupported. The lock's informational dependency tables do not establish
-an installation graph. PyPI installation remains gated.
+an installation graph. These components do not implement a strict PyPI installer.
 
 For `project.requires-python = ">=3.9"` (or another numeric minor/patch lower
-bound), PyPI checks compare that declared baseline with the selected wheel's
+bound), the retained PyPI assessor compares that declared baseline with the selected wheel's
 `requires_python` and the lock's optional `requires-python`. A definite mismatch
 denies with `PYTHON_VERSION_INCOMPATIBLE` or
 `PYTHON_LOCK_BASELINE_INCOMPATIBLE`. Explained per-package `runtime` evidence uses
@@ -397,7 +418,7 @@ comparisons joined by commas; unsupported syntax or absent wheel evidence stays
 unknown. A compatible baseline does not verify the installed interpreter, the
 full supported Python range, wheel platform tags or dependency resolution.
 
-PyPI checks also read hashed per-wheel core metadata advertised by the public
+The retained PyPI components also read hashed per-wheel core metadata advertised by the public
 Simple API. They verify the selected wheel's URL and SHA-256, then download only
 its bounded `.metadata` sidecar and verify that separate SHA-256 and package
 identity. Unconditional dependency declarations are compared with the inventory;
@@ -405,7 +426,7 @@ missing dependencies or incompatible numeric constraints deny. Unresolved marker
 direct URLs and unsupported version syntax keep metadata evidence incomplete.
 Explained per-package `distribution` evidence reports its basis, hash, dependency
 count and status. This never downloads a wheel or resolves a new graph; a clean
-inventory still returns `unknown`, and installation remains gated.
+inventory still returns `unknown`; this retained path is separate from default uv delegation.
 
 Corroborated wheel filenames are also checked for package identity and generic
 Python tags against the declared lower bound. Pure-Python alternatives such as
@@ -424,7 +445,7 @@ applicable conditions remain unresolved. Platform and extras values are never
 inferred from the CLI host. Explained `distribution` evidence includes active,
 inactive and unresolved dependency counts with marker basis
 `manifest-python-range`. These counts describe applicability; all locked packages
-retain their security assessments, and installation remains gated.
+retain their security assessments within this retained inspection path.
 
 Explained `project.python_graph` now reports structural closure separately. A
 `closed` graph requires registry-bound hashed metadata and compatible generic
@@ -514,7 +535,7 @@ at most 100 recent releases and rechecks the owner roster before qualifying the
 evidence. Two current owners must each have a matched recent upload. Teams, unrelated
 publishers, stale activity and incomplete evidence do not qualify; insufficient
 evidence stays unknown, without a single-developer claim. Distinct accounts do not
-prove distinct people. The strict PyPI and retained legacy npm paths keep the
+prove distinct people. The retained strict PyPI/npm components keep the
 existing authority checks; default npm advice uses the lighter policy above.
 
 When the strict path cannot establish active maintenance, it also reports
@@ -559,7 +580,7 @@ for transient HTTP statuses. Exhausted budgets remain unknown.
 Dependency exit codes are `0` for approval/success,
 `1` for policy denial, `2` for invalid input/configuration or an unindexed exact
 version, `8` for insufficient evidence, `9` for unsupported coverage/installation,
-and `10` for output/operational failure. After npm or Go starts, the native exit status
+and `10` for output/operational failure. After npm, Go or uv starts, the native exit status
 is returned instead; interrupted/cancelled delegation returns 130. Other existing
 command exit codes are unchanged.
 

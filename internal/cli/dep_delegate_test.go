@@ -63,6 +63,10 @@ func stubPackageAdviceAPI(t *testing.T, vulnerable bool) {
 				body = map[string]any{"name": name, "maintainers": []any{map[string]string{"name": "one"}, map[string]string{"name": "two"}}}
 			case req.URL.Host == "registry.npmjs.org":
 				body = map[string]any{"name": name, "version": selected, "description": "Fixture", "dependencies": map[string]string{"child": "^1"}}
+			case req.URL.Host == "pypi.org" && req.URL.Path == "/pypi/"+name+"/json":
+				body = map[string]any{"info": map[string]string{"name": name}, "ownership": map[string]any{"roles": []any{map[string]string{"role": "Owner", "user": "one"}, map[string]string{"role": "Maintainer", "user": "two"}}, "organization": nil}}
+			case req.URL.Host == "pypi.org" && req.URL.Path == "/pypi/"+name+"/"+selected+"/json":
+				body = map[string]any{"info": map[string]string{"name": name, "version": selected, "summary": "Fixture", "requires_python": ">=999"}, "urls": []any{map[string]any{"filename": "fixture.whl", "yanked": false}}}
 			default:
 				t.Fatal("unexpected request", req.URL)
 			}
@@ -95,7 +99,11 @@ func testPackageAdviceAndDelegation(t *testing.T, system, name, version string) 
 			if mode == "native failure" {
 				exit = "37"
 			}
-			stubDependencyExecutable(t, system, "printf '%s\\n' \"$@\" > native-args\nprintf '%s' \"$PWD\" > native-dir\nprintf 'native stdout\\n'\nprintf 'native stderr\\n' >&2\nexit "+exit+"\n")
+			executable := system
+			if system == "pypi" {
+				executable = "uv"
+			}
+			stubDependencyExecutable(t, executable, "printf '%s\\n' \"$@\" > native-args\nprintf '%s' \"$PWD\" > native-dir\nprintf 'native stdout\\n'\nprintf 'native stderr\\n' >&2\nexit "+exit+"\n")
 			stubPackageAdviceAPI(t, mode == "blocked")
 			args := []string{"dep", "install", system, name}
 			if mode == "check" {
@@ -130,6 +138,9 @@ func testPackageAdviceAndDelegation(t *testing.T, system, name, version string) 
 				expectedArgs := "install\n--save-exact\n--\n" + name + "@" + version + "\n"
 				if system == "go" {
 					expectedArgs = "get\n" + name + "@" + version + "\n"
+				}
+				if system == "pypi" {
+					expectedArgs = "add\n" + name + "==" + version + "\n"
 				}
 				b, err := os.ReadFile("native-args")
 				if err != nil || string(b) != expectedArgs {

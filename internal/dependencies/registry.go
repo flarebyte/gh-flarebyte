@@ -85,7 +85,7 @@ func (c *Client) releaseEvidence(ctx context.Context, system, name, version stri
 				Summary string `json:"summary"`
 			} `json:"info"`
 			URLs []struct {
-				Yanked   bool   `json:"yanked"`
+				Yanked   *bool  `json:"yanked"`
 				Filename string `json:"filename"`
 			} `json:"urls"`
 		}
@@ -105,7 +105,10 @@ func (c *Client) releaseEvidence(ctx context.Context, system, name, version stri
 					if file.Filename == "" {
 						e.LifecycleKnown = false
 					}
-					if !file.Yanked {
+					if file.Yanked == nil {
+						e.LifecycleKnown = false
+						e.Withdrawn = false
+					} else if !*file.Yanked {
 						e.Withdrawn = false
 					}
 				}

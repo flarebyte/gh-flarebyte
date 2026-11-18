@@ -132,6 +132,9 @@ func runDependency(ctx context.Context, action, system, arg string, jsonOutput, 
 		if system == "go" {
 			return delegateGo(ctx, dir, name, selected, os.Stdin, stdout, stderr)
 		}
+		if system == "pypi" {
+			return delegatePyPI(ctx, dir, name, selected, os.Stdin, stdout, stderr)
+		}
 		if system == "maven" {
 			return printMavenDependency(dir, name, selected, stdout, stderr)
 		}

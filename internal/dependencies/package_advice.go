@@ -11,7 +11,7 @@ import (
 const PackageAdvicePolicyID = "package-advice-v1"
 
 func SupportsPackageAdvice(system string) bool {
-	return system == "npm" || system == "go" || system == "maven"
+	return system == "npm" || system == "go" || system == "maven" || system == "pypi"
 }
 
 func PackageAdvicePolicy(days int) Policy {
@@ -84,7 +84,7 @@ func (e TrustEvidence) evaluatePackageAdvice(p Policy) ([]string, []string) {
 
 func packageAdviceWarnings(e TrustEvidence, p Policy, now time.Time) []string {
 	warnings := []string{"MAINTAINER_ACTIVITY_UNKNOWN"}
-	if e.registryAuthority == nil || !e.registryAuthority.known || len(e.registryAuthority.roles) == 0 {
+	if e.registryAuthority == nil || !e.registryAuthority.known || len(e.registryAuthority.roles) == 0 || e.registryAuthority.organization != "" {
 		warnings = append(warnings, "MAINTAINER_COUNT_UNKNOWN")
 	}
 	if len(e.Scorecards) == 0 {

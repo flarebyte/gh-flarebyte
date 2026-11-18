@@ -311,7 +311,7 @@ func (c *Client) assess(ctx context.Context, system, name string, requested *str
 		} // Exact indexed release exists; retractions are explicitly not checked.
 		c.fillRepository(ctx, v, &e, &r, cache)
 		if p.ID == PackageAdvicePolicyID {
-			if system == "npm" && adviceOwners == nil {
+			if (system == "npm" || system == "pypi") && adviceOwners == nil {
 				adviceOwners = c.registryAuthorities(ctx, system, name, &r.Details.Sources)
 				r.Details.Maintenance = append(r.Details.Maintenance, adviceOwners.detail())
 			}

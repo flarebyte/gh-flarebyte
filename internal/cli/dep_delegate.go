@@ -18,6 +18,7 @@ import (
 
 var delegateNPM = runDelegatedNPM
 var delegateGo = runDelegatedGo
+var delegatePyPI = runDelegatedPyPI
 
 func runDelegatedNPM(ctx context.Context, dir, name, version string, stdin io.Reader, stdout, stderr io.Writer) Result {
 	return runDelegatedPackage(ctx, dir, "npm", name, version, stdin, stdout, stderr)
@@ -25,6 +26,10 @@ func runDelegatedNPM(ctx context.Context, dir, name, version string, stdin io.Re
 
 func runDelegatedGo(ctx context.Context, dir, name, version string, stdin io.Reader, stdout, stderr io.Writer) Result {
 	return runDelegatedPackage(ctx, dir, "go", name, version, stdin, stdout, stderr)
+}
+
+func runDelegatedPyPI(ctx context.Context, dir, name, version string, stdin io.Reader, stdout, stderr io.Writer) Result {
+	return runDelegatedPackage(ctx, dir, "pypi", name, version, stdin, stdout, stderr)
 }
 
 func runDelegatedPackage(ctx context.Context, dir, system, name, version string, stdin io.Reader, stdout, stderr io.Writer) Result {
@@ -37,6 +42,9 @@ func runDelegatedPackage(ctx context.Context, dir, system, name, version string,
 	case "go":
 		executable = "go"
 		args = []string{"get", name + "@" + version}
+	case "pypi":
+		executable = "uv"
+		args = []string{"add", name + "==" + version}
 	default:
 		return Result{ExitCode: ExitDependencyUnsupported}
 	}
