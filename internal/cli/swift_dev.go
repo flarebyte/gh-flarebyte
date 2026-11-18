@@ -121,16 +121,9 @@ func runSwiftCov(cfg config.Config, env []string, min *float64, failedOnly bool,
 	if err != nil {
 		return swiftFailure(cfg, "cov", start, err, stderr)
 	}
-	effectiveMin := resolveCoverageMin(min, cfg)
-	if cfg.DevOutput.Style == "per_test" {
-		printCoverageDetails(stdout, details, effectiveMin, failedOnly)
-	}
-	text := fmt.Sprintf("total=%.2f%%", percent)
-	if effectiveMin != nil {
-		text += fmt.Sprintf(" min=%.2f%%", *effectiveMin)
-		if cfg.Coverage.FailBelowMin && percent < *effectiveMin {
-			return swiftFailure(cfg, "cov", start, fmt.Errorf("%s: coverage below minimum", text), stderr)
-		}
+	text, below := coverageStatus(cfg, percent, details, min, failedOnly, stdout)
+	if below {
+		return swiftFailure(cfg, "cov", start, fmt.Errorf("%s: coverage below minimum", text), stderr)
 	}
 	if !failedOnly {
 		printDevSummary(stdout, cfg, devSummary{Kind: "cov", Status: "PASS", Duration: time.Since(start), Details: text})

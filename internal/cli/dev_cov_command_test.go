@@ -204,12 +204,7 @@ func TestRunCovPerTestStyleOutput(t *testing.T) {
 		}
 		return "", "", nil
 	}
-	var out bytes.Buffer
-	var errOut bytes.Buffer
-	res := Run([]string{"cov"}, &out, &errOut)
-	if res.ExitCode != ExitOK {
-		t.Fatalf("expected success, got %d stderr=%s", res.ExitCode, errOut.String())
-	}
+	out, _ := runSuccessfulCoverage(t)
 	if !strings.Contains(out.String(), "✓ pkg/a.go:10:\tFuncA 100.0%") {
 		t.Fatalf("expected per-function pass line, got: %s", out.String())
 	}
@@ -243,29 +238,7 @@ func TestRunCovFailedOnlyHidesPassOutput(t *testing.T) {
 }
 
 func TestRunCovDartFailsBelowThreshold(t *testing.T) {
-	cfg := strings.Replace(setupCoverageConfig(), `language:     "go"`, `language:     "dart"`, 1)
-	_ = setupTempWorkdirWithConfig(t, cfg)
-	oldRun := runCommandCapture
-	t.Cleanup(func() { runCommandCapture = oldRun })
-	runCommandCapture = func(name string, args []string, env []string) (string, string, error) {
-		if name == "dart" && len(args) >= 3 && args[0] == "test" && args[1] == "--coverage" {
-			if err := os.MkdirAll(filepath.Join(".dart_tool", "coverage"), 0o755); err != nil {
-				return "", "", err
-			}
-			lcov := strings.Join([]string{
-				"SF:lib/a.dart",
-				"LF:10",
-				"LH:7",
-				"end_of_record",
-				"",
-			}, "\n")
-			if err := os.WriteFile(filepath.Join(".dart_tool", "coverage", "lcov.info"), []byte(lcov), 0o644); err != nil {
-				return "", "", err
-			}
-			return "", "", nil
-		}
-		return "", "", nil
-	}
+	setupDartCoverageCommand(t, "SF:lib/a.dart\nLF:10\nLH:7\nend_of_record\n")
 	var out bytes.Buffer
 	var errOut bytes.Buffer
 	res := Run([]string{"cov"}, &out, &errOut)
@@ -278,29 +251,7 @@ func TestRunCovDartFailsBelowThreshold(t *testing.T) {
 }
 
 func TestRunCovDartMinFlagOverridesConfigThreshold(t *testing.T) {
-	cfg := strings.Replace(setupCoverageConfig(), `language:     "go"`, `language:     "dart"`, 1)
-	_ = setupTempWorkdirWithConfig(t, cfg)
-	oldRun := runCommandCapture
-	t.Cleanup(func() { runCommandCapture = oldRun })
-	runCommandCapture = func(name string, args []string, env []string) (string, string, error) {
-		if name == "dart" && len(args) >= 3 && args[0] == "test" && args[1] == "--coverage" {
-			if err := os.MkdirAll(filepath.Join(".dart_tool", "coverage"), 0o755); err != nil {
-				return "", "", err
-			}
-			lcov := strings.Join([]string{
-				"SF:lib/a.dart",
-				"LF:10",
-				"LH:7",
-				"end_of_record",
-				"",
-			}, "\n")
-			if err := os.WriteFile(filepath.Join(".dart_tool", "coverage", "lcov.info"), []byte(lcov), 0o644); err != nil {
-				return "", "", err
-			}
-			return "", "", nil
-		}
-		return "", "", nil
-	}
+	setupDartCoverageCommand(t, "SF:lib/a.dart\nLF:10\nLH:7\nend_of_record\n")
 	var out bytes.Buffer
 	var errOut bytes.Buffer
 	res := Run([]string{"cov", "--min", "70"}, &out, &errOut)
@@ -315,37 +266,8 @@ func TestRunCovDartMinFlagOverridesConfigThreshold(t *testing.T) {
 func TestRunCovDartPerTestStyleOutput(t *testing.T) {
 	cfg := strings.Replace(perTestStyleConfig(), `language:     "go"`, `language:     "dart"`, 1)
 	_ = setupTempWorkdirWithConfig(t, cfg)
-	oldRun := runCommandCapture
-	t.Cleanup(func() { runCommandCapture = oldRun })
-	runCommandCapture = func(name string, args []string, env []string) (string, string, error) {
-		if name == "dart" && len(args) >= 3 && args[0] == "test" && args[1] == "--coverage" {
-			if err := os.MkdirAll(filepath.Join(".dart_tool", "coverage"), 0o755); err != nil {
-				return "", "", err
-			}
-			lcov := strings.Join([]string{
-				"SF:lib/a.dart",
-				"LF:10",
-				"LH:10",
-				"end_of_record",
-				"SF:lib/b.dart",
-				"LF:10",
-				"LH:0",
-				"end_of_record",
-				"",
-			}, "\n")
-			if err := os.WriteFile(filepath.Join(".dart_tool", "coverage", "lcov.info"), []byte(lcov), 0o644); err != nil {
-				return "", "", err
-			}
-			return "", "", nil
-		}
-		return "", "", nil
-	}
-	var out bytes.Buffer
-	var errOut bytes.Buffer
-	res := Run([]string{"cov"}, &out, &errOut)
-	if res.ExitCode != ExitOK {
-		t.Fatalf("expected success, got %d stderr=%s", res.ExitCode, errOut.String())
-	}
+	stubDartCoverage(t, dartCoverageRecord("lib/a.dart", 10, 10)+dartCoverageRecord("lib/b.dart", 10, 0))
+	out, _ := runSuccessfulCoverage(t)
 	if !strings.Contains(out.String(), "✓ lib/a.dart 100.0%") || !strings.Contains(out.String(), "✗ lib/b.dart 0.0%") {
 		t.Fatalf("unexpected per-test output: %s", out.String())
 	}
@@ -355,36 +277,8 @@ func TestRunCovDartIgnoresPubCacheEntries(t *testing.T) {
 	cfg := strings.Replace(perTestStyleConfig(), `language:     "go"`, `language:     "dart"`, 1)
 	_ = setupTempWorkdirWithConfig(t, cfg)
 	cachePath := filepath.Join(t.TempDir(), ".pub-cache", "hosted", "pub.dev", "test_core-0.6.12", "lib", "src", "scaffolding.dart")
-	oldRun := runCommandCapture
-	t.Cleanup(func() { runCommandCapture = oldRun })
-	runCommandCapture = func(name string, args []string, env []string) (string, string, error) {
-		if name == "dart" && len(args) >= 3 && args[0] == "test" && args[1] == "--coverage" {
-			if err := os.MkdirAll(filepath.Join(".dart_tool", "coverage"), 0o755); err != nil {
-				return "", "", err
-			}
-			lcov := strings.Join([]string{
-				"SF:" + filepath.ToSlash(cachePath),
-				"LF:10",
-				"LH:2",
-				"end_of_record",
-				"SF:lib/a.dart",
-				"LF:10",
-				"LH:10",
-				"end_of_record",
-				"",
-			}, "\n")
-			if err := os.WriteFile(filepath.Join(".dart_tool", "coverage", "lcov.info"), []byte(lcov), 0o644); err != nil {
-				return "", "", err
-			}
-		}
-		return "", "", nil
-	}
-	var out bytes.Buffer
-	var errOut bytes.Buffer
-	res := Run([]string{"cov"}, &out, &errOut)
-	if res.ExitCode != ExitOK {
-		t.Fatalf("expected success, got %d stderr=%s", res.ExitCode, errOut.String())
-	}
+	stubDartCoverage(t, dartCoverageRecord(filepath.ToSlash(cachePath), 10, 2)+dartCoverageRecord("lib/a.dart", 10, 10))
+	out, _ := runSuccessfulCoverage(t)
 	if strings.Contains(out.String(), ".pub-cache") {
 		t.Fatalf("expected pub-cache entries filtered out, got: %s", out.String())
 	}
@@ -400,36 +294,8 @@ func TestRunCovDartUsesRelativePathsAndScopesToCurrentDir(t *testing.T) {
 	if err != nil {
 		t.Fatalf("getwd failed: %v", err)
 	}
-	oldRun := runCommandCapture
-	t.Cleanup(func() { runCommandCapture = oldRun })
-	runCommandCapture = func(name string, args []string, env []string) (string, string, error) {
-		if name == "dart" && len(args) >= 3 && args[0] == "test" && args[1] == "--coverage" {
-			if err := os.MkdirAll(filepath.Join(".dart_tool", "coverage"), 0o755); err != nil {
-				return "", "", err
-			}
-			lcov := strings.Join([]string{
-				"SF:" + filepath.Join(cwdPath, "lib", "src", "client", "rest_requests.dart"),
-				"LF:10",
-				"LH:3",
-				"end_of_record",
-				"SF:/tmp/outside.dart",
-				"LF:10",
-				"LH:10",
-				"end_of_record",
-				"",
-			}, "\n")
-			if err := os.WriteFile(filepath.Join(".dart_tool", "coverage", "lcov.info"), []byte(lcov), 0o644); err != nil {
-				return "", "", err
-			}
-		}
-		return "", "", nil
-	}
-	var out bytes.Buffer
-	var errOut bytes.Buffer
-	res := Run([]string{"cov"}, &out, &errOut)
-	if res.ExitCode != ExitOK {
-		t.Fatalf("expected success, got %d stderr=%s", res.ExitCode, errOut.String())
-	}
+	stubDartCoverage(t, dartCoverageRecord(filepath.Join(cwdPath, "lib", "src", "client", "rest_requests.dart"), 10, 3)+dartCoverageRecord("/tmp/outside.dart", 10, 10))
+	out, _ := runSuccessfulCoverage(t)
 	if !strings.Contains(out.String(), "lib/src/client/rest_requests.dart 30.0%") {
 		t.Fatalf("expected relative local path in output, got: %s", out.String())
 	}
@@ -454,28 +320,14 @@ func TestRunCovDartGeneratesLCOVWhenMissing(t *testing.T) {
 			return "", "", nil
 		}
 		if len(args) >= 4 && args[0] == "pub" && args[1] == "global" && args[2] == "run" && args[3] == "coverage:format_coverage" {
-			if err := os.MkdirAll(filepath.Join(".dart_tool", "coverage"), 0o755); err != nil {
-				return "", "", err
-			}
-			lcov := strings.Join([]string{
-				"SF:lib/a.dart",
-				"LF:10",
-				"LH:10",
-				"end_of_record",
-				"",
-			}, "\n")
-			if err := os.WriteFile(filepath.Join(".dart_tool", "coverage", "lcov.info"), []byte(lcov), 0o644); err != nil {
+			lcov := dartCoverageRecord("lib/a.dart", 10, 10)
+			if err := writeDartCoverageFixture(lcov); err != nil {
 				return "", "", err
 			}
 		}
 		return "", "", nil
 	}
-	var out bytes.Buffer
-	var errOut bytes.Buffer
-	res := Run([]string{"cov"}, &out, &errOut)
-	if res.ExitCode != ExitOK {
-		t.Fatalf("expected success, got %d stderr=%s", res.ExitCode, errOut.String())
-	}
+	out, _ := runSuccessfulCoverage(t)
 	if !strings.Contains(out.String(), "COV PASS") {
 		t.Fatalf("expected pass summary, got: %s", out.String())
 	}
@@ -500,17 +352,8 @@ func TestRunCovDartReactivatesCoverageToolWhenGlobalRunDepsDrift(t *testing.T) {
 			if formatAttempts == 1 {
 				return "", "The current activation of `coverage` cannot resolve to the same set of dependencies.", fmt.Errorf("boom")
 			}
-			if err := os.MkdirAll(filepath.Join(".dart_tool", "coverage"), 0o755); err != nil {
-				return "", "", err
-			}
-			lcov := strings.Join([]string{
-				"SF:lib/a.dart",
-				"LF:10",
-				"LH:10",
-				"end_of_record",
-				"",
-			}, "\n")
-			if err := os.WriteFile(filepath.Join(".dart_tool", "coverage", "lcov.info"), []byte(lcov), 0o644); err != nil {
+			lcov := dartCoverageRecord("lib/a.dart", 10, 10)
+			if err := writeDartCoverageFixture(lcov); err != nil {
 				return "", "", err
 			}
 			return "", "", nil
@@ -521,16 +364,53 @@ func TestRunCovDartReactivatesCoverageToolWhenGlobalRunDepsDrift(t *testing.T) {
 		}
 		return "", "", nil
 	}
-	var out bytes.Buffer
-	var errOut bytes.Buffer
-	res := Run([]string{"cov"}, &out, &errOut)
-	if res.ExitCode != ExitOK {
-		t.Fatalf("expected success, got %d stderr=%s", res.ExitCode, errOut.String())
-	}
+	runSuccessfulCoverage(t)
 	if !activateCalled {
 		t.Fatalf("expected coverage activation to be called")
 	}
 	if formatAttempts < 2 {
 		t.Fatalf("expected format_coverage retry, got %d attempt(s)", formatAttempts)
 	}
+}
+
+func setupDartCoverageCommand(t *testing.T, lcov string) {
+	t.Helper()
+	cfg := strings.Replace(setupCoverageConfig(), `language:     "go"`, `language:     "dart"`, 1)
+	setupTempWorkdirWithConfig(t, cfg)
+	stubDartCoverage(t, lcov)
+}
+
+func writeDartCoverageFixture(lcov string) error {
+	dir := filepath.Join(".dart_tool", "coverage")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return err
+	}
+	return os.WriteFile(filepath.Join(dir, "lcov.info"), []byte(lcov), 0o644)
+}
+
+func dartCoverageRecord(source string, found, hit int) string {
+	return fmt.Sprintf("SF:%s\nLF:%d\nLH:%d\nend_of_record\n", source, found, hit)
+}
+
+func stubDartCoverage(t *testing.T, lcov string) {
+	t.Helper()
+	old := runCommandCapture
+	t.Cleanup(func() { runCommandCapture = old })
+	runCommandCapture = func(name string, args []string, env []string) (string, string, error) {
+		if name == "dart" && len(args) >= 3 && args[0] == "test" && args[1] == "--coverage" {
+			return "", "", writeDartCoverageFixture(lcov)
+		}
+		return "", "", nil
+	}
+}
+
+func runSuccessfulCoverage(t *testing.T) (*bytes.Buffer, *bytes.Buffer) {
+	t.Helper()
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	res := Run([]string{"cov"}, &out, &errOut)
+	if res.ExitCode != ExitOK {
+		t.Fatalf("expected success, got %d stderr=%s", res.ExitCode, errOut.String())
+	}
+	return &out, &errOut
 }

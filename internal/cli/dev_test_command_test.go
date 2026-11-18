@@ -20,20 +20,7 @@ go: {
 	toolchain: "local"
 }
 `
-	_ = setupTempWorkdirWithConfig(t, cfg)
-	oldRun := runCommandCapture
-	t.Cleanup(func() { runCommandCapture = oldRun })
-	var captured []string
-	runCommandCapture = func(name string, args []string, env []string) (string, string, error) {
-		captured = env
-		return "", "", nil
-	}
-	var out bytes.Buffer
-	var errOut bytes.Buffer
-	res := Run([]string{"test"}, &out, &errOut)
-	if res.ExitCode != ExitOK {
-		t.Fatalf("expected exit code %d, got %d err=%v stderr=%s", ExitOK, res.ExitCode, res.Err, errOut.String())
-	}
+	captured, errText := runTestCapturingEnv(t, cfg)
 	cacheAbs, err := filepath.Abs("./.gocache")
 	if err != nil {
 		t.Fatalf("abs cache path: %v", err)
@@ -48,8 +35,8 @@ go: {
 			t.Fatalf("expected env to include %q", entry)
 		}
 	}
-	if strings.Contains(errOut.String(), "warning: config.go.cacheDir is absolute") || strings.Contains(errOut.String(), "warning: config.go.modCacheDir is absolute") {
-		t.Fatalf("expected no absolute-path warning for relative config, got: %s", errOut.String())
+	if strings.Contains(errText, "warning: config.go.cacheDir is absolute") || strings.Contains(errText, "warning: config.go.modCacheDir is absolute") {
+		t.Fatalf("expected no absolute-path warning for relative config, got: %s", errText)
 	}
 }
 
@@ -62,31 +49,18 @@ go: {
 	toolchain: "local"
 }
 `
-	_ = setupTempWorkdirWithConfig(t, cfg)
-	oldRun := runCommandCapture
-	t.Cleanup(func() { runCommandCapture = oldRun })
-	var captured []string
-	runCommandCapture = func(name string, args []string, env []string) (string, string, error) {
-		captured = env
-		return "", "", nil
-	}
-	var out bytes.Buffer
-	var errOut bytes.Buffer
-	res := Run([]string{"test"}, &out, &errOut)
-	if res.ExitCode != ExitOK {
-		t.Fatalf("expected exit code %d, got %d err=%v stderr=%s", ExitOK, res.ExitCode, res.Err, errOut.String())
-	}
+	captured, errText := runTestCapturingEnv(t, cfg)
 	want := []string{"GOCACHE=/tmp/codex-abs-gocache", "GOMODCACHE=/tmp/codex-abs-gomodcache", "GOTOOLCHAIN=local"}
 	for _, entry := range want {
 		if !contains(captured, entry) {
 			t.Fatalf("expected env to include %q", entry)
 		}
 	}
-	if !strings.Contains(errOut.String(), "warning: config.go.cacheDir is absolute (/tmp/codex-abs-gocache)") {
-		t.Fatalf("expected cacheDir absolute warning, got: %s", errOut.String())
+	if !strings.Contains(errText, "warning: config.go.cacheDir is absolute (/tmp/codex-abs-gocache)") {
+		t.Fatalf("expected cacheDir absolute warning, got: %s", errText)
 	}
-	if !strings.Contains(errOut.String(), "warning: config.go.modCacheDir is absolute (/tmp/codex-abs-gomodcache)") {
-		t.Fatalf("expected modCacheDir absolute warning, got: %s", errOut.String())
+	if !strings.Contains(errText, "warning: config.go.modCacheDir is absolute (/tmp/codex-abs-gomodcache)") {
+		t.Fatalf("expected modCacheDir absolute warning, got: %s", errText)
 	}
 }
 
@@ -254,15 +228,7 @@ func TestRunGoTestFailureIncludesSummaryDetails(t *testing.T) {
 }
 
 func TestRunDartTestPerTestStyleOutput(t *testing.T) {
-	cfg := strings.Replace(testConfigCue(), `language:     "go"`, `language:     "dart"`, 1)
-	cfg += `
-
-devOutput: {
-	color: "false"
-	style: "per_test"
-	showPassed: true
-}
-`
+	cfg := dartPerTestConfig()
 	_ = setupTempWorkdirWithConfig(t, cfg)
 	oldRun := runCommandCapture
 	t.Cleanup(func() { runCommandCapture = oldRun })
@@ -294,15 +260,7 @@ devOutput: {
 }
 
 func TestRunDartTestFailedOnlyFiltersPassedAndSkipped(t *testing.T) {
-	cfg := strings.Replace(testConfigCue(), `language:     "go"`, `language:     "dart"`, 1)
-	cfg += `
-
-devOutput: {
-	color: "false"
-	style: "per_test"
-	showPassed: true
-}
-`
+	cfg := dartPerTestConfig()
 	_ = setupTempWorkdirWithConfig(t, cfg)
 	oldRun := runCommandCapture
 	t.Cleanup(func() { runCommandCapture = oldRun })
@@ -332,15 +290,7 @@ devOutput: {
 }
 
 func TestRunDartTestPerTestStyleWithTestIDEvents(t *testing.T) {
-	cfg := strings.Replace(testConfigCue(), `language:     "go"`, `language:     "dart"`, 1)
-	cfg += `
-
-devOutput: {
-	color: "false"
-	style: "per_test"
-	showPassed: true
-}
-`
+	cfg := dartPerTestConfig()
 	_ = setupTempWorkdirWithConfig(t, cfg)
 	oldRun := runCommandCapture
 	t.Cleanup(func() { runCommandCapture = oldRun })
@@ -362,4 +312,29 @@ devOutput: {
 	if !strings.Contains(out.String(), "✓ adds numbers") || !strings.Contains(out.String(), "↷ skips legacy") {
 		t.Fatalf("expected per-test output, got: %s", out.String())
 	}
+}
+
+func dartPerTestConfig() string {
+	return strings.Replace(testConfigCue(), `language:     "go"`, `language:     "dart"`, 1) + `
+ devOutput: { color: "false", style: "per_test", showPassed: true }
+ `
+}
+
+func runTestCapturingEnv(t *testing.T, cfg string) ([]string, string) {
+	t.Helper()
+	_ = setupTempWorkdirWithConfig(t, cfg)
+	oldRun := runCommandCapture
+	t.Cleanup(func() { runCommandCapture = oldRun })
+	var captured []string
+	runCommandCapture = func(name string, args []string, env []string) (string, string, error) {
+		captured = env
+		return "", "", nil
+	}
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	res := Run([]string{"test"}, &out, &errOut)
+	if res.ExitCode != ExitOK {
+		t.Fatalf("expected exit code %d, got %d err=%v stderr=%s", ExitOK, res.ExitCode, res.Err, errOut.String())
+	}
+	return captured, errOut.String()
 }

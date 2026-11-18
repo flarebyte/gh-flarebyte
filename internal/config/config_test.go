@@ -10,6 +10,47 @@ import (
 	"testing"
 )
 
+const configTestBinaryBuild = `build: {
+	language:     "go"
+	outputDir:    "build"
+	checksumFile: "build/checksums.txt"
+	targets: ["linux-amd64"]
+}
+`
+
+const configTestRelease = `
+release: {
+ versionSource: "main.project.yaml"
+ tagPrefix: "v"
+ notesMode: "generate-notes"
+ artifactDir: "build"
+ includeChecksums: true
+}
+`
+
+const configTestHeader = `package ghflarebyte
+
+project: {
+	org:  "flarebyte"
+	repo: "gh-flarebyte"
+}
+
+sync: {
+	mode: "push"
+}
+
+repository: {
+	description:   "CLI for landing your git commands right"
+	defaultBranch: "main"
+	homepage:      "https://github.com/flarebyte/gh-flarebyte"
+	visibility:    "public"
+	template:      false
+	topics: ["gh-extension"]
+	labels: [{name: "bug", color: "B60205"}]
+}
+
+`
+
 func TestLoadValidConfig(t *testing.T) {
 	cfg, err := Load(filepath.Join("testdata", "valid.cue"))
 	if err != nil {
@@ -50,30 +91,7 @@ func TestLoadInvalidNotesFilePath(t *testing.T) {
 }
 
 func TestLoadBuildArtifactTargetSuffixFalseWithMultipleTargets(t *testing.T) {
-	tmp := t.TempDir()
-	path := filepath.Join(tmp, "valid-artifact-suffix.cue")
-	content := `package ghflarebyte
-
-project: {
-	org:  "flarebyte"
-	repo: "gh-flarebyte"
-}
-
-sync: {
-	mode: "push"
-}
-
-repository: {
-	description:   "CLI for landing your git commands right"
-	defaultBranch: "main"
-	homepage:      "https://github.com/flarebyte/gh-flarebyte"
-	visibility:    "public"
-	template:      false
-	topics: ["gh-extension"]
-	labels: [{name: "bug", color: "B60205"}]
-}
-
-build: {
+	content := configTestHeader + `build: {
 	language:             "go"
 	outputDir:            "build"
 	checksumFile:         "build/checksums.txt"
@@ -83,18 +101,8 @@ build: {
 		"windows-amd64",
 	]
 }
-
-release: {
-	versionSource:        "main.project.yaml"
-	tagPrefix:            "v"
-	notesMode:            "generate-notes"
-	artifactDir:          "build"
-	includeChecksums:     true
-}
-`
-	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
-		t.Fatalf("write temp config failed: %v", err)
-	}
+` + configTestRelease
+	path := writeConfigFixture(t, content)
 	cfg, err := Load(path)
 	if err != nil {
 		t.Fatalf("expected valid config, got %v", err)
@@ -105,30 +113,7 @@ release: {
 }
 
 func TestLoadLibraryModeConfig(t *testing.T) {
-	tmp := t.TempDir()
-	path := filepath.Join(tmp, "valid-library.cue")
-	content := `package ghflarebyte
-
-project: {
-	org:  "flarebyte"
-	repo: "gh-flarebyte"
-}
-
-sync: {
-	mode: "push"
-}
-
-repository: {
-	description:   "CLI for landing your git commands right"
-	defaultBranch: "main"
-	homepage:      "https://github.com/flarebyte/gh-flarebyte"
-	visibility:    "public"
-	template:      false
-	topics: ["gh-extension"]
-	labels: [{name: "bug", color: "B60205"}]
-}
-
-build: {
+	content := configTestHeader + `build: {
 	language: "go"
 	mode:     "library"
 	packages: ["./..."]
@@ -142,9 +127,7 @@ release: {
 	includeArtifacts: false
 }
 `
-	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
-		t.Fatalf("write temp config failed: %v", err)
-	}
+	path := writeConfigFixture(t, content)
 	cfg, err := Load(path)
 	if err != nil {
 		t.Fatalf("expected valid config, got %v", err)
@@ -161,30 +144,7 @@ release: {
 }
 
 func TestLoadRejectsLibraryModeWithArtifactsEnabled(t *testing.T) {
-	tmp := t.TempDir()
-	path := filepath.Join(tmp, "invalid-library-artifacts.cue")
-	content := `package ghflarebyte
-
-project: {
-	org:  "flarebyte"
-	repo: "gh-flarebyte"
-}
-
-sync: {
-	mode: "push"
-}
-
-repository: {
-	description:   "CLI for landing your git commands right"
-	defaultBranch: "main"
-	homepage:      "https://github.com/flarebyte/gh-flarebyte"
-	visibility:    "public"
-	template:      false
-	topics: ["gh-extension"]
-	labels: [{name: "bug", color: "B60205"}]
-}
-
-build: {
+	content := configTestHeader + `build: {
 	language: "go"
 	mode:     "library"
 	packages: ["./..."]
@@ -198,9 +158,7 @@ release: {
 	artifactDir:      "build"
 }
 `
-	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
-		t.Fatalf("write temp config failed: %v", err)
-	}
+	path := writeConfigFixture(t, content)
 	_, err := Load(path)
 	if err == nil {
 		t.Fatalf("expected invalid config error")
@@ -211,48 +169,15 @@ release: {
 }
 
 func TestLoadBuildMainPackageOverride(t *testing.T) {
-	tmp := t.TempDir()
-	path := filepath.Join(tmp, "valid-main-package.cue")
-	content := `package ghflarebyte
-
-project: {
-	org:  "flarebyte"
-	repo: "gh-flarebyte"
-}
-
-sync: {
-	mode: "push"
-}
-
-repository: {
-	description:   "CLI for landing your git commands right"
-	defaultBranch: "main"
-	homepage:      "https://github.com/flarebyte/gh-flarebyte"
-	visibility:    "public"
-	template:      false
-	topics: ["gh-extension"]
-	labels: [{name: "bug", color: "B60205"}]
-}
-
-build: {
+	content := configTestHeader + `build: {
 	language:     "go"
 	mainPackage:  "./cmd/flyb"
 	outputDir:    "build"
 	checksumFile: "build/checksums.txt"
 	targets: ["linux-amd64"]
 }
-
-release: {
-	versionSource:    "main.project.yaml"
-	tagPrefix:        "v"
-	notesMode:        "generate-notes"
-	artifactDir:      "build"
-	includeChecksums: true
-}
-`
-	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
-		t.Fatalf("write temp config failed: %v", err)
-	}
+` + configTestRelease
+	path := writeConfigFixture(t, content)
 	cfg, err := Load(path)
 	if err != nil {
 		t.Fatalf("expected valid config, got %v", err)
@@ -285,52 +210,13 @@ func TestLoadDefaultsForDevOutputAndCoverage(t *testing.T) {
 }
 
 func TestLoadRejectsInvalidDevOutputStyle(t *testing.T) {
-	tmp := t.TempDir()
-	path := filepath.Join(tmp, "invalid-dev-output-style.cue")
-	content := `package ghflarebyte
-
-project: {
-	org:  "flarebyte"
-	repo: "gh-flarebyte"
-}
-
-sync: {
-	mode: "push"
-}
-
-repository: {
-	description:   "CLI for landing your git commands right"
-	defaultBranch: "main"
-	homepage:      "https://github.com/flarebyte/gh-flarebyte"
-	visibility:    "public"
-	template:      false
-	topics: ["gh-extension"]
-	labels: [{name: "bug", color: "B60205"}]
-}
-
-devOutput: {
+	content := configTestHeader + `devOutput: {
 	color: "auto"
 	style: "verbose"
 }
 
-build: {
-	language:     "go"
-	outputDir:    "build"
-	checksumFile: "build/checksums.txt"
-	targets: ["linux-amd64"]
-}
-
-release: {
-	versionSource:    "main.project.yaml"
-	tagPrefix:        "v"
-	notesMode:        "generate-notes"
-	artifactDir:      "build"
-	includeChecksums: true
-}
-`
-	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
-		t.Fatalf("write temp config failed: %v", err)
-	}
+` + configTestBinaryBuild + configTestRelease
+	path := writeConfigFixture(t, content)
 	_, err := Load(path)
 	if err == nil {
 		t.Fatalf("expected invalid devOutput.style error")
@@ -341,49 +227,10 @@ release: {
 }
 
 func TestLoadRejectsUnknownTopLevelField(t *testing.T) {
-	tmp := t.TempDir()
-	path := filepath.Join(tmp, "invalid-unknown-top-level.cue")
-	content := `package ghflarebyte
-
-project: {
-	org:  "flarebyte"
-	repo: "gh-flarebyte"
-}
-
-sync: {
-	mode: "push"
-}
-
-repository: {
-	description:   "CLI for landing your git commands right"
-	defaultBranch: "main"
-	homepage:      "https://github.com/flarebyte/gh-flarebyte"
-	visibility:    "public"
-	template:      false
-	topics: ["gh-extension"]
-	labels: [{name: "bug", color: "B60205"}]
-}
-
-build: {
-	language:     "go"
-	outputDir:    "build"
-	checksumFile: "build/checksums.txt"
-	targets: ["linux-amd64"]
-}
-
-release: {
-	versionSource:    "main.project.yaml"
-	tagPrefix:        "v"
-	notesMode:        "generate-notes"
-	artifactDir:      "build"
-	includeChecksums: true
-}
-
+	content := configTestHeader + configTestBinaryBuild + configTestRelease + `
 extraField: "hello"
 `
-	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
-		t.Fatalf("write temp config failed: %v", err)
-	}
+	path := writeConfigFixture(t, content)
 	_, err := Load(path)
 	if err == nil {
 		t.Fatalf("expected unknown top-level field error")
@@ -394,48 +241,15 @@ extraField: "hello"
 }
 
 func TestLoadRejectsUnknownBuildField(t *testing.T) {
-	tmp := t.TempDir()
-	path := filepath.Join(tmp, "invalid-unknown-build-field.cue")
-	content := `package ghflarebyte
-
-project: {
-	org:  "flarebyte"
-	repo: "gh-flarebyte"
-}
-
-sync: {
-	mode: "push"
-}
-
-repository: {
-	description:   "CLI for landing your git commands right"
-	defaultBranch: "main"
-	homepage:      "https://github.com/flarebyte/gh-flarebyte"
-	visibility:    "public"
-	template:      false
-	topics: ["gh-extension"]
-	labels: [{name: "bug", color: "B60205"}]
-}
-
-build: {
+	content := configTestHeader + `build: {
 	language:     "go"
 	outputDir:    "build"
 	checksumFile: "build/checksums.txt"
 	targets: ["linux-amd64"]
 	extraBuild:   true
 }
-
-release: {
-	versionSource:    "main.project.yaml"
-	tagPrefix:        "v"
-	notesMode:        "generate-notes"
-	artifactDir:      "build"
-	includeChecksums: true
-}
-`
-	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
-		t.Fatalf("write temp config failed: %v", err)
-	}
+` + configTestRelease
+	path := writeConfigFixture(t, content)
 	_, err := Load(path)
 	if err == nil {
 		t.Fatalf("expected unknown build field error")
@@ -446,30 +260,7 @@ release: {
 }
 
 func TestLoadGoCGOConfig(t *testing.T) {
-	tmp := t.TempDir()
-	path := filepath.Join(tmp, "valid-go-cgo.cue")
-	content := `package ghflarebyte
-
-project: {
-	org:  "flarebyte"
-	repo: "gh-flarebyte"
-}
-
-sync: {
-	mode: "push"
-}
-
-repository: {
-	description:   "CLI for landing your git commands right"
-	defaultBranch: "main"
-	homepage:      "https://github.com/flarebyte/gh-flarebyte"
-	visibility:    "public"
-	template:      false
-	topics: ["gh-extension"]
-	labels: [{name: "bug", color: "B60205"}]
-}
-
-go: {
+	content := configTestHeader + `go: {
 	toolchain: "local"
 	cgo: {
 		enabled: true
@@ -478,24 +269,8 @@ go: {
 	}
 }
 
-build: {
-	language:     "go"
-	outputDir:    "build"
-	checksumFile: "build/checksums.txt"
-	targets: ["linux-amd64"]
-}
-
-release: {
-	versionSource:    "main.project.yaml"
-	tagPrefix:        "v"
-	notesMode:        "generate-notes"
-	artifactDir:      "build"
-	includeChecksums: true
-}
-`
-	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
-		t.Fatalf("write temp config failed: %v", err)
-	}
+` + configTestBinaryBuild + configTestRelease
+	path := writeConfigFixture(t, content)
 	cfg, err := Load(path)
 	if err != nil {
 		t.Fatalf("expected valid config, got %v", err)
@@ -509,54 +284,15 @@ release: {
 }
 
 func TestLoadRejectsUnknownGoCGOField(t *testing.T) {
-	tmp := t.TempDir()
-	path := filepath.Join(tmp, "invalid-go-cgo-unknown-field.cue")
-	content := `package ghflarebyte
-
-project: {
-	org:  "flarebyte"
-	repo: "gh-flarebyte"
-}
-
-sync: {
-	mode: "push"
-}
-
-repository: {
-	description:   "CLI for landing your git commands right"
-	defaultBranch: "main"
-	homepage:      "https://github.com/flarebyte/gh-flarebyte"
-	visibility:    "public"
-	template:      false
-	topics: ["gh-extension"]
-	labels: [{name: "bug", color: "B60205"}]
-}
-
-go: {
+	content := configTestHeader + `go: {
 	cgo: {
 		enabled: true
 		compiler: "clang"
 	}
 }
 
-build: {
-	language:     "go"
-	outputDir:    "build"
-	checksumFile: "build/checksums.txt"
-	targets: ["linux-amd64"]
-}
-
-release: {
-	versionSource:    "main.project.yaml"
-	tagPrefix:        "v"
-	notesMode:        "generate-notes"
-	artifactDir:      "build"
-	includeChecksums: true
-}
-`
-	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
-		t.Fatalf("write temp config failed: %v", err)
-	}
+` + configTestBinaryBuild + configTestRelease
+	path := writeConfigFixture(t, content)
 	_, err := Load(path)
 	if err == nil {
 		t.Fatalf("expected invalid go.cgo unknown field error")
@@ -564,4 +300,13 @@ release: {
 	if !strings.Contains(err.Error(), `unknown field "compiler" in go.cgo`) {
 		t.Fatalf("unexpected error: %v", err)
 	}
+}
+
+func writeConfigFixture(t *testing.T, content string) string {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "config.cue")
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return path
 }

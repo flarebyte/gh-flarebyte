@@ -27,19 +27,10 @@ func printDevSummary(w io.Writer, cfg config.Config, s devSummary) {
 		}
 	}
 	d := s.Duration.Round(time.Millisecond)
-	switch cfg.DevOutput.Style {
-	case "summary", "per_test":
-		if s.Details != "" {
-			_, _ = fmt.Fprintf(w, "%s %s duration=%s %s\n", strings.ToUpper(s.Kind), status, d, s.Details)
-		} else {
-			_, _ = fmt.Fprintf(w, "%s %s duration=%s\n", strings.ToUpper(s.Kind), status, d)
-		}
-	default:
-		if s.Details != "" {
-			_, _ = fmt.Fprintf(w, "%s %s duration=%s %s\n", strings.ToUpper(s.Kind), status, d, s.Details)
-		} else {
-			_, _ = fmt.Fprintf(w, "%s %s duration=%s\n", strings.ToUpper(s.Kind), status, d)
-		}
+	if s.Details != "" {
+		_, _ = fmt.Fprintf(w, "%s %s duration=%s %s\n", strings.ToUpper(s.Kind), status, d, s.Details)
+	} else {
+		_, _ = fmt.Fprintf(w, "%s %s duration=%s\n", strings.ToUpper(s.Kind), status, d)
 	}
 }
 
@@ -69,41 +60,31 @@ func useColor(mode string) bool {
 
 func printPerTestEvents(w io.Writer, cfg config.Config, events []goTestEvent, failedOnly bool) {
 	for _, ev := range events {
-		if ev.Test == "" {
-			continue
-		}
-		switch ev.Action {
-		case "pass":
-			if !failedOnly && cfg.DevOutput.ShowPassed {
-				_, _ = fmt.Fprintf(w, "✓ %s\n", ev.Test)
-			}
-		case "skip":
-			if !failedOnly {
-				_, _ = fmt.Fprintf(w, "↷ %s\n", ev.Test)
-			}
-		case "fail":
-			_, _ = fmt.Fprintf(w, "✗ %s\n", ev.Test)
-		}
+		printTestEvent(w, cfg, ev.Test, ev.Action, failedOnly)
 	}
 }
 
 func printDartPerTestEvents(w io.Writer, cfg config.Config, events []dartTestEvent, failedOnly bool) {
 	for _, ev := range events {
-		if ev.Test == "" {
-			continue
+		printTestEvent(w, cfg, ev.Test, ev.Action, failedOnly)
+	}
+}
+
+func printTestEvent(w io.Writer, cfg config.Config, name, action string, failedOnly bool) {
+	if name == "" {
+		return
+	}
+	switch action {
+	case "pass":
+		if !failedOnly && cfg.DevOutput.ShowPassed {
+			_, _ = fmt.Fprintf(w, "✓ %s\n", name)
 		}
-		switch ev.Action {
-		case "pass":
-			if !failedOnly && cfg.DevOutput.ShowPassed {
-				_, _ = fmt.Fprintf(w, "✓ %s\n", ev.Test)
-			}
-		case "skip":
-			if !failedOnly {
-				_, _ = fmt.Fprintf(w, "↷ %s\n", ev.Test)
-			}
-		case "fail":
-			_, _ = fmt.Fprintf(w, "✗ %s\n", ev.Test)
+	case "skip":
+		if !failedOnly {
+			_, _ = fmt.Fprintf(w, "↷ %s\n", name)
 		}
+	case "fail":
+		_, _ = fmt.Fprintf(w, "✗ %s\n", name)
 	}
 }
 
@@ -151,4 +132,17 @@ func extractFailureLocation(output string) string {
 		return ""
 	}
 	return m[1]
+}
+
+func coverageStatus(cfg config.Config, percent float64, entries []coverageDetail, min *float64, failedOnly bool, stdout io.Writer) (string, bool) {
+	threshold := resolveCoverageMin(min, cfg)
+	if cfg.DevOutput.Style == "per_test" {
+		printCoverageDetails(stdout, entries, threshold, failedOnly)
+	}
+	text := fmt.Sprintf("total=%.2f%%", percent)
+	if threshold == nil {
+		return text, false
+	}
+	text += fmt.Sprintf(" min=%.2f%%", *threshold)
+	return text, cfg.Coverage.FailBelowMin && percent < *threshold
 }

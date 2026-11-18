@@ -18,20 +18,8 @@ func mavenAdviceClient(t *testing.T, mode string) *Client {
 		var body any
 		switch {
 		case req.URL.Host == "api.osv.dev":
-			var q struct {
-				Package struct{ Name, Ecosystem string }
-				Version string
-			}
-			if json.NewDecoder(req.Body).Decode(&q) != nil || q.Package.Ecosystem != "Maven" || q.Package.Name != "org.example:lib" {
-				t.Fatal(q)
-			}
-			if mode == "osv failure" {
-				return response(`{}`, 403), nil
-			}
-			if mode == "metadata vulnerability" || mode == "vulnerability" && q.Version == "2.0.0" {
-				return response(`{"vulns":[{"id":"GHSA-maven-fixture"}]}`, 200), nil
-			}
-			body = map[string]any{}
+			queryVersion := adviceQueryVersion(t, req, "Maven", "org.example:lib")
+			return adviceOSVFixture(mode, queryVersion, "2.0.0", "GHSA-maven-fixture"), nil
 		case req.URL.Host == "api.scorecard.dev":
 			return response(`{}`, 404), nil
 		case req.URL.Host == "api.deps.dev" && strings.Contains(req.URL.Path, "/projects/"):
@@ -129,4 +117,41 @@ func TestMavenNumericVersionSubset(t *testing.T) {
 	if !newer("maven", "1.10", "1.9") || knownPrerelease("maven", "1.0.Final") {
 		t.Fatal("incorrect Maven classification")
 	}
+}
+
+func adviceQueryVersion(t *testing.T, req *http.Request, ecosystem, name string) string {
+	t.Helper()
+	var q struct {
+		Package struct{ Name, Ecosystem string }
+		Version string
+	}
+	if err := json.NewDecoder(req.Body).Decode(&q); err != nil || q.Package.Name != name || q.Package.Ecosystem != ecosystem {
+		t.Fatalf("unexpected OSV query: %+v (%v)", q, err)
+	}
+	return q.Version
+}
+
+func adviceRepositoryResponse(t *testing.T, req *http.Request) (*http.Response, bool) {
+	t.Helper()
+	if req.Header.Get("Authorization") != "" {
+		t.Fatal("unexpected credentials")
+	}
+	if req.URL.Host == "api.scorecard.dev" {
+		return response(`{}`, 404), true
+	}
+	if req.URL.Host == "api.deps.dev" && strings.Contains(req.URL.Path, "/projects/") {
+		return response(`{"projectKey":{"id":"github.com/org/repo"},"starsCount":1000}`, 200), true
+	}
+	return nil, false
+}
+
+func adviceOSVFixture(mode, version, vulnerableVersion, id string) *http.Response {
+	if mode == "osv failure" {
+		return response(`{}`, 403)
+	}
+	if mode == "metadata vulnerability" || mode == "vulnerability" && version == vulnerableVersion {
+		b, _ := json.Marshal(map[string]any{"vulns": []any{map[string]string{"id": id}}})
+		return response(string(b), 200)
+	}
+	return response(`{}`, 200)
 }

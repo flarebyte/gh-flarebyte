@@ -32,32 +32,7 @@ func pythonRequirementMatches(requirement string, baseline []uint64) (bool, bool
 	if len(requirement) == 0 || len(requirement) > 512 {
 		return false, false
 	}
-	clauses := strings.Split(requirement, ",")
-	if len(clauses) > 16 {
-		return false, false
-	}
-	matches := true
-	for _, clause := range clauses {
-		clause = strings.TrimSpace(clause)
-		op := ""
-		for _, candidate := range []string{">=", "<=", "==", "!=", ">", "<"} {
-			if strings.HasPrefix(clause, candidate) {
-				op = candidate
-				break
-			}
-		}
-		if op == "" {
-			return false, false
-		}
-		version, ok := pythonRuntimeVersion(strings.TrimSpace(strings.TrimPrefix(clause, op)))
-		if !ok {
-			return false, false
-		}
-		cmp := compareNumbers(baseline, version)
-		match := op == ">=" && cmp >= 0 || op == "<=" && cmp <= 0 || op == ">" && cmp > 0 || op == "<" && cmp < 0 || op == "==" && cmp == 0 || op == "!=" && cmp != 0
-		matches = matches && match
-	}
-	return matches, true
+	return pythonNumericConjunction(requirement, baseline, pythonRuntimeVersion)
 }
 
 func checkPythonCompatibility(manifest, lock string, wheel *string, f *Finding) {
@@ -107,4 +82,36 @@ func checkPythonCompatibility(manifest, lock string, wheel *string, f *Finding) 
 		}
 	}
 	e.Status = "compatible"
+}
+
+func pythonComparisonClause(clause string) (string, string, bool) {
+	clause = strings.TrimSpace(clause)
+	for _, op := range []string{">=", "<=", "==", "!=", ">", "<"} {
+		if strings.HasPrefix(clause, op) {
+			return op, strings.TrimSpace(strings.TrimPrefix(clause, op)), true
+		}
+	}
+	return "", "", false
+}
+
+func pythonNumericConjunction(requirement string, baseline []uint64, parse func(string) ([]uint64, bool)) (bool, bool) {
+	clauses := strings.Split(requirement, ",")
+	if len(clauses) > 16 {
+		return false, false
+	}
+	matches := true
+	for _, clause := range clauses {
+		op, raw, ok := pythonComparisonClause(clause)
+		if !ok {
+			return false, false
+		}
+		version, ok := parse(raw)
+		if !ok {
+			return false, false
+		}
+		cmp := compareNumbers(baseline, version)
+		match := op == ">=" && cmp >= 0 || op == "<=" && cmp <= 0 || op == ">" && cmp > 0 || op == "<" && cmp < 0 || op == "==" && cmp == 0 || op == "!=" && cmp != 0
+		matches = matches && match
+	}
+	return matches, true
 }

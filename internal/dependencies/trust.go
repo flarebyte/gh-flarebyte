@@ -35,18 +35,7 @@ func (e TrustEvidence) Evaluate(p Policy, now time.Time) ([]string, []string) {
 	if p.ID == PackageAdvicePolicyID {
 		return e.evaluatePackageAdvice(p)
 	}
-	reasons, missing := []string{}, []string{}
-	if e.Identity == "conflict" {
-		reasons = append(reasons, "IDENTITY_CONFLICT")
-	} else if e.Identity != "verified" {
-		missing = append(missing, "PACKAGE_IDENTITY")
-	}
-	if !e.LifecycleKnown {
-		missing = append(missing, "RELEASE_LIFECYCLE")
-	}
-	if e.Withdrawn {
-		reasons = append(reasons, "WITHDRAWN_RELEASE")
-	}
+	reasons, missing := e.identityAndLifecycle()
 	if e.NameConflict {
 		reasons = append(reasons, "SUSPICIOUS_NAME")
 	}
@@ -168,4 +157,20 @@ func versionRepository(v Version) (string, string) {
 		return repos[0], "unverified"
 	}
 	return "", "unknown"
+}
+
+func (e TrustEvidence) identityAndLifecycle() ([]string, []string) {
+	reasons, missing := []string{}, []string{}
+	if e.Identity == "conflict" {
+		reasons = append(reasons, "IDENTITY_CONFLICT")
+	} else if e.Identity != "verified" {
+		missing = append(missing, "PACKAGE_IDENTITY")
+	}
+	if !e.LifecycleKnown {
+		missing = append(missing, "RELEASE_LIFECYCLE")
+	}
+	if e.Withdrawn {
+		reasons = append(reasons, "WITHDRAWN_RELEASE")
+	}
+	return reasons, missing
 }

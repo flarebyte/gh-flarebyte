@@ -25,13 +25,7 @@ func goAdviceClient(t *testing.T, module, mode string) *Client {
 			if json.NewDecoder(req.Body).Decode(&query) != nil || query.Package.Ecosystem != "Go" || query.Package.Name != module {
 				t.Fatal(query)
 			}
-			if mode == "osv failure" {
-				return response(`{}`, 403), nil
-			}
-			if mode == "metadata vulnerability" || mode == "vulnerability" && query.Version == "v2.2.0" {
-				return response(`{"vulns":[{"id":"GHSA-go-fixture"}]}`, 200), nil
-			}
-			body = map[string]any{}
+			return adviceOSVFixture(mode, query.Version, "v2.2.0", "GHSA-go-fixture"), nil
 		case req.URL.Host == "api.scorecard.dev":
 			return response(`{}`, 404), nil
 		case req.URL.Host == "api.deps.dev" && strings.Contains(req.URL.Path, "/projects/"):

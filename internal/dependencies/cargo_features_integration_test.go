@@ -20,21 +20,7 @@ func TestCargoFeatureOracle(t *testing.T) {
 	if os.Getenv("GH_FLAREBYTE_DEP_CARGO_INTEGRATION") != "1" {
 		t.Skip("opt-in offline Cargo feature oracle")
 	}
-	cargo, err := exec.LookPath("cargo")
-	if err != nil {
-		t.Fatal(err)
-	}
-	cargo, err = filepath.EvalSymlinks(cargo)
-	if err != nil {
-		t.Fatal(err)
-	}
-	repo, err := filepath.Abs("../..")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if rel, err := filepath.Rel(repo, cargo); err != nil || filepath.IsLocal(rel) {
-		t.Fatal("repository-local Cargo refused")
-	}
+	cargo := externalCargoOracle(t)
 	for _, test := range []string{"defaults", "strong", "strong explicit alias", "weak inactive", "weak activated", "namespaced", "renamed", "no defaults"} {
 		t.Run(test, func(t *testing.T) {
 			p := featureProject()

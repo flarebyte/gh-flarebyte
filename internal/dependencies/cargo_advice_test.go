@@ -13,30 +13,20 @@ func cargoAdviceClient(t *testing.T, mode string) *Client {
 	t.Helper()
 	owners := 0
 	return &Client{HTTP: doFunc(func(req *http.Request) (*http.Response, error) {
-		if req.Header.Get("Authorization") != "" {
-			t.Fatal("unexpected credentials")
+		if response, ok := adviceRepositoryResponse(t, req); ok {
+			return response, nil
 		}
 		var body any
 		switch {
 		case req.URL.Host == "api.osv.dev":
-			var q struct {
-				Package struct{ Name, Ecosystem string }
-				Version string
-			}
-			if json.NewDecoder(req.Body).Decode(&q) != nil || q.Package.Ecosystem != "crates.io" || q.Package.Name != "pkg" {
-				t.Fatal(q)
-			}
+			queryVersion := adviceQueryVersion(t, req, "crates.io", "pkg")
 			if mode == "osv failure" {
 				return response(`{}`, 403), nil
 			}
-			if mode == "metadata vulnerability" || mode == "vulnerability" && q.Version == "2.0.0" {
+			if mode == "metadata vulnerability" || mode == "vulnerability" && queryVersion == "2.0.0" {
 				return response(`{"vulns":[{"id":"GHSA-cargo-fixture"}]}`, 200), nil
 			}
 			body = map[string]any{}
-		case req.URL.Host == "api.scorecard.dev":
-			return response(`{}`, 404), nil
-		case req.URL.Host == "api.deps.dev" && strings.Contains(req.URL.Path, "/projects/"):
-			body = map[string]any{"projectKey": map[string]string{"id": "github.com/org/repo"}, "starsCount": 1000}
 		case req.URL.Host == "api.deps.dev" && strings.Contains(req.URL.Path, "/versions/"):
 			if mode == "metadata vulnerability" {
 				return response(`{}`, 404), nil

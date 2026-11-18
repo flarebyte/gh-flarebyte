@@ -10,6 +10,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/flarebyte/gh-flarebyte/internal/config"
 )
 
 func runTest(styleOverride, colorOverride string, failedOnly bool, stdout, stderr io.Writer) Result {
@@ -223,22 +225,7 @@ func runCov(min *float64, colorOverride string, failedOnly bool, stdout, stderr 
 			_, _ = fmt.Fprintln(stderr, parseErr.Error())
 			return Result{ExitCode: ExitFailure, Err: parseErr}
 		}
-		effectiveMin := resolveCoverageMin(min, cfg)
-		if cfg.DevOutput.Style == "per_test" {
-			printCoverageDetails(stdout, parseCoverageDetails(coverOut), effectiveMin, failedOnly)
-		}
-		if effectiveMin != nil && cfg.Coverage.FailBelowMin && coverage < *effectiveMin {
-			printDevSummary(stderr, cfg, devSummary{Kind: "cov", Status: "FAIL", Duration: time.Since(start), Details: fmt.Sprintf("total=%.2f%% min=%.2f%%", coverage, *effectiveMin)})
-			return Result{ExitCode: ExitFailure, Err: fmt.Errorf("coverage %.2f below minimum %.2f", coverage, *effectiveMin)}
-		}
-		if !failedOnly {
-			if effectiveMin != nil {
-				printDevSummary(stdout, cfg, devSummary{Kind: "cov", Status: "PASS", Duration: time.Since(start), Details: fmt.Sprintf("total=%.2f%% min=%.2f%%", coverage, *effectiveMin)})
-			} else {
-				printDevSummary(stdout, cfg, devSummary{Kind: "cov", Status: "PASS", Duration: time.Since(start), Details: fmt.Sprintf("total=%.2f%%", coverage)})
-			}
-		}
-		return Result{ExitCode: ExitOK}
+		return completeCoverage(cfg, coverage, parseCoverageDetails(coverOut), min, failedOnly, start, stdout, stderr)
 	case "dart":
 		_, cmdErr, runErr := runCommandCapture("dart", []string{"test", "--coverage", ".dart_tool/coverage"}, env)
 		if runErr != nil {
@@ -286,23 +273,27 @@ func runCov(min *float64, colorOverride string, failedOnly bool, stdout, stderr 
 			_, _ = fmt.Fprintln(stderr, parseErr.Error())
 			return Result{ExitCode: ExitFailure, Err: parseErr}
 		}
-		effectiveMin := resolveCoverageMin(min, cfg)
-		if cfg.DevOutput.Style == "per_test" {
-			printCoverageDetails(stdout, details, effectiveMin, failedOnly)
-		}
-		if effectiveMin != nil && cfg.Coverage.FailBelowMin && coverage < *effectiveMin {
-			printDevSummary(stderr, cfg, devSummary{Kind: "cov", Status: "FAIL", Duration: time.Since(start), Details: fmt.Sprintf("total=%.2f%% min=%.2f%%", coverage, *effectiveMin)})
-			return Result{ExitCode: ExitFailure, Err: fmt.Errorf("coverage %.2f below minimum %.2f", coverage, *effectiveMin)}
-		}
-		if !failedOnly {
-			if effectiveMin != nil {
-				printDevSummary(stdout, cfg, devSummary{Kind: "cov", Status: "PASS", Duration: time.Since(start), Details: fmt.Sprintf("total=%.2f%% min=%.2f%%", coverage, *effectiveMin)})
-			} else {
-				printDevSummary(stdout, cfg, devSummary{Kind: "cov", Status: "PASS", Duration: time.Since(start), Details: fmt.Sprintf("total=%.2f%%", coverage)})
-			}
-		}
-		return Result{ExitCode: ExitOK}
+		return completeCoverage(cfg, coverage, details, min, failedOnly, start, stdout, stderr)
 	default:
 		return unsupportedLanguageResult(cfg.Build.Language, stderr)
 	}
+}
+
+func completeCoverage(cfg config.Config, coverage float64, details []coverageDetail, min *float64, failedOnly bool, start time.Time, stdout, stderr io.Writer) Result {
+	effectiveMin := resolveCoverageMin(min, cfg)
+	if cfg.DevOutput.Style == "per_test" {
+		printCoverageDetails(stdout, details, effectiveMin, failedOnly)
+	}
+	if effectiveMin != nil && cfg.Coverage.FailBelowMin && coverage < *effectiveMin {
+		printDevSummary(stderr, cfg, devSummary{Kind: "cov", Status: "FAIL", Duration: time.Since(start), Details: fmt.Sprintf("total=%.2f%% min=%.2f%%", coverage, *effectiveMin)})
+		return Result{ExitCode: ExitFailure, Err: fmt.Errorf("coverage %.2f below minimum %.2f", coverage, *effectiveMin)}
+	}
+	if !failedOnly {
+		if effectiveMin != nil {
+			printDevSummary(stdout, cfg, devSummary{Kind: "cov", Status: "PASS", Duration: time.Since(start), Details: fmt.Sprintf("total=%.2f%% min=%.2f%%", coverage, *effectiveMin)})
+		} else {
+			printDevSummary(stdout, cfg, devSummary{Kind: "cov", Status: "PASS", Duration: time.Since(start), Details: fmt.Sprintf("total=%.2f%%", coverage)})
+		}
+	}
+	return Result{ExitCode: ExitOK}
 }

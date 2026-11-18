@@ -113,34 +113,10 @@ func pythonDistributionMatches(requirement, version string) (bool, bool) {
 	if requirement == "" {
 		return true, true
 	}
-	clauses := strings.Split(requirement, ",")
-	if len(clauses) > 16 {
-		return false, false
-	}
-	matches := true
-	for _, clause := range clauses {
-		clause = strings.TrimSpace(clause)
-		op := ""
-		for _, candidate := range []string{">=", "<=", "==", "!=", ">", "<"} {
-			if strings.HasPrefix(clause, candidate) {
-				op = candidate
-				break
-			}
+	return pythonNumericConjunction(requirement, base, func(raw string) ([]uint64, bool) {
+		if strings.ContainsAny(raw, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ+-") {
+			return nil, false
 		}
-		if op == "" {
-			return false, false
-		}
-		rawVersion := strings.TrimSpace(strings.TrimPrefix(clause, op))
-		if strings.ContainsAny(rawVersion, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ+-") {
-			return false, false
-		}
-		required, ok := stableVersion("pypi", rawVersion)
-		if !ok {
-			return false, false
-		}
-		cmp := compareNumbers(base, required)
-		match := op == ">=" && cmp >= 0 || op == "<=" && cmp <= 0 || op == ">" && cmp > 0 || op == "<" && cmp < 0 || op == "==" && cmp == 0 || op == "!=" && cmp != 0
-		matches = matches && match
-	}
-	return matches, true
+		return stableVersion("pypi", raw)
+	})
 }

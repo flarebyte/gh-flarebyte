@@ -49,18 +49,7 @@ func (c *Client) AssessPackage(ctx context.Context, system, name string, request
 }
 
 func (e TrustEvidence) evaluatePackageAdvice(p Policy) ([]string, []string) {
-	reasons, missing := []string{}, []string{}
-	if e.Identity == "conflict" {
-		reasons = append(reasons, "IDENTITY_CONFLICT")
-	} else if e.Identity != "verified" {
-		missing = append(missing, "PACKAGE_IDENTITY")
-	}
-	if !e.LifecycleKnown {
-		missing = append(missing, "RELEASE_LIFECYCLE")
-	}
-	if e.Withdrawn {
-		reasons = append(reasons, "WITHDRAWN_RELEASE")
-	}
+	reasons, missing := e.identityAndLifecycle()
 	if e.NameConflict {
 		missing = append(missing, "SUSPICIOUS_NAME")
 	}

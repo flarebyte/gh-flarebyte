@@ -10,7 +10,7 @@ import {
   writeFile,
 } from 'node:fs/promises';
 import { join } from 'node:path';
-import { makeTempDir, runCLI } from './helpers';
+import { makeTempDir, runCLI, writeConfigAndBuild } from './helpers';
 
 describe.skipIf(process.env.GH_FLAREBYTE_KOTLIN_E2E !== '1')(
   'gh-flarebyte Kotlin/JVM Gradle library and CLI',
@@ -66,12 +66,7 @@ describe.skipIf(process.env.GH_FLAREBYTE_KOTLIN_E2E !== '1')(
         const cliConfig = config
           .replace('mode: "library"', 'mode: "binary"')
           .replace('includeArtifacts: false', 'includeArtifacts: true');
-        await writeFile(configPath, cliConfig);
-        const build = await run([
-          'build',
-          '--output-dir',
-          'output with spaces',
-        ]);
+        const build = await writeConfigAndBuild(configPath, cliConfig, run);
         expect(build.code, build.stderr).toBe(0);
         const output = join(dir, 'output with spaces');
         expect((await readdir(output)).sort()).toEqual([

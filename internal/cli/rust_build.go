@@ -87,11 +87,8 @@ func buildRust(cfg config.Config, target, outputOverride string, stderr io.Write
 		_, err := cargoRun(args, env)
 		return nil, err
 	}
-	outputDir := cfg.Build.OutputDir
-	if outputOverride != "" {
-		outputDir = outputOverride
-	}
-	if err := os.MkdirAll(outputDir, 0o755); err != nil {
+	outputDir, err := prepareBuildOutputDir(cfg.Build.OutputDir, outputOverride)
+	if err != nil {
 		return nil, err
 	}
 	var artifacts []string

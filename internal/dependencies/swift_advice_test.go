@@ -19,18 +19,12 @@ func swiftAdviceClient(t *testing.T, mode string) *Client {
 		var body any
 		switch {
 		case req.URL.Host == "api.osv.dev":
-			var q struct {
-				Package struct{ Name, Ecosystem string }
-				Version string
-			}
-			if json.NewDecoder(req.Body).Decode(&q) != nil || q.Package.Name != "github.com/org/repo" || q.Package.Ecosystem != "SwiftURL" {
-				t.Fatal(q)
-			}
+			queryVersion := adviceQueryVersion(t, req, "SwiftURL", "github.com/org/repo")
 			if mode == "osv failure" {
 				return response(`{}`, 403), nil
 			}
 			body = map[string]any{}
-			if mode == "vulnerable" && q.Version == "1.0.0" {
+			if mode == "vulnerable" && queryVersion == "1.0.0" {
 				body = map[string]any{"vulns": []any{map[string]string{"id": "GHSA-swift-fixture"}}}
 			}
 		case req.URL.Host == "api.scorecard.dev":

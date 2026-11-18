@@ -12,7 +12,7 @@ import {
   writeFile,
 } from 'node:fs/promises';
 import { join } from 'node:path';
-import { makeTempDir, runCLI } from './helpers';
+import { makeTempDir, runCLI, writeConfigAndBuild } from './helpers';
 
 describe.skipIf(process.env.GH_FLAREBYTE_TYPESCRIPT_E2E !== '1')(
   'gh-flarebyte TypeScript with npm/tsx and Bun CLI builds',
@@ -90,12 +90,7 @@ describe.skipIf(process.env.GH_FLAREBYTE_TYPESCRIPT_E2E !== '1')(
             `mode: "binary"\n mainPackage: "src/cli.ts"\n targets: ["${host}"]`,
           )
           .replace('includeArtifacts: false', 'includeArtifacts: true');
-        await writeFile(configPath, cliConfig);
-        const build = await run([
-          'build',
-          '--output-dir',
-          'output with spaces',
-        ]);
+        const build = await writeConfigAndBuild(configPath, cliConfig, run);
         expect(build.code, build.stderr).toBe(0);
         const output = join(dir, 'output with spaces');
         const assets = await readdir(output);

@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { access, mkdir } from 'node:fs/promises';
+import { access, mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 export type RunResult = {
@@ -103,4 +103,13 @@ async function ensureBuiltBinary(repoRoot: string): Promise<void> {
     }
   })();
   return buildOnce;
+}
+
+export async function writeConfigAndBuild(
+  configPath: string,
+  config: string,
+  run: (args: string[]) => Promise<RunResult>,
+): Promise<RunResult> {
+  await writeFile(configPath, config);
+  return run(['build', '--output-dir', 'output with spaces']);
 }

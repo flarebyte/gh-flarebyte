@@ -130,16 +130,10 @@ func runTypeScriptDev(cfg config.Config, env []string, kind string, min *float64
 			if err != nil {
 				return fail(err)
 			}
-			threshold := resolveCoverageMin(min, cfg)
-			if cfg.DevOutput.Style == "per_test" {
-				printCoverageDetails(stdout, entries, threshold, failedOnly)
-			}
-			details = fmt.Sprintf("total=%.2f%%", percent)
-			if threshold != nil {
-				details += fmt.Sprintf(" min=%.2f%%", *threshold)
-				if cfg.Coverage.FailBelowMin && percent < *threshold {
-					return fail(fmt.Errorf("%s: coverage below minimum", details))
-				}
+			var below bool
+			details, below = coverageStatus(cfg, percent, entries, min, failedOnly, stdout)
+			if below {
+				return fail(fmt.Errorf("%s: coverage below minimum", details))
 			}
 		}
 	default:

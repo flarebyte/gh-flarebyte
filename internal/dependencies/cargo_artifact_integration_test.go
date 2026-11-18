@@ -16,21 +16,7 @@ func TestCargoArchiveOracle(t *testing.T) {
 	if os.Getenv("GH_FLAREBYTE_DEP_CARGO_INTEGRATION") != "1" {
 		t.Skip("opt-in offline Cargo archive oracle")
 	}
-	cargo, err := exec.LookPath("cargo")
-	if err != nil {
-		t.Fatal(err)
-	}
-	cargo, err = filepath.EvalSymlinks(cargo)
-	if err != nil {
-		t.Fatal(err)
-	}
-	repo, err := filepath.Abs("../..")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if rel, err := filepath.Rel(repo, cargo); err != nil || filepath.IsLocal(rel) {
-		t.Fatal("repository-local Cargo refused")
-	}
+	cargo := externalCargoOracle(t)
 	dir := t.TempDir()
 	crate := filepath.Join(dir, "crate")
 	if err := os.MkdirAll(filepath.Join(crate, "src"), 0700); err != nil {
@@ -76,4 +62,24 @@ std = []
 	if _, err := os.Stat(filepath.Join(crate, "hook-executed")); !os.IsNotExist(err) {
 		t.Fatal("Cargo package executed a fixture build script")
 	}
+}
+
+func externalCargoOracle(t *testing.T) string {
+	t.Helper()
+	cargo, err := exec.LookPath("cargo")
+	if err != nil {
+		t.Fatal(err)
+	}
+	cargo, err = filepath.EvalSymlinks(cargo)
+	if err != nil {
+		t.Fatal(err)
+	}
+	repo, err := filepath.Abs("../..")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rel, err := filepath.Rel(repo, cargo); err != nil || filepath.IsLocal(rel) {
+		t.Fatal("repository-local Cargo refused")
+	}
+	return cargo
 }

@@ -109,14 +109,7 @@ func TestRunBuildSuccessWritesChecksumAndSummary(t *testing.T) {
 }
 
 func TestRunBuildUsesConfiguredMainPackage(t *testing.T) {
-	cfg := strings.Replace(testConfigCue(), `build: {
-	language:     "go"
-	outputDir:    "build"
-	checksumFile: "build/checksums.txt"
-	targets: [
-		"linux-amd64",
-	]
-}`, `build: {
+	cfg := strings.Replace(testConfigCue(), goBinaryBuildFixture, `build: {
 	language:     "go"
 	mainPackage:  "./cmd/flyb"
 	outputDir:    "build"
@@ -150,14 +143,7 @@ func TestRunBuildUsesConfiguredMainPackage(t *testing.T) {
 }
 
 func TestRunBuildWithoutSuffixUsesTargetSubdirsForMultipleTargets(t *testing.T) {
-	cfg := strings.Replace(testConfigCue(), `targets: [
-		"linux-amd64",
-	]`, `artifactTargetSuffix: false
-	targets: [
-		"linux-amd64",
-		"darwin-arm64",
-	]`, 1)
-	cfg = strings.Replace(cfg, `artifactTargetSuffix: true`, `artifactTargetSuffix: false`, 1)
+	cfg := noSuffixBuildConfig()
 	_ = setupTempWorkdirWithConfig(t, cfg)
 	setupBuildTargetAndPackagingStubs(t)
 	var out bytes.Buffer
@@ -197,18 +183,7 @@ func TestRunBuildFailureIncludesUnderlyingError(t *testing.T) {
 func TestRunBuildDartLibraryModeSuccess(t *testing.T) {
 	cfg := strings.Replace(testConfigCue(), `language:     "go"`, `language:     "dart"`, 1)
 	cfg = strings.Replace(cfg, "build: {\n\tlanguage:     \"dart\"", "build: {\n\tlanguage:     \"dart\"\n\tmode:         \"library\"\n\tpackages: [\n\t\t\"./...\",\n\t]\n\trunTests:     true", 1)
-	cfg = strings.Replace(cfg, `release: {
-	versionSource:    "main.project.yaml"
-	tagPrefix:        "v"
-	notesMode:        "generate-notes"
-	artifactDir:      "build"
-	includeChecksums: true
-}`, `release: {
-	versionSource:    "main.project.yaml"
-	tagPrefix:        "v"
-	notesMode:        "generate-notes"
-	includeArtifacts: false
-}`, 1)
+	cfg = withoutReleaseArtifacts(cfg)
 	_ = setupTempWorkdirWithConfig(t, cfg)
 	oldDartBuildPackages := dartBuildPackages
 	t.Cleanup(func() {
@@ -239,18 +214,7 @@ func TestRunBuildDartLibraryModeSuccess(t *testing.T) {
 func TestRunBuildDartLibraryModeFailure(t *testing.T) {
 	cfg := strings.Replace(testConfigCue(), `language:     "go"`, `language:     "dart"`, 1)
 	cfg = strings.Replace(cfg, "build: {\n\tlanguage:     \"dart\"", "build: {\n\tlanguage:     \"dart\"\n\tmode:         \"library\"\n\tpackages: [\n\t\t\"./...\",\n\t]", 1)
-	cfg = strings.Replace(cfg, `release: {
-	versionSource:    "main.project.yaml"
-	tagPrefix:        "v"
-	notesMode:        "generate-notes"
-	artifactDir:      "build"
-	includeChecksums: true
-}`, `release: {
-	versionSource:    "main.project.yaml"
-	tagPrefix:        "v"
-	notesMode:        "generate-notes"
-	includeArtifacts: false
-}`, 1)
+	cfg = withoutReleaseArtifacts(cfg)
 	_ = setupTempWorkdirWithConfig(t, cfg)
 	oldDartBuildPackages := dartBuildPackages
 	t.Cleanup(func() {
@@ -389,18 +353,7 @@ func TestRunReleaseSuccess(t *testing.T) {
 func TestRunReleaseDartLibraryNoArtifactsSuccess(t *testing.T) {
 	cfg := strings.Replace(testConfigCue(), `language:     "go"`, `language:     "dart"`, 1)
 	cfg = strings.Replace(cfg, "build: {\n\tlanguage:     \"dart\"", "build: {\n\tlanguage:     \"dart\"\n\tmode:         \"library\"\n\tpackages: [\n\t\t\"./...\",\n\t]\n\trunTests:     true", 1)
-	cfg = strings.Replace(cfg, `release: {
-	versionSource:    "main.project.yaml"
-	tagPrefix:        "v"
-	notesMode:        "generate-notes"
-	artifactDir:      "build"
-	includeChecksums: true
-}`, `release: {
-	versionSource:    "main.project.yaml"
-	tagPrefix:        "v"
-	notesMode:        "generate-notes"
-	includeArtifacts: false
-}`, 1)
+	cfg = withoutReleaseArtifacts(cfg)
 	_ = setupTempWorkdirWithConfig(t, cfg)
 	oldDartBuildPackages := dartBuildPackages
 	t.Cleanup(func() { dartBuildPackages = oldDartBuildPackages })
@@ -433,14 +386,7 @@ func TestRunReleaseDartLibraryNoArtifactsSuccess(t *testing.T) {
 }
 
 func TestRunReleaseSupportsNoSuffixModeWithMultipleTargets(t *testing.T) {
-	cfg := strings.Replace(testConfigCue(), `targets: [
-		"linux-amd64",
-	]`, `artifactTargetSuffix: false
-	targets: [
-		"linux-amd64",
-		"darwin-arm64",
-	]`, 1)
-	cfg = strings.Replace(cfg, `artifactTargetSuffix: true`, `artifactTargetSuffix: false`, 1)
+	cfg := noSuffixBuildConfig()
 	_ = setupTempWorkdirWithConfig(t, cfg)
 	stubReleaseFlow(t, "1.2.3", false)
 	var capturedArtifacts []string
@@ -509,31 +455,13 @@ func TestHydrateBuildInfoKeepsExistingWhenVersionAndGitUnavailable(t *testing.T)
 }
 
 func TestRunBuildLibraryModeSuccess(t *testing.T) {
-	cfg := strings.Replace(testConfigCue(), `build: {
-	language:     "go"
-	outputDir:    "build"
-	checksumFile: "build/checksums.txt"
-	targets: [
-		"linux-amd64",
-	]
-}`, `build: {
+	cfg := strings.Replace(testConfigCue(), goBinaryBuildFixture, `build: {
 	language: "go"
 	mode:     "library"
 	packages: ["./..."]
 	runTests: true
 }`, 1)
-	cfg = strings.Replace(cfg, `release: {
-	versionSource:    "main.project.yaml"
-	tagPrefix:        "v"
-	notesMode:        "generate-notes"
-	artifactDir:      "build"
-	includeChecksums: true
-}`, `release: {
-	versionSource:    "main.project.yaml"
-	tagPrefix:        "v"
-	notesMode:        "generate-notes"
-	includeArtifacts: false
-}`, 1)
+	cfg = withoutReleaseArtifacts(cfg)
 	_ = setupTempWorkdirWithConfig(t, cfg)
 	oldGoBuildPackages := goBuildPackages
 	t.Cleanup(func() { goBuildPackages = oldGoBuildPackages })
@@ -554,14 +482,7 @@ func TestRunBuildLibraryModeSuccess(t *testing.T) {
 }
 
 func TestRunBuildLibraryModePassesCGOConfig(t *testing.T) {
-	cfg := strings.Replace(testConfigCue(), `build: {
-	language:     "go"
-	outputDir:    "build"
-	checksumFile: "build/checksums.txt"
-	targets: [
-		"linux-amd64",
-	]
-}`, `go: {
+	cfg := strings.Replace(testConfigCue(), goBinaryBuildFixture, `go: {
 	cgo: {
 		enabled: true
 		cc:      "clang"
@@ -574,18 +495,7 @@ build: {
 	mode:     "library"
 	packages: ["./..."]
 }`, 1)
-	cfg = strings.Replace(cfg, `release: {
-	versionSource:    "main.project.yaml"
-	tagPrefix:        "v"
-	notesMode:        "generate-notes"
-	artifactDir:      "build"
-	includeChecksums: true
-}`, `release: {
-	versionSource:    "main.project.yaml"
-	tagPrefix:        "v"
-	notesMode:        "generate-notes"
-	includeArtifacts: false
-}`, 1)
+	cfg = withoutReleaseArtifacts(cfg)
 	_ = setupTempWorkdirWithConfig(t, cfg)
 	oldGoBuildPackages := goBuildPackages
 	t.Cleanup(func() { goBuildPackages = oldGoBuildPackages })
@@ -606,30 +516,12 @@ build: {
 }
 
 func TestRunReleaseLibraryModeWithoutArtifacts(t *testing.T) {
-	cfg := strings.Replace(testConfigCue(), `build: {
-	language:     "go"
-	outputDir:    "build"
-	checksumFile: "build/checksums.txt"
-	targets: [
-		"linux-amd64",
-	]
-}`, `build: {
+	cfg := strings.Replace(testConfigCue(), goBinaryBuildFixture, `build: {
 	language: "go"
 	mode:     "library"
 	packages: ["./..."]
 }`, 1)
-	cfg = strings.Replace(cfg, `release: {
-	versionSource:    "main.project.yaml"
-	tagPrefix:        "v"
-	notesMode:        "generate-notes"
-	artifactDir:      "build"
-	includeChecksums: true
-}`, `release: {
-	versionSource:    "main.project.yaml"
-	tagPrefix:        "v"
-	notesMode:        "generate-notes"
-	includeArtifacts: false
-}`, 1)
+	cfg = withoutReleaseArtifacts(cfg)
 	_ = setupTempWorkdirWithConfig(t, cfg)
 	oldGoBuildPackages := goBuildPackages
 	t.Cleanup(func() { goBuildPackages = oldGoBuildPackages })
@@ -680,3 +572,39 @@ func TestRunBuildFailurePrintsGoEnvAndCommand(t *testing.T) {
 		t.Fatalf("expected command diagnostics, got: %s", errOut.String())
 	}
 }
+
+func withoutReleaseArtifacts(cfg string) string {
+	return strings.Replace(cfg, `release: {
+	versionSource:    "main.project.yaml"
+	tagPrefix:        "v"
+	notesMode:        "generate-notes"
+	artifactDir:      "build"
+	includeChecksums: true
+}`, `release: {
+	versionSource:    "main.project.yaml"
+	tagPrefix:        "v"
+	notesMode:        "generate-notes"
+	includeArtifacts: false
+}`, 1)
+}
+
+func noSuffixBuildConfig() string {
+	cfg := strings.Replace(testConfigCue(), `targets: [
+		"linux-amd64",
+	]`, `artifactTargetSuffix: false
+	targets: [
+		"linux-amd64",
+		"darwin-arm64",
+	]`, 1)
+	cfg = strings.Replace(cfg, `artifactTargetSuffix: true`, `artifactTargetSuffix: false`, 1)
+	return cfg
+}
+
+const goBinaryBuildFixture = `build: {
+	language:     "go"
+	outputDir:    "build"
+	checksumFile: "build/checksums.txt"
+	targets: [
+		"linux-amd64",
+	]
+}`

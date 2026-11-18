@@ -13,25 +13,22 @@ describe('dependency assessment safety', () => {
     expect(result.stdout).not.toContain('--project-dir');
   });
 
-  test('unsupported install leaves project files unchanged without network', async () => {
+  test('install rejects presentation flags before changing project files or using network', async () => {
     const root = process.cwd();
     const dir = await makeTempDir(root);
     await mkdir(join(dir, '.git'));
-    const manifest = '{"name":"local","private":true}\n';
-    await writeFile(join(dir, 'package.json'), manifest);
-    // Pub without an exact version has no upstream catalog to query.
+    const manifest = 'name: local\nenvironment:\n  sdk: ^3.0.0\n';
+    await writeFile(join(dir, 'pubspec.yaml'), manifest);
+    // Install flags are rejected before assessment or native Dart launch.
     const result = await runCLI(
       ['dep', 'install', 'pub', 'archive', '--json'],
       dir,
       root,
     );
-    expect(result.code).toBe(9);
-    expect(result.stderr).toBe('');
-    const report = JSON.parse(result.stdout);
-    expect(report.decision).toBe('unknown');
-    expect(report.error.code).toBe('INSTALL_UNSUPPORTED');
-    expect(report.recommendation).toBeNull();
-    expect(await readFile(join(dir, 'package.json'), 'utf8')).toBe(manifest);
+    expect(result.code).toBe(2);
+    expect(result.stdout).toBe('');
+    expect(result.stderr).toContain('--json and --explain are check-only');
+    expect(await readFile(join(dir, 'pubspec.yaml'), 'utf8')).toBe(manifest);
   });
 
   test('invalid exact input returns a structured failure before network', async () => {
