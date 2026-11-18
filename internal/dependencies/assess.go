@@ -108,10 +108,18 @@ func (c *Client) Assess(ctx context.Context, system, name string, requested *str
 }
 
 func (c *Client) AssessLocal(ctx context.Context, dir, system, name string, requested *string, p Policy, now time.Time) Report {
+	ctx = withBudget(ctx)
 	project := ReadProject(dir, system)
 	r := c.assess(ctx, system, name, requested, p, now, project)
-	if project.Complete && !project.unchanged(dir) {
+	if project.System == "pypi" && project.InventoryComplete {
+		if len(project.Findings) == 0 {
+			c.assessProject(ctx, project, p, now, &r, map[string]TrustEvidence{})
+		}
+		mergePythonInventory(&r, project)
+	}
+	if (project.Complete || project.InventoryComplete) && !project.unchanged(dir) {
 		project.Complete = false
+		project.InventoryComplete = false
 		project.Missing = unique(append(project.Missing, "PROJECT_CHANGED_DURING_ASSESSMENT"))
 		r.Scope = "package"
 		r.Recommendation = nil
@@ -256,6 +264,7 @@ func (c *Client) assess(ctx context.Context, system, name string, requested *str
 		c.fillMaintenance(ctx, system, v.Key.Name, &e, p, now, &r, cache)
 		e.NameScreened, e.NameConflict = screenName(system, name)
 		resolution := ""
+		inventory := project != nil && project.System == "pypi" && project.InventoryComplete && project.runtime[name] == version
 		if project.binds(name, version) {
 			resolution = "locked"
 		} else if project.planLeaf(npm) {
@@ -265,6 +274,8 @@ func (c *Client) assess(ctx context.Context, system, name string, requested *str
 		}
 		if resolution != "" {
 			e.ProjectResolved = true
+		}
+		if resolution != "" || inventory {
 			if len(project.Findings) == 0 {
 				c.assessProject(ctx, project, p, now, &r, cache)
 			}
@@ -272,7 +283,7 @@ func (c *Client) assess(ctx context.Context, system, name string, requested *str
 		f := evaluateRelease(v, advisories, osvErr, e, p, now)
 		f.Resolution = resolution
 		f.Reasons = unique(append(f.Reasons, releaseReasons...))
-		if e.ProjectResolved {
+		if e.ProjectResolved || inventory {
 			mergeProjectFindings(&f, project, name)
 			if npm != nil && (len(npm.Engines) > 0 || len(npm.OS) > 0 || len(npm.CPU) > 0) {
 				f.Missing = unique(append(f.Missing, "RUNTIME_COMPATIBILITY"))

@@ -306,6 +306,20 @@ conjunctions, bare partial versions (`1`, `1.2`), trailing wildcards and `||`
 alternatives. Every alternative must use supported syntax; prereleases remain gated.
 General upgrades and runtime/platform constraints may still require further evidence.
 
+PyPI checks can also audit a restricted `pyproject.toml`/`pylock.toml` inventory:
+exact root pins, lock format 1.0, and one public PyPI wheel with SHA-256 per
+package. Each locked version receives advisory checks; wheel URLs, filenames,
+hashes, optional sizes and yanking are corroborated with PyPI. A locked problem
+denies with `LOCKED_INVENTORY_VIOLATION`, even if the requested package's catalog
+cannot be read. Checks neither download wheels nor execute Python.
+Explained output uses `resolution: "locked-inventory"`,
+`inventory_complete: true` and `complete: false`. This inventory does not prove
+dependency resolution or Python/platform compatibility: a clean inventory still
+returns `unknown`, with no recommended version or installation approval. Markers,
+extras, groups, alternate sources, source distributions and multiple wheel choices
+remain unsupported. The lock's informational dependency tables do not establish
+an installation graph. PyPI installation remains gated.
+
 Cargo checks inspect `Cargo.toml` and lockfiles v3/v4 for single-package crates.io
 projects and already locked runtime dependencies. Every locked crate is assessed,
 including build/development dependencies, as a conservative superset rather than

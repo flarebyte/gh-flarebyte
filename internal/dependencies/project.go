@@ -29,20 +29,22 @@ type ProjectNode struct {
 }
 
 type ProjectSnapshot struct {
-	System          string             `json:"system"`
-	Resolution      string             `json:"resolution,omitempty"`
-	RuntimeBaseline string             `json:"runtime_baseline,omitempty"`
-	ManifestDigest  string             `json:"manifest_digest,omitempty"`
-	LockDigest      string             `json:"lock_digest,omitempty"`
-	Complete        bool               `json:"complete"`
-	Missing         []string           `json:"missing"`
-	Nodes           []ProjectNode      `json:"nodes"`
-	Findings        []ProjectFinding   `json:"findings,omitempty"`
-	Plans           []ProjectPlan      `json:"plans,omitempty"`
-	Features        *FeatureResolution `json:"features,omitempty"`
-	runtime         map[string]string
-	packages        map[string]npmPackage
-	cargo           *cargoGraph
+	System            string             `json:"system"`
+	Resolution        string             `json:"resolution,omitempty"`
+	RuntimeBaseline   string             `json:"runtime_baseline,omitempty"`
+	ManifestDigest    string             `json:"manifest_digest,omitempty"`
+	LockDigest        string             `json:"lock_digest,omitempty"`
+	Complete          bool               `json:"complete"`
+	InventoryComplete bool               `json:"inventory_complete,omitempty"`
+	Missing           []string           `json:"missing"`
+	Nodes             []ProjectNode      `json:"nodes"`
+	Findings          []ProjectFinding   `json:"findings,omitempty"`
+	Plans             []ProjectPlan      `json:"plans,omitempty"`
+	Features          *FeatureResolution `json:"features,omitempty"`
+	runtime           map[string]string
+	packages          map[string]npmPackage
+	cargo             *cargoGraph
+	pypi              map[string]pypiLockedArtifact
 }
 
 type ProjectPlan struct {
@@ -168,6 +170,9 @@ func strictJSON(b []byte, out any, opening byte) error {
 }
 
 func ReadProject(dir, system string) *ProjectSnapshot {
+	if system == "pypi" {
+		return readPyPIProject(dir)
+	}
 	if system == "cargo" {
 		return readCargoProject(dir)
 	}
@@ -451,6 +456,9 @@ func (s *ProjectSnapshot) unchanged(dir string) bool {
 		if cargoConfigPresent(root) {
 			return false
 		}
+	}
+	if s.System == "pypi" {
+		manifest, lock = "pyproject.toml", "pylock.toml"
 	}
 	m, err := projectFile(root, manifest, 1<<20)
 	if err != nil {

@@ -29,7 +29,7 @@ func (c *Client) assessProject(ctx context.Context, project *ProjectSnapshot, p 
 			finding.Missing = unique(append(finding.Missing, "VERSION_LOOKUP"))
 		} else {
 			e, release, _, releaseReasons := c.releaseEvidence(ctx, system, node.Name, node.Version, &r.Details.Sources)
-			e.ProjectResolved = true
+			e.ProjectResolved = system != "pypi"
 			e.NameScreened, e.NameConflict = screenName(system, node.Name)
 			c.fillRepository(ctx, v, &e, r, cache)
 			c.fillMaintenance(ctx, system, node.Name, &e, p, now, r, cache)
@@ -58,6 +58,9 @@ func (c *Client) assessProject(ctx context.Context, project *ProjectSnapshot, p 
 					finding.Missing = unique(append(finding.Missing, "RUNTIME_COMPATIBILITY"))
 				}
 			}
+		}
+		if system == "pypi" {
+			c.checkPyPINode(ctx, project, node, &finding, &r.Details.Sources)
 		}
 		finding.Decision = verdict(finding.Reasons, finding.Missing)
 		if finding.Evidence != nil {
