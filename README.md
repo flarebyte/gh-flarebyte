@@ -263,6 +263,11 @@ gh flarebyte dep check npm lodash@4.17.21 --json
 gh flarebyte dep check cargo serde --explain
 ```
 
+Text verdicts are `RECOMMEND`, `REVIEW` and `AVOID`. A candidate awaiting review
+is labelled separately from a recommendation; a better version for an exact
+request is labelled a recommended alternative. JSON retains `allow`, `unknown`
+and `deny`, with the existing `requested` and `recommendation` fields.
+
 The only command flags are `--json` and `--explain`. Checks query deps.dev, OSV
 and OpenSSF Scorecard with bounded requests. Registry descriptions are included
 when available. Configure the release waiting period in `.gh-flarebyte.cue`:

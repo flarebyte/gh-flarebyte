@@ -219,7 +219,14 @@ func writeDependencyReport(w io.Writer, r dependencies.Report, jsonOutput bool) 
 	if jsonOutput {
 		return json.NewEncoder(w).Encode(r)
 	}
-	if _, err := fmt.Fprintf(w, "%s %s", strings.ToUpper(r.Decision), r.Package); err != nil {
+	label := "REVIEW"
+	switch r.Decision {
+	case dependencies.Allow:
+		label = "RECOMMEND"
+	case dependencies.Deny:
+		label = "AVOID"
+	}
+	if _, err := fmt.Fprintf(w, "%s %s", label, r.Package); err != nil {
 		return err
 	}
 	if r.Requested != nil {
@@ -240,7 +247,16 @@ func writeDependencyReport(w io.Writer, r dependencies.Report, jsonOutput bool) 
 			return err
 		}
 	} else if r.Recommendation != nil {
-		if _, err := fmt.Fprintf(w, "Recommended: %s\n", r.Recommendation.Version); err != nil {
+		label := "Recommended"
+		if r.Requested != nil && *r.Requested != r.Recommendation.Version {
+			label = "Recommended alternative"
+		}
+		if _, err := fmt.Fprintf(w, "%s: %s\n", label, r.Recommendation.Version); err != nil {
+			return err
+		}
+	}
+	if r.Installation == nil && r.Recommendation == nil && r.CandidateVersion != nil {
+		if _, err := fmt.Fprintf(w, "Candidate (review required): %s\n", *r.CandidateVersion); err != nil {
 			return err
 		}
 	}
