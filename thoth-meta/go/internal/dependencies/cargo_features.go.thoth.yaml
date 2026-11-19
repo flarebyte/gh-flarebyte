@@ -1,0 +1,11 @@
+locator: internal/dependencies/cargo_features.go
+meta:
+  function_list:
+    - finishCargoFeatures
+    - normaliseCargoFeatures
+    - resolveCargoFeatures
+  import_files_list:
+    - regexp
+    - sort
+    - strings
+  language: go

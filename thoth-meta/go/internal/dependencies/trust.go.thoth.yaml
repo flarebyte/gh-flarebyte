@@ -1,0 +1,13 @@
+locator: internal/dependencies/trust.go
+meta:
+  function_list:
+    - evaluateScorecards
+    - sourceRepository
+    - versionRepository
+  import_files_list:
+    - encoding/json
+    - net/url
+    - regexp
+    - strings
+    - time
+  language: go

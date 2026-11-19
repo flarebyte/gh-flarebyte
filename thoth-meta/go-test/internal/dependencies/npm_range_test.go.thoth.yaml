@@ -1,0 +1,8 @@
+locator: internal/dependencies/npm_range_test.go
+meta:
+  function_list:
+    - TestNPMPartialAndAlternativeRanges
+  import_files_list:
+    - strings
+    - testing
+  language: go

@@ -1,0 +1,18 @@
+locator: internal/dependencies/cargo_stage.go
+meta:
+  function_list:
+    - PrepareCargoStage
+  import_files_list:
+    - archive/tar
+    - bytes
+    - compress/gzip
+    - crypto/sha256
+    - encoding/hex
+    - encoding/json
+    - fmt
+    - github.com/pelletier/go-toml/v2
+    - io
+    - os
+    - path/filepath
+    - strings
+  language: go

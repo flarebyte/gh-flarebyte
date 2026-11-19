@@ -1,0 +1,23 @@
+locator: internal/dependencies/project_test.go
+meta:
+  function_list:
+    - FuzzNPMRange
+    - FuzzProjectJSON
+    - TestJSONAndArtifactValidation
+    - TestLeafAdditionPlan
+    - TestNPMRanges
+    - TestProjectEdges
+    - TestProjectFileSafety
+    - TestReadProject
+    - projectDocuments
+    - testIntegrity
+    - writeProjectDocuments
+  import_files_list:
+    - encoding/base64
+    - encoding/json
+    - fmt
+    - os
+    - path/filepath
+    - slices
+    - testing
+  language: go

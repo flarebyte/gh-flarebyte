@@ -1,0 +1,11 @@
+locator: internal/dependencies/select_test.go
+meta:
+  function_list:
+    - TestRecommendationSelection
+    - selectionFinding
+    - stringPointer
+  import_files_list:
+    - slices
+    - testing
+    - time
+  language: go

@@ -1,0 +1,13 @@
+locator: internal/dependencies/registry_authority.go
+meta:
+  function_list:
+    - registryAccount
+  import_files_list:
+    - bytes
+    - context
+    - encoding/json
+    - net/url
+    - sort
+    - strconv
+    - strings
+  language: go

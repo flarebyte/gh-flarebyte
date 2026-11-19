@@ -1,0 +1,17 @@
+locator: internal/cli/dep_native.go
+meta:
+  function_list:
+    - nativeMajor
+    - prepareDependencyNPM
+    - trustedDependencyTool
+  import_files_list:
+    - context
+    - fmt
+    - github.com/flarebyte/gh-flarebyte/internal/dependencies
+    - os
+    - os/exec
+    - path/filepath
+    - runtime
+    - strconv
+    - strings
+  language: go

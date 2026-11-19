@@ -1,0 +1,12 @@
+locator: internal/dependencies/install_plan.go
+meta:
+  function_list:
+    - PrepareInstall
+  import_files_list:
+    - bytes
+    - encoding/json
+    - errors
+    - fmt
+    - os
+    - strings
+  language: go

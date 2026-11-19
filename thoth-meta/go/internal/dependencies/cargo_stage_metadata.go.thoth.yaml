@@ -1,0 +1,11 @@
+locator: internal/dependencies/cargo_stage_metadata.go
+meta:
+  function_list:
+    - sameCargoSet
+  import_files_list:
+    - fmt
+    - os
+    - path/filepath
+    - slices
+    - strings
+  language: go

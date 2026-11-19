@@ -1,0 +1,17 @@
+locator: internal/dependencies/cargo_artifact.go
+meta:
+  function_list:
+    - VerifyCargoArtifact
+    - cargoPortablePath
+  import_files_list:
+    - archive/tar
+    - bytes
+    - compress/gzip
+    - context
+    - crypto/sha256
+    - encoding/hex
+    - errors
+    - io
+    - path
+    - strings
+  language: go

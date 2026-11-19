@@ -1,0 +1,15 @@
+locator: internal/cli/dep_cargo_install.go
+meta:
+  function_list:
+    - cargoInstallPolicy
+    - commitCargoDependency
+    - installCargoDependency
+  import_files_list:
+    - context
+    - encoding/json
+    - fmt
+    - github.com/flarebyte/gh-flarebyte/internal/dependencies
+    - os
+    - path/filepath
+    - time
+  language: go

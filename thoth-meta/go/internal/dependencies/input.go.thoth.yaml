@@ -1,0 +1,14 @@
+locator: internal/dependencies/input.go
+meta:
+  function_list:
+    - Parse
+    - Repository
+    - knownPrerelease
+    - newer
+    - stableVersion
+  import_files_list:
+    - fmt
+    - regexp
+    - strconv
+    - strings
+  language: go

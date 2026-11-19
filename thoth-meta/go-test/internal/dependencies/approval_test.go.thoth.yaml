@@ -1,0 +1,11 @@
+locator: internal/dependencies/approval_test.go
+meta:
+  function_list:
+    - TestVerifiedLeafRecommendation
+  import_files_list:
+    - context
+    - encoding/json
+    - net/http
+    - strings
+    - testing
+  language: go

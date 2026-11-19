@@ -1,0 +1,11 @@
+locator: internal/dependencies/package_advice.go
+meta:
+  function_list:
+    - PackageAdvicePolicy
+    - SupportsPackageAdvice
+    - packageAdviceWarnings
+  import_files_list:
+    - context
+    - slices
+    - time
+  language: go

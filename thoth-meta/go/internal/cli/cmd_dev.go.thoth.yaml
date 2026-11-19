@@ -2,12 +2,14 @@ locator: internal/cli/cmd_dev.go
 meta:
   architecture_notes: Process execution is wrapped through a function variable so tests can stub command behavior deterministically.
   function_list:
+    - completeCoverage
     - runCov
     - runFormat
     - runLint
     - runTest
   import_files_list:
     - fmt
+    - github.com/flarebyte/gh-flarebyte/internal/config
     - io
     - os
     - path/filepath

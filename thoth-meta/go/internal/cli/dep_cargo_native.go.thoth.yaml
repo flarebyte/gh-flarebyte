@@ -1,0 +1,15 @@
+locator: internal/cli/dep_cargo_native.go
+meta:
+  function_list:
+    - prepareDependencyCargo
+  import_files_list:
+    - context
+    - fmt
+    - github.com/flarebyte/gh-flarebyte/internal/dependencies
+    - os
+    - os/exec
+    - path/filepath
+    - regexp
+    - runtime
+    - strings
+  language: go

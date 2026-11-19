@@ -1,0 +1,14 @@
+locator: internal/dependencies/retry_test.go
+meta:
+  function_list:
+    - TestReadOnlyRetry
+    - TestRetryDelay
+  import_files_list:
+    - context
+    - errors
+    - io
+    - net/http
+    - strings
+    - testing
+    - time
+  language: go

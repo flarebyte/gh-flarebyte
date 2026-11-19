@@ -1,0 +1,12 @@
+locator: internal/cli/dep_maven.go
+meta:
+  function_list:
+    - printMavenDependency
+  import_files_list:
+    - fmt
+    - github.com/flarebyte/gh-flarebyte/internal/dependencies
+    - io
+    - os
+    - path/filepath
+    - strings
+  language: go

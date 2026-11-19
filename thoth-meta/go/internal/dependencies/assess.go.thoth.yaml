@@ -1,0 +1,15 @@
+locator: internal/dependencies/assess.go
+meta:
+  function_list:
+    - EvaluateVersion
+    - evaluateRelease
+    - unique
+    - verdict
+  import_files_list:
+    - context
+    - errors
+    - net/http
+    - sort
+    - strings
+    - time
+  language: go

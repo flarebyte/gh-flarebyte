@@ -1,0 +1,9 @@
+locator: internal/dependencies/pypi_marker.go
+meta:
+  function_list:
+    - pythonMarkedRequirement
+    - pythonMarkerRange
+    - pythonMarkerTokens
+  import_files_list:
+    - strings
+  language: go

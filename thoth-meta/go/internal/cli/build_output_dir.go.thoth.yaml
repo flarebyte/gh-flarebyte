@@ -1,0 +1,7 @@
+locator: internal/cli/build_output_dir.go
+meta:
+  function_list:
+    - prepareBuildOutputDir
+  import_files_list:
+    - os
+  language: go

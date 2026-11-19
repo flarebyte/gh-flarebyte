@@ -1,0 +1,14 @@
+locator: internal/dependencies/cargo_artifact_integration_test.go
+meta:
+  function_list:
+    - TestCargoArchiveOracle
+    - externalCargoOracle
+  import_files_list:
+    - bytes
+    - context
+    - os
+    - os/exec
+    - path/filepath
+    - testing
+    - time
+  language: go

@@ -1,0 +1,16 @@
+locator: internal/dependencies/cargo_features_test.go
+meta:
+  function_list:
+    - FuzzCargoFeatures
+    - TestCargoFeatureActivation
+    - TestCargoFeatureEventLimit
+    - TestCargoFeatureUncertainty
+    - TestCargoFeaturesPreserveSecurityAndToolchainRequirements
+    - featureProject
+  import_files_list:
+    - encoding/json
+    - fmt
+    - slices
+    - strings
+    - testing
+  language: go

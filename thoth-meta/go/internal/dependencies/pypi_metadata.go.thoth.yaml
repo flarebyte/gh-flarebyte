@@ -1,0 +1,17 @@
+locator: internal/dependencies/pypi_metadata.go
+meta:
+  function_list: []
+  import_files_list:
+    - context
+    - crypto/sha256
+    - encoding/hex
+    - encoding/json
+    - fmt
+    - io
+    - net/http
+    - net/url
+    - regexp
+    - slices
+    - strings
+    - time
+  language: go

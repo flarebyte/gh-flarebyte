@@ -1,0 +1,15 @@
+locator: internal/dependencies/trust_test.go
+meta:
+  function_list:
+    - TestNameScreen
+    - TestProvenanceIdentity
+    - TestScorecardSnapshotPolicy
+    - TestTrustEvidence
+    - completeTrust
+    - goodCard
+  import_files_list:
+    - slices
+    - strings
+    - testing
+    - time
+  language: go

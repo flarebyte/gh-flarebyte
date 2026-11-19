@@ -1,0 +1,14 @@
+locator: internal/dependencies/pypi_project.go
+meta:
+  function_list:
+    - pypiWheelURL
+    - readPyPIProject
+  import_files_list:
+    - github.com/pelletier/go-toml/v2
+    - net/url
+    - os
+    - path
+    - regexp
+    - sort
+    - strings
+  language: go

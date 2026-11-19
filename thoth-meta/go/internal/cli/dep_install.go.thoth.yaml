@@ -1,0 +1,16 @@
+locator: internal/cli/dep_install.go
+meta:
+  function_list:
+    - installNPMDependency
+    - installRecommendedDependency
+    - validateInstalledTree
+  import_files_list:
+    - context
+    - encoding/json
+    - fmt
+    - github.com/flarebyte/gh-flarebyte/internal/dependencies
+    - os
+    - path/filepath
+    - strings
+    - time
+  language: go

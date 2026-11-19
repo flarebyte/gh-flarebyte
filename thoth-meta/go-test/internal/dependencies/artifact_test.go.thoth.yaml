@@ -1,0 +1,21 @@
+locator: internal/dependencies/artifact_test.go
+meta:
+  function_list:
+    - TestArtifactDownload
+    - TestArtifactPreflight
+    - archiveFixture
+    - fixtureArtifact
+    - withArtifactHash
+  import_files_list:
+    - archive/tar
+    - bytes
+    - compress/gzip
+    - context
+    - crypto/sha512
+    - encoding/base64
+    - io
+    - net/http
+    - os
+    - strings
+    - testing
+  language: go

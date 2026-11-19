@@ -1,0 +1,9 @@
+locator: internal/cli/dep_swift.go
+meta:
+  function_list:
+    - printSwiftDependency
+  import_files_list:
+    - fmt
+    - github.com/flarebyte/gh-flarebyte/internal/dependencies
+    - io
+  language: go

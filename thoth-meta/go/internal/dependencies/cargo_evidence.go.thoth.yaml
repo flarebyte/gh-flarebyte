@@ -1,0 +1,7 @@
+locator: internal/dependencies/cargo_evidence.go
+meta:
+  function_list: []
+  import_files_list:
+    - context
+    - net/url
+  language: go

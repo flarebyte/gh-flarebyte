@@ -1,0 +1,10 @@
+locator: internal/dependencies/pub_advice.go
+meta:
+  function_list: []
+  import_files_list:
+    - context
+    - fmt
+    - net/url
+    - regexp
+    - time
+  language: go

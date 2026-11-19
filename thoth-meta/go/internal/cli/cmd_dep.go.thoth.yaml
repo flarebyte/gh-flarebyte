@@ -1,0 +1,22 @@
+locator: internal/cli/cmd_dep.go
+meta:
+  function_list:
+    - dependencyError
+    - dependencyJSONRequested
+    - dependencyPolicy
+    - dependencyRoot
+    - runDependency
+    - writeDependencyReport
+  import_files_list:
+    - context
+    - encoding/json
+    - errors
+    - fmt
+    - github.com/flarebyte/gh-flarebyte/internal/config
+    - github.com/flarebyte/gh-flarebyte/internal/dependencies
+    - io
+    - os
+    - path/filepath
+    - strings
+    - time
+  language: go

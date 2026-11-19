@@ -1,0 +1,12 @@
+locator: internal/dependencies/cargo_artifact_plan.go
+meta:
+  function_list:
+    - PrepareCargoArtifacts
+    - cargoArtifactIdentity
+  import_files_list:
+    - fmt
+    - reflect
+    - slices
+    - strings
+    - time
+  language: go

@@ -1,0 +1,9 @@
+locator: internal/dependencies/swift_advice.go
+meta:
+  function_list: []
+  import_files_list:
+    - context
+    - fmt
+    - strings
+    - time
+  language: go

@@ -1,0 +1,12 @@
+locator: internal/dependencies/install_plan_test.go
+meta:
+  function_list:
+    - TestInstallPlanRequiresApproval
+    - TestPrepareApprovedInstall
+    - approvedInstallFixture
+  import_files_list:
+    - encoding/json
+    - os
+    - path/filepath
+    - testing
+  language: go

@@ -1,0 +1,8 @@
+locator: internal/dependencies/cargo_range.go
+meta:
+  function_list:
+    - cargoSatisfies
+  import_files_list:
+    - regexp
+    - strings
+  language: go

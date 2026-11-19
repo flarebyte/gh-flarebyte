@@ -1,0 +1,9 @@
+locator: internal/dependencies/advisory.go
+meta:
+  function_list:
+    - groupAdvisories
+  import_files_list:
+    - regexp
+    - sort
+    - strings
+  language: go

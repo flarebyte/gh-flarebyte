@@ -1,0 +1,27 @@
+locator: internal/dependencies/project.go
+meta:
+  function_list:
+    - ReadProject
+    - decodeGitHubArray
+    - digestBytes
+    - lockName
+    - npmArtifact
+    - projectFile
+    - resolveLocked
+    - sameDeps
+    - strictJSON
+    - uniqueJSON
+  import_files_list:
+    - bytes
+    - crypto/sha256
+    - encoding/base64
+    - encoding/hex
+    - encoding/json
+    - fmt
+    - io
+    - net/url
+    - os
+    - reflect
+    - sort
+    - strings
+  language: go

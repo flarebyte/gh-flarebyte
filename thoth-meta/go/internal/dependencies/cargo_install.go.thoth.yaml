@@ -1,0 +1,17 @@
+locator: internal/dependencies/cargo_install.go
+meta:
+  function_list:
+    - PrepareCargoInstall
+    - cargoInstallContext
+    - pinCargoRequirement
+  import_files_list:
+    - fmt
+    - github.com/pelletier/go-toml/v2
+    - github.com/pelletier/go-toml/v2/unstable
+    - os
+    - path/filepath
+    - reflect
+    - slices
+    - strconv
+    - strings
+  language: go

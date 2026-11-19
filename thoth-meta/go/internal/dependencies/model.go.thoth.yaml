@@ -1,0 +1,15 @@
+locator: internal/dependencies/model.go
+meta:
+  function_list:
+    - DefaultPolicy
+    - Description
+    - NewReport
+    - daysOld
+  import_files_list:
+    - crypto/sha256
+    - encoding/hex
+    - encoding/json
+    - strings
+    - time
+    - unicode
+  language: go

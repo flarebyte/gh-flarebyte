@@ -1,0 +1,8 @@
+locator: internal/dependencies/name_screen.go
+meta:
+  function_list:
+    - nearName
+    - screenName
+  import_files_list:
+    - strings
+  language: go

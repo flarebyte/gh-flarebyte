@@ -23,9 +23,11 @@ meta:
     - TestRunReleaseRejectsDartArtifactsEnabled
     - TestRunReleaseSuccess
     - TestRunReleaseSupportsNoSuffixModeWithMultipleTargets
+    - noSuffixBuildConfig
     - setupBuildTargetAndPackagingStubs
     - setupHydrateBuildInfoTestEnv
     - stubReleaseCaptureArtifacts
+    - withoutReleaseArtifacts
   import_files_list:
     - archive/tar
     - archive/zip

@@ -1,0 +1,10 @@
+locator: internal/dependencies/project_assess.go
+meta:
+  function_list:
+    - hasBundled
+    - mergeProjectFindings
+  import_files_list:
+    - context
+    - strings
+    - time
+  language: go
