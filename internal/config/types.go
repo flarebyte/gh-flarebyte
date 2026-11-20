@@ -64,14 +64,21 @@ type SyncConfig struct {
 }
 
 type RepositoryConfig struct {
-	Description   string                   `json:"description"`
-	DefaultBranch string                   `json:"defaultBranch"`
-	Homepage      string                   `json:"homepage"`
-	Visibility    string                   `json:"visibility"`
-	Template      bool                     `json:"template"`
-	Topics        []string                 `json:"topics"`
-	Labels        []LabelConfig            `json:"labels"`
-	Features      RepositoryFeaturesConfig `json:"features"`
+	BranchProtection *BranchProtectionConfig  `json:"branchProtection,omitempty"`
+	Description      string                   `json:"description"`
+	DefaultBranch    string                   `json:"defaultBranch"`
+	Homepage         string                   `json:"homepage"`
+	Visibility       string                   `json:"visibility"`
+	Template         bool                     `json:"template"`
+	Topics           []string                 `json:"topics"`
+	Labels           []LabelConfig            `json:"labels"`
+	Features         RepositoryFeaturesConfig `json:"features"`
+}
+
+// A nil policy leaves remote protection unmanaged.
+type BranchProtectionConfig struct {
+	Enabled            bool `json:"enabled"`
+	AllowAdminCIBypass bool `json:"allowAdminCIBypass"`
 }
 
 type LabelConfig struct {
