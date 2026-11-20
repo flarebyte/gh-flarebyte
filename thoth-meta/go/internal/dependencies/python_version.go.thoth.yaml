@@ -1,0 +1,10 @@
+locator: internal/dependencies/python_version.go
+meta:
+  function_list:
+    - pythonPrerelease
+    - pythonStableVersion
+  import_files_list:
+    - regexp
+    - strconv
+    - strings
+  language: go

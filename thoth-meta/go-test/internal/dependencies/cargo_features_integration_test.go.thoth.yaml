@@ -1,0 +1,16 @@
+locator: internal/dependencies/cargo_features_integration_test.go
+meta:
+  function_list:
+    - TestCargoFeatureOracle
+  import_files_list:
+    - bytes
+    - context
+    - encoding/json
+    - github.com/pelletier/go-toml/v2
+    - os
+    - os/exec
+    - path/filepath
+    - slices
+    - testing
+    - time
+  language: go

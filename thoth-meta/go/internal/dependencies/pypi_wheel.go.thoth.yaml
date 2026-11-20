@@ -1,0 +1,11 @@
+locator: internal/dependencies/pypi_wheel.go
+meta:
+  function_list:
+    - checkPythonWheel
+    - parsePythonWheel
+  import_files_list:
+    - regexp
+    - slices
+    - strconv
+    - strings
+  language: go

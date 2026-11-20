@@ -18,8 +18,13 @@ meta:
     - TestRunCovPerTestStyleOutput
     - TestRunCovRejectsInvalidMin
     - TestRunCovUsesUniqueProfileTempPath
+    - dartCoverageRecord
+    - runSuccessfulCoverage
     - setupCoverageConfig
+    - setupDartCoverageCommand
+    - stubDartCoverage
     - stubGoCoverTotal
+    - writeDartCoverageFixture
   import_files_list:
     - bytes
     - fmt

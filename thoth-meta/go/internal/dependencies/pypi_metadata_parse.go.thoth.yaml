@@ -1,0 +1,14 @@
+locator: internal/dependencies/pypi_metadata_parse.go
+meta:
+  function_list:
+    - parsePyPIMetadata
+    - pythonDistributionMatches
+    - pythonDistributionRequirement
+  import_files_list:
+    - bufio
+    - bytes
+    - net/textproto
+    - regexp
+    - strings
+    - unicode/utf8
+  language: go

@@ -1,0 +1,10 @@
+locator: internal/config/dependencies_test.go
+meta:
+  function_list:
+    - FuzzDependencyPolicy
+    - TestDependencyPolicy
+  import_files_list:
+    - os
+    - strings
+    - testing
+  language: go

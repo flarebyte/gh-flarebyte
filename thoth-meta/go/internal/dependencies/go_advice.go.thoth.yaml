@@ -1,0 +1,8 @@
+locator: internal/dependencies/go_advice.go
+meta:
+  function_list:
+    - goAdviceRepository
+  import_files_list:
+    - regexp
+    - strings
+  language: go

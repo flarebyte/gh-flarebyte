@@ -1,0 +1,9 @@
+locator: internal/dependencies/scorecard_decode.go
+meta:
+  function_list: []
+  import_files_list:
+    - bytes
+    - encoding/json
+    - fmt
+    - time
+  language: go

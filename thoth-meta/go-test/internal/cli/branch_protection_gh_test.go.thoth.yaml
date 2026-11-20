@@ -1,0 +1,20 @@
+locator: internal/cli/branch_protection_gh_test.go
+meta:
+  function_list:
+    - TestBranchProtectionAPIAppIdentity
+    - TestBranchProtectionAPIErrors
+    - TestBranchProtectionAPIIncompleteOrChanged
+    - TestBranchProtectionAPIRead
+    - TestBranchProtectionAPITransport
+    - TestBranchProtectionAPIWrite
+    - branchPayload
+    - stubBranchAPI
+  import_files_list:
+    - encoding/json
+    - errors
+    - fmt
+    - os
+    - path/filepath
+    - strings
+    - testing
+  language: go

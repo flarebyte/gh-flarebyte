@@ -1,0 +1,14 @@
+locator: internal/dependencies/cargo_project.go
+meta:
+  function_list:
+    - cargoConfigPresent
+    - cargoDeclarations
+    - cargoPackagePath
+    - readCargoProject
+  import_files_list:
+    - github.com/pelletier/go-toml/v2
+    - os
+    - regexp
+    - sort
+    - strings
+  language: go

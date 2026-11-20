@@ -1,0 +1,18 @@
+locator: internal/cli/dep_commit.go
+meta:
+  function_list:
+    - commitDependencyStage
+    - dependencyCommitFailed
+    - dependencyDigest
+    - dependencyTreeDigest
+    - sameFileBytes
+  import_files_list:
+    - bytes
+    - crypto/sha256
+    - encoding/hex
+    - fmt
+    - github.com/flarebyte/gh-flarebyte/internal/dependencies
+    - io
+    - os
+    - path/filepath
+  language: go

@@ -1,0 +1,26 @@
+locator: internal/cli/dep_delegate_test.go
+meta:
+  function_list:
+    - TestDepNPMAdviceAndDelegation
+    - TestDepNPMNativeCancellation
+    - TestDepNPMNativeInputAndFailures
+    - TestDepNPMStreamsBeforeExit
+    - stubDependencyExecutable
+    - stubNPMExecutable
+    - stubPackageAdviceAPI
+    - testPackageAdviceAndDelegation
+  import_files_list:
+    - bytes
+    - context
+    - encoding/json
+    - github.com/flarebyte/gh-flarebyte/internal/dependencies
+    - io
+    - net/http
+    - os
+    - path/filepath
+    - runtime
+    - strings
+    - sync
+    - testing
+    - time
+  language: go

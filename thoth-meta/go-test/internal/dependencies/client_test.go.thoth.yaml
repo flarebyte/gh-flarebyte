@@ -1,0 +1,18 @@
+locator: internal/dependencies/client_test.go
+meta:
+  function_list:
+    - TestBoundedHTTP
+    - TestCancellation
+    - TestOSVPagination
+    - TestProviderPathsAndDescriptions
+    - response
+  import_files_list:
+    - context
+    - encoding/json
+    - errors
+    - io
+    - net/http
+    - strings
+    - testing
+    - time
+  language: go

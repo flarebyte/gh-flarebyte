@@ -1,0 +1,12 @@
+locator: internal/dependencies/cargo_artifact_manifest_test.go
+meta:
+  function_list:
+    - FuzzCrateManifest
+    - TestCrateManifestAgreement
+    - TestCrateManifestTargetSchema
+  import_files_list:
+    - archive/tar
+    - github.com/pelletier/go-toml/v2
+    - strings
+    - testing
+  language: go

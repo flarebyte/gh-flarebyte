@@ -1,0 +1,6 @@
+locator: internal/dependencies/python_catalog.go
+meta:
+  function_list: []
+  import_files_list:
+    - context
+  language: go

@@ -1,0 +1,11 @@
+locator: internal/cli/dep_cargo_delegate_test.go
+meta:
+  function_list:
+    - TestDepCargoAdviceAndDelegation
+    - TestDepCargoNativeInputAndFailures
+  import_files_list:
+    - bytes
+    - context
+    - strings
+    - testing
+  language: go

@@ -1,0 +1,11 @@
+locator: internal/dependencies/registry.go
+meta:
+  function_list:
+    - equivalentName
+  import_files_list:
+    - context
+    - errors
+    - net/http
+    - net/url
+    - strings
+  language: go

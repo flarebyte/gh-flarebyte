@@ -1,0 +1,9 @@
+locator: internal/dependencies/advisory_test.go
+meta:
+  function_list:
+    - TestAdvisoryAliasGroups
+  import_files_list:
+    - reflect
+    - slices
+    - testing
+  language: go

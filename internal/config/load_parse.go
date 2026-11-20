@@ -101,15 +101,20 @@ func parseCueConfig(raw string) (Config, error) {
 		return cfg, err
 	}
 	if err := assertOnlyAllowedFields("repository", repositoryBlock, map[string]struct{}{
-		"description":   {},
-		"defaultBranch": {},
-		"homepage":      {},
-		"visibility":    {},
-		"template":      {},
-		"topics":        {},
-		"labels":        {},
-		"features":      {},
+		"description":      {},
+		"defaultBranch":    {},
+		"homepage":         {},
+		"visibility":       {},
+		"template":         {},
+		"topics":           {},
+		"labels":           {},
+		"features":         {},
+		"branchProtection": {},
 	}); err != nil {
+		return cfg, err
+	}
+	cfg.Repository.BranchProtection, err = parseBranchProtection(repositoryBlock)
+	if err != nil {
 		return cfg, err
 	}
 	buildBlock, err := extractObjectBlock(raw, "build")

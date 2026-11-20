@@ -1,0 +1,9 @@
+locator: internal/dependencies/pypi_runtime_test.go
+meta:
+  function_list:
+    - TestPythonRuntimeCompatibility
+    - TestPythonRuntimeVersionAndSpecifiers
+  import_files_list:
+    - slices
+    - testing
+  language: go

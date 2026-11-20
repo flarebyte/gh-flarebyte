@@ -1,0 +1,21 @@
+locator: internal/dependencies/cargo_project_test.go
+meta:
+  function_list:
+    - FuzzCargoProjectTOML
+    - FuzzCargoRange
+    - TestCargoAmbiguityAndBounds
+    - TestCargoDeclarationSchema
+    - TestCargoProjectFilesAndChanges
+    - TestCargoRanges
+    - TestReadCargoProject
+    - cargoDocuments
+    - writeCargoDocuments
+  import_files_list:
+    - fmt
+    - github.com/pelletier/go-toml/v2
+    - os
+    - path/filepath
+    - slices
+    - strings
+    - testing
+  language: go

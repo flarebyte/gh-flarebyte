@@ -1,0 +1,6 @@
+locator: internal/dependencies/pypi_graph.go
+meta:
+  function_list:
+    - finishPythonGraph
+  import_files_list: []
+  language: go

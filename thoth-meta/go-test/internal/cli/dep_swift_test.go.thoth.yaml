@@ -1,0 +1,11 @@
+locator: internal/cli/dep_swift_test.go
+meta:
+  function_list:
+    - TestDepSwiftAdviceAndPrintOnly
+    - TestDepSwiftPrintRejectsInvalidCoordinates
+  import_files_list:
+    - bytes
+    - os
+    - strings
+    - testing
+  language: go

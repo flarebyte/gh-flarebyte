@@ -1,0 +1,9 @@
+locator: internal/dependencies/retry.go
+meta:
+  function_list:
+    - retryDelay
+  import_files_list:
+    - net/http
+    - strconv
+    - time
+  language: go

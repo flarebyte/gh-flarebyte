@@ -1,0 +1,19 @@
+locator: internal/cli/branch_protection_commands_test.go
+meta:
+  function_list:
+    - TestBranchProtectionAudit
+    - TestBranchProtectionAuditDisabled
+    - TestBranchProtectionUpdate
+    - TestBranchProtectionUpdateDeletionGate
+    - TestBranchProtectionUpdateFailure
+    - TestBranchProtectionUpdateOmitted
+    - runBranchCommand
+    - setupBranchCommand
+  import_files_list:
+    - bytes
+    - encoding/json
+    - errors
+    - os
+    - strings
+    - testing
+  language: go

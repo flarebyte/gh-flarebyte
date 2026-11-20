@@ -1,0 +1,29 @@
+locator: internal/cli/dep_install_test.go
+meta:
+  function_list:
+    - TestDependencyCommitRecovery
+    - TestDependencyInstallPreconditions
+    - TestDependencyNPMOfflineIntegration
+    - TestDependencyNPMOfflineUpgradeIntegration
+    - TestDependencyUpgrade
+    - TestGuardedDependencyInstallation
+    - TestLegacyNPMInstallApproved
+    - TestPostCommitEditPreservesRecovery
+    - approvedDependencyInstall
+    - approvedDependencyUpgrade
+    - stubDependencyNative
+  import_files_list:
+    - bytes
+    - context
+    - crypto/sha512
+    - encoding/base64
+    - encoding/json
+    - errors
+    - github.com/flarebyte/gh-flarebyte/internal/dependencies
+    - os
+    - path/filepath
+    - runtime
+    - strings
+    - testing
+    - time
+  language: go

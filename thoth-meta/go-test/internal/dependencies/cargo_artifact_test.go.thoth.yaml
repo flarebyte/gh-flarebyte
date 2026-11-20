@@ -1,0 +1,29 @@
+locator: internal/dependencies/cargo_artifact_test.go
+meta:
+  function_list:
+    - FuzzCrateEnvelope
+    - TestCrateArchiveEnvelope
+    - TestCrateArchiveLimits
+    - TestCrateDownloadBoundary
+    - TestCratePreparationRequiresApproval
+    - TestPreparedCrateArtifacts
+    - approvedCrateArtifacts
+    - crateFixture
+    - sealedCrate
+  import_files_list:
+    - archive/tar
+    - bytes
+    - compress/gzip
+    - context
+    - crypto/sha256
+    - encoding/hex
+    - encoding/json
+    - errors
+    - github.com/pelletier/go-toml/v2
+    - net/http
+    - os
+    - path/filepath
+    - strconv
+    - strings
+    - testing
+  language: go

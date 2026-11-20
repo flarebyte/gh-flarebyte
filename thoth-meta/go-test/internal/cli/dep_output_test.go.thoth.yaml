@@ -1,0 +1,12 @@
+locator: internal/cli/dep_output_test.go
+meta:
+  function_list:
+    - TestDependencyReportHumanVerdictsAndJSONContract
+  import_files_list:
+    - bytes
+    - encoding/json
+    - github.com/flarebyte/gh-flarebyte/internal/dependencies
+    - strings
+    - testing
+    - time
+  language: go

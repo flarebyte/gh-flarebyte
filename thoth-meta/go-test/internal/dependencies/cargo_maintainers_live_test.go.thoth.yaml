@@ -1,0 +1,11 @@
+locator: internal/dependencies/cargo_maintainers_live_test.go
+meta:
+  function_list:
+    - TestCargoPublicMaintenanceLive
+  import_files_list:
+    - context
+    - encoding/json
+    - os
+    - testing
+    - time
+  language: go

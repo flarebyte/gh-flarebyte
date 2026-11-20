@@ -1,0 +1,23 @@
+locator: internal/dependencies/cargo_maintainers_test.go
+meta:
+  function_list:
+    - TestCargoMaintenanceAssessmentAndSeal
+    - TestCargoMaintenanceCache
+    - TestCargoMaintenancePolicyAndScope
+    - TestCargoPublicMaintenance
+    - TestCargoPublicMaintenanceInstallPlan
+    - approvedPublicCargo
+    - cargoMaintenanceClient
+  import_files_list:
+    - context
+    - crypto/sha256
+    - encoding/hex
+    - encoding/json
+    - errors
+    - io
+    - net/http
+    - reflect
+    - strings
+    - testing
+    - time
+  language: go

@@ -1,0 +1,14 @@
+locator: internal/dependencies/cargo_stage_integration_test.go
+meta:
+  function_list:
+    - TestCargoStageOracle
+  import_files_list:
+    - bytes
+    - context
+    - os
+    - os/exec
+    - path/filepath
+    - strings
+    - testing
+    - time
+  language: go

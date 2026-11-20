@@ -1,0 +1,19 @@
+locator: internal/dependencies/cargo_runtime_test.go
+meta:
+  function_list:
+    - FuzzRustVersion
+    - TestCargoDeclaredCompilerCompatibility
+    - TestCargoEditionBaseline
+    - TestCargoRustBaselineParsing
+    - TestRustCompatibility
+    - TestRustVersionGrammar
+    - cargoRuntimeClient
+  import_files_list:
+    - context
+    - encoding/json
+    - errors
+    - net/http
+    - slices
+    - strings
+    - testing
+  language: go

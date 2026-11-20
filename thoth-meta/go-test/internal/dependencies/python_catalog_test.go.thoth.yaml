@@ -1,0 +1,16 @@
+locator: internal/dependencies/python_catalog_test.go
+meta:
+  function_list:
+    - TestPythonCatalogProbeBudgetAndIdentity
+    - TestPythonLegacyCatalogAvailability
+    - TestPythonLegacyExactCheckRemainsDenied
+    - pythonAvailabilityClient
+  import_files_list:
+    - context
+    - encoding/json
+    - net/http
+    - os
+    - slices
+    - strings
+    - testing
+  language: go

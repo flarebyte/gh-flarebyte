@@ -1,0 +1,16 @@
+locator: internal/dependencies/client.go
+meta:
+  function_list:
+    - NewClient
+  import_files_list:
+    - bytes
+    - context
+    - encoding/json
+    - errors
+    - fmt
+    - io
+    - net/http
+    - net/url
+    - strings
+    - time
+  language: go

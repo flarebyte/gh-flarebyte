@@ -1,0 +1,16 @@
+locator: internal/dependencies/maintainers_test.go
+meta:
+  function_list:
+    - TestGitHubCredentialBoundary
+    - TestGitHubMaintenanceAuthority
+    - TestMaintenanceEvidenceCache
+    - authorityClient
+  import_files_list:
+    - context
+    - encoding/json
+    - errors
+    - net/http
+    - strings
+    - testing
+    - time
+  language: go

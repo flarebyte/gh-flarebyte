@@ -1,0 +1,11 @@
+locator: internal/dependencies/registry_test.go
+meta:
+  function_list:
+    - TestRegistryReleaseEvidence
+  import_files_list:
+    - context
+    - net/http
+    - slices
+    - strings
+    - testing
+  language: go

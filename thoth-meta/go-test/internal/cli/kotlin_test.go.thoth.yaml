@@ -13,6 +13,7 @@ meta:
     - kotlinTestZip
     - setupKotlin
     - stubKotlin
+    - writeKotlinArchive
   import_files_list:
     - archive/zip
     - bytes

@@ -1,0 +1,13 @@
+locator: internal/dependencies/input_test.go
+meta:
+  function_list:
+    - FuzzCoordinates
+    - FuzzDescription
+    - TestCoordinates
+    - TestDescription
+    - TestVersionOrdering
+  import_files_list:
+    - strings
+    - testing
+    - unicode/utf8
+  language: go

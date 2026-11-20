@@ -1,0 +1,12 @@
+locator: internal/dependencies/scorecard_decode_test.go
+meta:
+  function_list:
+    - TestScorecardPublicDateContract
+    - TestScorecardScanDateFormats
+  import_files_list:
+    - context
+    - encoding/json
+    - net/http
+    - testing
+    - time
+  language: go

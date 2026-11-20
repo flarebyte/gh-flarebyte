@@ -1,0 +1,16 @@
+locator: internal/dependencies/python_version_test.go
+meta:
+  function_list:
+    - FuzzPythonVersion
+    - TestPythonCatalogCandidateOrdering
+    - TestPythonStableVersionOrdering
+    - TestPythonVersionBoundaries
+    - TestPythonVersionPolicyBoundaries
+  import_files_list:
+    - context
+    - encoding/json
+    - net/http
+    - slices
+    - strings
+    - testing
+  language: go

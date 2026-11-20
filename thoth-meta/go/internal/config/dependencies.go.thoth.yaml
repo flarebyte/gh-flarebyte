@@ -1,0 +1,10 @@
+locator: internal/config/dependencies.go
+meta:
+  function_list:
+    - ParseDependencies
+  import_files_list:
+    - fmt
+    - strconv
+    - strings
+    - text/scanner
+  language: go

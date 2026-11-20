@@ -17,7 +17,7 @@ concurrency:
   group: languages-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-# Five jobs here plus three in swift.yml = eight combinations per PR/push.
+# Eight platform/toolchain combinations per PR/push, followed by one aggregate gate.
 jobs:
   core:
     name: Go and Dart stub tests / macOS arm64
@@ -151,3 +151,85 @@ jobs:
         run: java -version
       - name: Real Kotlin library and CLI integration
         run: make test-kotlin-e2e
+
+  swift-linux:
+    name: Linux amd64 / Swift 6.2.4
+    runs-on: ubuntu-24.04
+    container: swift:6.2.4-noble
+    timeout-minutes: 20
+    steps:
+      - name: Install build tools
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends make ca-certificates
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version-file: go.mod
+          cache: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: '1.3.6'
+      - name: Report toolchains
+        run: |
+          swift --version
+          swift -print-target-info
+          go version
+          bun --version
+      - name: Real Swift integration
+        run: make test-swift-e2e
+
+  swift-macos:
+    name: macOS arm64 / Xcode ${{ matrix.xcode }}
+    runs-on: macos-15
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        # Xcode 16.2 supplies Swift 6.0.3; 26.2 exercises a newer Swift 6 toolchain.
+        xcode: ['16.2', '26.2']
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_${{ matrix.xcode }}.app/Contents/Developer
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version-file: go.mod
+          cache: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: '1.3.6'
+      - name: Report toolchains
+        run: |
+          xcodebuild -version
+          swift --version
+          swift -print-target-info
+          go version
+          bun --version
+      - name: Real Swift integration
+        run: make test-swift-e2e
+
+  # Add every new CI job to needs so CI passed covers the complete workflow.
+  ci-passed:
+    name: CI passed
+    needs: [core, python, typescript, rust, swift-linux, swift-macos]
+    if: ${{ always() }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    steps:
+      - name: Require every CI job to succeed
+        shell: bash
+        env:
+          NEEDS_RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          test -n "$NEEDS_RESULTS"
+          for result in $NEEDS_RESULTS; do
+            if [ "$result" != success ]; then
+              echo "CI dependency result: $result"
+              exit 1
+            fi
+          done

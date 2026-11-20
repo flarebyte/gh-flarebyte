@@ -1,0 +1,12 @@
+locator: internal/cli/dep_maven_test.go
+meta:
+  function_list:
+    - TestDepMavenAdviceAndPrintOnly
+    - TestDepMavenRejectsUnsafeDeclaration
+  import_files_list:
+    - bytes
+    - os
+    - path/filepath
+    - strings
+    - testing
+  language: go

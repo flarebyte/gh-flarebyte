@@ -1,0 +1,9 @@
+locator: internal/dependencies/select.go
+meta:
+  function_list:
+    - finishAssessment
+  import_files_list:
+    - sort
+    - strings
+    - time
+  language: go

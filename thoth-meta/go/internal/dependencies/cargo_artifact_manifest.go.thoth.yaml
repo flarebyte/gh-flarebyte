@@ -1,0 +1,17 @@
+locator: internal/dependencies/cargo_artifact_manifest.go
+meta:
+  function_list:
+    - cargoManifestFiles
+    - cargoRequirementText
+    - defaultCargoEdition
+    - sameCargoMetadata
+    - sameRustDeclaration
+    - verifyCargoManifest
+  import_files_list:
+    - errors
+    - fmt
+    - github.com/pelletier/go-toml/v2
+    - reflect
+    - sort
+    - strings
+  language: go

@@ -1,0 +1,15 @@
+locator: internal/cli/branch_protection.go
+meta:
+  function_list:
+    - desiredBranchRulesets
+    - equalBranchRulesets
+    - normalizeBranchRuleParameters
+    - planBranchProtection
+  import_files_list:
+    - encoding/json
+    - fmt
+    - github.com/flarebyte/gh-flarebyte/internal/config
+    - maps
+    - slices
+    - strings
+  language: go

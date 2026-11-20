@@ -1,0 +1,13 @@
+locator: e2e/dependency.test.ts
+meta:
+  import_files_list:
+    - ./helpers
+    - bun:test
+    - node:fs/promises
+    - node:path
+  language: typescript
+  testcase_titles_list:
+    - dependency assessment safety
+    - help exposes only presentation flags
+    - install rejects presentation flags before changing project files or using network
+    - invalid exact input returns a structured failure before network

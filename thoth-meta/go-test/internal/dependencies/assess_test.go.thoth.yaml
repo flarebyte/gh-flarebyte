@@ -1,0 +1,19 @@
+locator: internal/dependencies/assess_test.go
+meta:
+  function_list:
+    - TestAssessEvidence
+    - TestEvaluateVersion
+    - TestRepositoryEvidenceBoundaries
+    - TestUnsupportedCoverage
+    - fixtureClient
+    - versionFixture
+  import_files_list:
+    - context
+    - encoding/json
+    - errors
+    - net/http
+    - slices
+    - strings
+    - testing
+    - time
+  language: go

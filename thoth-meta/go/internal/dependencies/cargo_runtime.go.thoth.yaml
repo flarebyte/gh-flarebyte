@@ -1,0 +1,9 @@
+locator: internal/dependencies/cargo_runtime.go
+meta:
+  function_list:
+    - cargoEditionBaseline
+    - checkRustCompatibility
+    - rustVersion
+  import_files_list:
+    - strings
+  language: go

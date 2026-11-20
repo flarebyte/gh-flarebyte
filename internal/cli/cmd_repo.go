@@ -57,6 +57,11 @@ func runRepoAudit(repo string, asJSON bool, stdout, stderr io.Writer) Result {
 		return *fail
 	}
 	report := buildAuditReport(repo, cfg, remote)
+	changes, rulesets, err := loadBranchProtectionPlan(repo, cfg.Repository.BranchProtection)
+	if err != nil {
+		return branchProtectionFailure(stderr, err)
+	}
+	appendBranchProtectionAudit(&report, changes, rulesets)
 	if asJSON {
 		enc := json.NewEncoder(stdout)
 		enc.SetEscapeHTML(false)
@@ -83,13 +88,23 @@ func runRepoUpdate(repo string, confirmDeletions, acceptVisibility bool, stdout,
 		return *fail
 	}
 	plan := buildUpdatePlan(cfg, remote)
+	branchChanges, _, err := loadBranchProtectionPlan(repo, cfg.Repository.BranchProtection)
+	if err != nil {
+		return branchProtectionFailure(stderr, err)
+	}
+	rulesetsToDelete := 0
+	for _, change := range branchChanges {
+		if change.Operation == "delete" {
+			rulesetsToDelete++
+		}
+	}
 	if plan.VisibilityChange && !acceptVisibility {
 		err := fmt.Errorf("visibility would change from %s to %s. Re-run with --accept-visibility-change-consequences if that is intentional", remote.Visibility, cfg.Repository.Visibility)
 		_, _ = fmt.Fprintln(stderr, err.Error())
 		return Result{ExitCode: ExitBlockedVisibility, Err: err}
 	}
-	if (len(plan.TopicsToRemove) > 0 || len(plan.LabelsToDelete) > 0) && !confirmDeletions {
-		err := fmt.Errorf("update would delete %d labels and %d topics. Re-run with --confirm-deletions if that is intentional", len(plan.LabelsToDelete), len(plan.TopicsToRemove))
+	if (len(plan.TopicsToRemove) > 0 || len(plan.LabelsToDelete) > 0 || rulesetsToDelete > 0) && !confirmDeletions {
+		err := fmt.Errorf("update would delete %d labels, %d topics, and %d branch rulesets. Re-run with --confirm-deletions if that is intentional", len(plan.LabelsToDelete), len(plan.TopicsToRemove), rulesetsToDelete)
 		_, _ = fmt.Fprintln(stderr, err.Error())
 		return Result{ExitCode: ExitBlockedDeletions, Err: err}
 	}
@@ -139,6 +154,13 @@ func runRepoUpdate(repo string, confirmDeletions, acceptVisibility bool, stdout,
 		}
 	}
 	labelsReconciled = len(cfg.Repository.Labels)
+	branchUpdated, err := reconcileBranchProtection(repo, cfg.Repository.BranchProtection, branchChanges, stdout)
+	if err != nil {
+		return branchProtectionFailure(stderr, fmt.Errorf("update stopped after repository settings/topics/labels reconciliation and %d branch ruleset changes. No rollback was attempted. Rerun repo audit, fix the error, and rerun repo update: %w", branchUpdated, err))
+	}
+	if cfg.Repository.BranchProtection != nil {
+		_, _ = fmt.Fprintf(stdout, "Branch protection: %d ruleset changes applied.\n", branchUpdated)
+	}
 	_, _ = fmt.Fprintf(stdout, "Update complete: %d repo settings updated, %d topics synced, %d labels reconciled.\n", settingsUpdated, topicsSynced, labelsReconciled)
 	return Result{ExitCode: ExitOK}
 }

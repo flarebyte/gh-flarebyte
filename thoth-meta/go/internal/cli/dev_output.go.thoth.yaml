@@ -2,6 +2,7 @@ locator: internal/cli/dev_output.go
 meta:
   architecture_notes: Output behavior is config-driven (`devOutput`) so presentation can evolve without changing command execution paths.
   function_list:
+    - coverageStatus
     - extractFailureLocation
     - formatFailureDetails
     - formatGoTestDetails
@@ -9,6 +10,7 @@ meta:
     - printDartPerTestEvents
     - printDevSummary
     - printPerTestEvents
+    - printTestEvent
     - useColor
   import_files_list:
     - fmt

@@ -286,16 +286,34 @@ The core job also runs the Python release-preflight unit tests.
 | Core Go and default E2E | Go from `go.mod`; includes Dart stub tests | — | 1 |
 | **Total** | **6** | **2** | **8** |
 
-`.github/workflows/languages.yml` owns the Go/default E2E, Python, Rust, TypeScript, and Kotlin jobs;
-`.github/workflows/swift.yml` owns the three Swift jobs. Each integration job runs the
+`.github/workflows/languages.yml` owns all eight combinations, including Swift. Each integration job runs the
 existing Makefile fixture with simulated releases. Dart currently has stub coverage;
 this matrix does not claim real Dart SDK integration. Swift Intel macOS, Linux arm64,
 and a full OS/toolchain cross-product are outside this routine CI selection.
 The count measures platform/toolchain jobs; each job contains multiple assertions.
+A final `CI passed` job depends on every CI job and fails unless all dependencies
+succeed, including matrix jobs. When adding a CI job, also add its job ID to
+`ci-passed.needs`. Keep manual release jobs outside this workflow.
 Test CLI builds omit optional Go VCS stamping, checkout credentials are not persisted,
 and repository permissions remain read-only.
 All workflow actions are pinned to full commit SHAs, with their original version or
 branch noted in comments. Updating an action requires verifying and updating its SHA.
+
+## Branch protection checks
+
+Follow [the setup order](README.md#default-branch-protection): commit and verify
+`CI passed` before enabling the rulesets. Test ruleset changes in a disposable
+repository, never by relaxing protection on the working repository. Verify a
+passing PR, a blocked failing PR, admin PR-only CI bypass, and rejection of direct
+and force pushes. Disable the admin exception to verify admins must pass CI too.
+The default branch cannot be deleted even without this feature, so a rejected
+default-branch deletion alone does not prove the deletion rule works; inspect
+that rule in the remote ruleset as well.
+
+Use `gh flarebyte test`, `gh flarebyte e2e`, and `gh flarebyte lint` for local
+checks. Ruleset adapters and command tests mock GitHub; running these checks does
+not enable protection or mutate remote repositories. Keep the Actions source
+binding and separate CI-only bypass intact when changing the implementation.
 
 ## Manual GitHub releases
 

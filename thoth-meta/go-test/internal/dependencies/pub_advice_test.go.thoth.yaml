@@ -1,0 +1,15 @@
+locator: internal/dependencies/pub_advice_test.go
+meta:
+  function_list:
+    - TestPubCoordinatesAndVersions
+    - TestPubPackageAdvice
+    - pubAdviceClient
+  import_files_list:
+    - context
+    - encoding/json
+    - net/http
+    - slices
+    - strings
+    - testing
+    - time
+  language: go

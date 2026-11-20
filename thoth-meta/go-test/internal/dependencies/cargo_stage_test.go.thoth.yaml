@@ -1,0 +1,15 @@
+locator: internal/dependencies/cargo_stage_test.go
+meta:
+  function_list:
+    - TestCargoStageBoundaries
+    - TestCargoStageDisagreements
+    - TestCargoStageRoundTrip
+    - cargoStageMetadata
+    - preparedCargoStage
+    - privateCargoStageDir
+  import_files_list:
+    - encoding/json
+    - os
+    - path/filepath
+    - testing
+  language: go

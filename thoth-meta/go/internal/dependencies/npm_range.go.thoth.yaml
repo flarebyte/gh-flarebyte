@@ -1,0 +1,11 @@
+locator: internal/dependencies/npm_range.go
+meta:
+  function_list:
+    - compareNumbers
+    - npmConjunction
+    - npmPartial
+    - npmSatisfies
+  import_files_list:
+    - strconv
+    - strings
+  language: go

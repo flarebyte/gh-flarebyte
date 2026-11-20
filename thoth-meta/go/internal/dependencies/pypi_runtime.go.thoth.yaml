@@ -1,0 +1,11 @@
+locator: internal/dependencies/pypi_runtime.go
+meta:
+  function_list:
+    - checkPythonCompatibility
+    - pythonComparisonClause
+    - pythonNumericConjunction
+    - pythonRequirementMatches
+    - pythonRuntimeVersion
+  import_files_list:
+    - strings
+  language: go

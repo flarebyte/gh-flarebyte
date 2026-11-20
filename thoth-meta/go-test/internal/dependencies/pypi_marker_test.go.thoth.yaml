@@ -1,0 +1,9 @@
+locator: internal/dependencies/pypi_marker_test.go
+meta:
+  function_list:
+    - TestPythonMarkerMalformedAndBounds
+    - TestPythonMarkerRange
+  import_files_list:
+    - strings
+    - testing
+  language: go

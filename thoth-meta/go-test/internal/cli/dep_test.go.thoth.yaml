@@ -1,0 +1,24 @@
+locator: internal/cli/dep_test.go
+meta:
+  function_list:
+    - TestDepCommands
+    - TestDepErrorOutputIsBounded
+    - TestDepOutputAndInput
+    - TestDepPolicyAndLocalContext
+    - TestDepPubUsesPackageScope
+    - TestDepWriteFailures
+    - localDependencyRepo
+    - stubDependencyAssessment
+  import_files_list:
+    - bytes
+    - context
+    - encoding/json
+    - errors
+    - github.com/flarebyte/gh-flarebyte/internal/dependencies
+    - io
+    - os
+    - path/filepath
+    - strings
+    - testing
+    - time
+  language: go
