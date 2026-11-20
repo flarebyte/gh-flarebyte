@@ -135,6 +135,8 @@ How config fields map onto GitHub sync targets and extension-local automation se
 | repository.template | boolean | .gh-flarebyte.cue | Make the repository available as a template. | local-to-remote |
 | repository.topics | list | .gh-flarebyte.cue | Topics are managed as the complete desired set. Remote topics absent from config are deletions requiring confirmation. | local-to-remote |
 | repository.labels | list | .gh-flarebyte.cue | Labels are managed as the complete desired set by label name. Remote labels absent from config are deletions, and renaming a label is modeled as delete-plus-create. | local-to-remote |
+| repository.branchProtection.enabled | boolean | .gh-flarebyte.cue | Optional block; enabled is required when present. True manages two default-branch rulesets requiring PRs with zero approvals and CI passed from Actions while blocking force pushes/deletion. False removes only managed rulesets with --confirm-deletions. Omitted block leaves remote policies untouched. | local-to-remote |
+| repository.branchProtection.allowAdminCIBypass | boolean | .gh-flarebyte.cue | Defaults true; admins may bypass CI through PRs only. False requires CI for admins too. Ignored when disabled. Bots receive no special bypass. | local-to-remote |
 | repository.features.issues | boolean | .gh-flarebyte.cue | GitHub issues enabled or disabled. Accepted in config but not applied or audited by the CLI. | accepted-not-enforced |
 | repository.features.wiki | boolean | .gh-flarebyte.cue | GitHub wiki enabled or disabled. Accepted in config but not applied or audited by the CLI. | accepted-not-enforced |
 | repository.features.projects | boolean | .gh-flarebyte.cue | GitHub projects enabled or disabled. Accepted in config but not applied or audited by the CLI. | accepted-not-enforced |
@@ -510,7 +512,7 @@ Current usage guidance and error feedback.
 | `.gh-flarebyte.cue already exists in /path/to/repo. Re-run with --overwrite if replacing it is intentional` | An existing local configuration is rejected unless --overwrite is supplied. | init overwrite blocked |
 | `cannot read config /path/to/repo/.gh-flarebyte.cue: open /path/to/repo/.gh-flarebyte.cue: no such file or directory` | Config load failures report the resolved file path and filesystem error. --repo does not replace the requirement for local configuration. | missing config |
 | `invalid build.targets entry "linux/x64": expected os-arch format such as linux-amd64 or windows-amd64` | Validation identifies an invalid field or field combination. | config validation error |
-| `update would delete 2 labels and 1 topics. Re-run with --confirm-deletions if that is intentional` | Topic/label deletions without --confirm-deletions are rejected with counts and the required flag. | deletion blocked |
+| `update would delete 2 labels, 1 topics, and 0 branch rulesets. Re-run with --confirm-deletions if that is intentional` | Topic/label/managed-ruleset deletions without --confirm-deletions are rejected with counts and the required flag. | deletion blocked |
 | `visibility would change from public to private. Re-run with --accept-visibility-change-consequences if that is intentional` | Visibility changes without acknowledgement are rejected with old/new values and the required flag. | visibility blocked |
 | `Build failed in library mode during dart pub/analyze/test.` | Build errors report the failing tool or mode. Go target failures also print the effective environment and build command. | build failure |
 | `release tag v1.2.3 already exists. refusing to mutate existing release implicitly` | Release returns build failures before publishing; later errors report version/tag or GitHub publication failure. | release failure |
@@ -723,7 +725,7 @@ What reconciliation from cue config means.
 
 #### Update Command
 
-Load local configuration and GitHub state, compute the settings/topics/labels update plan, and check visibility and deletion gates before applying changes. Visibility changes require --accept-visibility-change-consequences; topic or label deletions require --confirm-deletions. Settings, topics, and labels are applied sequentially. The command stops on the first remote error without rollback. Success reports settings changes and configured topic/label counts; failures report the cause and available partial-progress context.
+Load local configuration and GitHub state, compute the settings/topics/labels update plan, and check visibility and deletion gates before applying changes. Visibility changes require --accept-visibility-change-consequences; topic, label, or managed branch-ruleset deletions require --confirm-deletions. Settings, topics, labels, and configured branch rulesets are applied sequentially. Two reserved rulesets require PRs with zero approvals and CI passed from GitHub Actions while blocking force pushes/deletion. Admin CI bypass is PR-only and defaults true. Omitted branchProtection leaves rules unmanaged; enabled false removes only managed rulesets. Init does not import protection. Commit and verify the aggregate workflow before enabling; the CLI does not inspect workflows. Ruleset writes are reread to verify convergence. The command stops on the first remote error without rollback. Success reports settings changes and configured topic/label counts; failures report the cause and available partial-progress context.
 
 ### 14 Audit
 
@@ -731,7 +733,7 @@ What read-only drift checking means.
 
 #### Audit Command
 
-Compare local configuration with GitHub without changing remote state. Plain output reports the number of differences and suggests repo update, or states that no drift was found. --json emits the repository, drift count, and individual diffs. Exit status is 0 for no drift and 3 when drift exists.
+Compare local configuration with GitHub without changing remote state. Plain output reports the number of differences and suggests repo update, or states that no drift was found. --json emits the repository, drift count, and individual diffs. Exit status is 0 for no drift and 3 when drift exists. When branchProtection is configured, compare managed ruleset targets, activation, rules, required check/source, and bypass. Failed reads are errors rather than missing rules.
 
 ### 15 Repos Mine
 

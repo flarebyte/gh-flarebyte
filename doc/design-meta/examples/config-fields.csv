@@ -9,6 +9,8 @@ repository.visibility,enum,.gh-flarebyte.cue,local-to-remote,"Repository visibil
 repository.template,boolean,.gh-flarebyte.cue,local-to-remote,Make the repository available as a template.
 repository.topics,list,.gh-flarebyte.cue,local-to-remote,Topics are managed as the complete desired set. Remote topics absent from config are deletions requiring confirmation.
 repository.labels,list,.gh-flarebyte.cue,local-to-remote,"Labels are managed as the complete desired set by label name. Remote labels absent from config are deletions, and renaming a label is modeled as delete-plus-create."
+repository.branchProtection.enabled,boolean,.gh-flarebyte.cue,local-to-remote,"Optional block; enabled is required when present. True manages two default-branch rulesets requiring PRs with zero approvals and CI passed from Actions while blocking force pushes/deletion. False removes only managed rulesets with --confirm-deletions. Omitted block leaves remote policies untouched."
+repository.branchProtection.allowAdminCIBypass,boolean,.gh-flarebyte.cue,local-to-remote,"Defaults true; admins may bypass CI through PRs only. False requires CI for admins too. Ignored when disabled. Bots receive no special bypass."
 repository.features.issues,boolean,.gh-flarebyte.cue,accepted-not-enforced,GitHub issues enabled or disabled. Accepted in config but not applied or audited by the CLI.
 repository.features.wiki,boolean,.gh-flarebyte.cue,accepted-not-enforced,GitHub wiki enabled or disabled. Accepted in config but not applied or audited by the CLI.
 repository.features.projects,boolean,.gh-flarebyte.cue,accepted-not-enforced,GitHub projects enabled or disabled. Accepted in config but not applied or audited by the CLI.

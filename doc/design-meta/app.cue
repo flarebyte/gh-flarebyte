@@ -393,13 +393,13 @@ notes: [
 	{
 		name:     "command.update"
 		title:    "Update Command"
-		markdown: "Load local configuration and GitHub state, compute the settings/topics/labels update plan, and check visibility and deletion gates before applying changes. Visibility changes require --accept-visibility-change-consequences; topic or label deletions require --confirm-deletions. Settings, topics, and labels are applied sequentially. The command stops on the first remote error without rollback. Success reports settings changes and configured topic/label counts; failures report the cause and available partial-progress context."
+		markdown: "Load local configuration and GitHub state, compute the settings/topics/labels update plan, and check visibility and deletion gates before applying changes. Visibility changes require --accept-visibility-change-consequences; topic, label, or managed branch-ruleset deletions require --confirm-deletions. Settings, topics, labels, and configured branch rulesets are applied sequentially. Two reserved rulesets require PRs with zero approvals and CI passed from GitHub Actions while blocking force pushes/deletion. Admin CI bypass is PR-only and defaults true. Omitted branchProtection leaves rules unmanaged; enabled false removes only managed rulesets. Init does not import protection. Commit and verify the aggregate workflow before enabling; the CLI does not inspect workflows. Ruleset writes are reread to verify convergence. The command stops on the first remote error without rollback. Success reports settings changes and configured topic/label counts; failures report the cause and available partial-progress context."
 		labels:   ["commands", "update", "spec"]
 	},
 	{
 		name:     "command.audit"
 		title:    "Audit Command"
-		markdown: "Compare local configuration with GitHub without changing remote state. Plain output reports the number of differences and suggests repo update, or states that no drift was found. --json emits the repository, drift count, and individual diffs. Exit status is 0 for no drift and 3 when drift exists."
+		markdown: "Compare local configuration with GitHub without changing remote state. Plain output reports the number of differences and suggests repo update, or states that no drift was found. --json emits the repository, drift count, and individual diffs. Exit status is 0 for no drift and 3 when drift exists. When branchProtection is configured, compare managed ruleset targets, activation, rules, required check/source, and bypass. Failed reads are errors rather than missing rules."
 		labels:   ["commands", "audit", "spec"]
 	},
 	{

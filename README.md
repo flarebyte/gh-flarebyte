@@ -146,6 +146,7 @@ constrained CUE-like format; it does not evaluate CUE imports or expressions. Th
 file is the source of truth for:
 
 - repository metadata such as description, homepage, visibility, and template status
+- optional default-branch protection through `repository.branchProtection`
 - topics
 - labels
 - repository feature flags currently enforced by sync/audit: `repository.features.mergeCommit`, `repository.features.rebaseMerge`, `repository.features.squashMerge`, `repository.features.deleteBranchOnMerge`
@@ -228,6 +229,53 @@ This example expects `main.project.yaml` to contain a top-level `version`, such 
 `version: 1.2.3`. Run `gh flarebyte config validate` after editing the configuration.
 Configuration validation checks fields and combinations; builds and developer commands
 also check the installed toolchain and project files.
+
+### Default-branch protection
+
+For a solo maintainer working with AI agents and Renovate, add this inside the
+existing `repository` block:
+
+```cue
+branchProtection: {
+  enabled: true
+  allowAdminCIBypass: true
+}
+```
+
+This requires PRs with no reviewer approval, blocks force pushes and deletion,
+and requires the `CI passed` check from GitHub Actions. Administrators can
+explicitly bypass CI when merging a PR; direct pushes remain blocked. Set
+`allowAdminCIBypass: false` to require CI for admins too; the default is true.
+Bots receive no special bypass. Tools using admin credentials share that admin's
+permissions. Feature and patch branches remain unrestricted by this policy.
+
+Before enabling, commit a PR workflow with a final `CI passed` job that depends
+on every CI job, runs even after dependency failures, and succeeds only when all
+dependencies succeed. Verify the check appears and behaves correctly on a PR.
+This repository's [workflow](.github/workflows/languages.yml) provides an example;
+manual releases are separate. Add each new CI job to the aggregate dependencies.
+The CLI does not create, inspect, or modify workflows.
+
+Then run from the repository checkout:
+
+```sh
+gh flarebyte config validate
+gh flarebyte repo update
+gh flarebyte repo audit
+```
+
+The CLI manages two reserved rulesets, `gh-flarebyte-default-branch-protection`
+and `gh-flarebyte-default-branch-ci`, targeting the default branch. Keep those
+names reserved for this feature. Updating is repeatable; audit reports drift
+without writing. GitHub permissions and repository-plan eligibility must allow
+ruleset management; errors identify failed operations. Existing unrelated
+policies remain in effect and may still block an admin merge.
+
+Omitting `branchProtection` leaves existing rules unmanaged. To remove only the
+managed rulesets, set `enabled: false` and run
+`gh flarebyte repo update --confirm-deletions`. `repo init` leaves this block
+omitted. Updates stop on error without rollback; review reported partial progress
+and rerun audit/update after resolving the error.
 
 ## Language workflows
 

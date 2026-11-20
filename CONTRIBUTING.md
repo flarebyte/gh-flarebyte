@@ -299,6 +299,22 @@ and repository permissions remain read-only.
 All workflow actions are pinned to full commit SHAs, with their original version or
 branch noted in comments. Updating an action requires verifying and updating its SHA.
 
+## Branch protection checks
+
+Follow [the setup order](README.md#default-branch-protection): commit and verify
+`CI passed` before enabling the rulesets. Test ruleset changes in a disposable
+repository, never by relaxing protection on the working repository. Verify a
+passing PR, a blocked failing PR, admin PR-only CI bypass, and rejection of direct
+and force pushes. Disable the admin exception to verify admins must pass CI too.
+The default branch cannot be deleted even without this feature, so a rejected
+default-branch deletion alone does not prove the deletion rule works; inspect
+that rule in the remote ruleset as well.
+
+Use `gh flarebyte test`, `gh flarebyte e2e`, and `gh flarebyte lint` for local
+checks. Ruleset adapters and command tests mock GitHub; running these checks does
+not enable protection or mutate remote repositories. Keep the Actions source
+binding and separate CI-only bypass intact when changing the implementation.
+
 ## Manual GitHub releases
 
 `.github/workflows/release.yml` runs only through **Actions → Manual release → Run workflow**.
