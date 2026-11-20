@@ -1,0 +1,10 @@
+locator: internal/config/branch_protection.go
+meta:
+  function_list:
+    - parseBranchProtection
+    - scanBranchProtection
+  import_files_list:
+    - fmt
+    - strings
+    - text/scanner
+  language: go

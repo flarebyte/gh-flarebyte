@@ -1,0 +1,12 @@
+locator: internal/cli/branch_protection_commands.go
+meta:
+  function_list:
+    - appendBranchProtectionAudit
+    - branchProtectionFailure
+    - loadBranchProtectionPlan
+    - reconcileBranchProtection
+  import_files_list:
+    - fmt
+    - github.com/flarebyte/gh-flarebyte/internal/config
+    - io
+  language: go

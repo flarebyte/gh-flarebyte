@@ -1,0 +1,16 @@
+locator: internal/cli/branch_protection_test.go
+meta:
+  function_list:
+    - TestBranchProtectionAPIDefaults
+    - TestBranchProtectionDrift
+    - TestBranchProtectionOwnership
+    - TestBranchProtectionPlan
+    - TestBranchProtectionRequiredPolicy
+    - testBranchRulesets
+  import_files_list:
+    - encoding/json
+    - github.com/flarebyte/gh-flarebyte/internal/config
+    - reflect
+    - slices
+    - testing
+  language: go

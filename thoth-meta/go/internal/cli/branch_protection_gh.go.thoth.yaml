@@ -1,0 +1,17 @@
+locator: internal/cli/branch_protection_gh.go
+meta:
+  function_list:
+    - branchRulesetEndpoint
+    - ghApplyBranchRulesetChange
+    - ghBranchAPI
+    - ghReadActionsAppID
+    - ghReadBranchRulesets
+  import_files_list:
+    - bytes
+    - encoding/json
+    - fmt
+    - os
+    - os/exec
+    - regexp
+    - strings
+  language: go
