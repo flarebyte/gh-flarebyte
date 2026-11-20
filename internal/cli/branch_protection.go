@@ -3,6 +3,7 @@ package cli
 import (
 	"encoding/json"
 	"fmt"
+	"maps"
 	"slices"
 	"strings"
 
@@ -140,6 +141,9 @@ func planBranchProtection(policy *config.BranchProtectionConfig, repo string, re
 func equalBranchRulesets(a, b branchRulesetDefinition) (bool, error) {
 	encode := func(def branchRulesetDefinition) (string, error) {
 		def.Rules = slices.Clone(def.Rules)
+		for i := range def.Rules {
+			def.Rules[i].Parameters = normalizeBranchRuleParameters(def.Rules[i])
+		}
 		slices.SortFunc(def.Rules, func(a, b branchRule) int { return strings.Compare(a.Type, b.Type) })
 		if len(def.BypassActors) == 0 {
 			def.BypassActors = []branchBypassActor{}
@@ -156,4 +160,33 @@ func equalBranchRulesets(a, b branchRulesetDefinition) (bool, error) {
 	}
 	right, err := encode(b)
 	return left == right, err
+}
+
+// GitHub may return optional defaults absent from the write payload. Ignore only
+// known nonrestrictive defaults; retain other parameters so extra restrictions
+// or weakened policy still produce drift.
+func normalizeBranchRuleParameters(rule branchRule) map[string]any {
+	params := maps.Clone(rule.Parameters)
+	removeDefault := func(key, expected string) {
+		data, err := json.Marshal(params[key])
+		if err == nil && string(data) == expected {
+			delete(params, key)
+		}
+	}
+	switch rule.Type {
+	case "pull_request":
+		removeDefault("required_reviewers", "[]")
+		removeDefault("required_reviewers", "null")
+		data, err := json.Marshal(params["allowed_merge_methods"])
+		var methods []string
+		if err == nil && json.Unmarshal(data, &methods) == nil {
+			slices.Sort(methods)
+			if slices.Equal(methods, []string{"merge", "rebase", "squash"}) {
+				delete(params, "allowed_merge_methods")
+			}
+		}
+	case "required_status_checks":
+		removeDefault("do_not_enforce_on_create", "false")
+	}
+	return params
 }

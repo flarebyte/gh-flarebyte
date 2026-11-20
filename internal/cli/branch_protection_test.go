@@ -186,3 +186,21 @@ func TestBranchProtectionDrift(t *testing.T) {
 		})
 	}
 }
+
+func TestBranchProtectionAPIDefaults(t *testing.T) {
+	remote := testBranchRulesets(t)
+	params := remote[0].Definition.Rules[2].Parameters
+	params["allowed_merge_methods"] = []string{"squash", "rebase", "merge"}
+	params["required_reviewers"] = []any{}
+	remote[1].Definition.Rules[0].Parameters["do_not_enforce_on_create"] = false
+	policy := &config.BranchProtectionConfig{Enabled: true, AllowAdminCIBypass: true}
+	changes, err := planBranchProtection(policy, "owner/repo", remote, 123)
+	if err != nil || len(changes) != 0 {
+		t.Fatalf("API defaults caused drift: %+v %v", changes, err)
+	}
+	params["allowed_merge_methods"] = []string{"squash"}
+	changes, err = planBranchProtection(policy, "owner/repo", remote, 123)
+	if err != nil || len(changes) != 1 {
+		t.Fatalf("merge restriction not detected: %+v %v", changes, err)
+	}
+}
