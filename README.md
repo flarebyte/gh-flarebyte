@@ -573,7 +573,7 @@ fresh executable assets and optional checksums, or publish library tags and note
 assets. Package archives, registry publication, XCFrameworks, Xcode app projects,
 signing, and notarization are unsupported.
 
-Swift compatibility checks run through `.github/workflows/swift.yml`. They prioritize
+Swift compatibility checks run through `.github/workflows/languages.yml`. They prioritize
 macOS arm64 development with Xcode 16.2 (Swift 6.0.3) and Xcode 26.2, plus one GNU/Linux
 amd64 pipeline check using the official Swift 6.2.4 container. Each job reports its
 actual toolchain and host and runs `make test-swift-e2e`. Hosted matrix results are

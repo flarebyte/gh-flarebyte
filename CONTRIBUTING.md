@@ -286,12 +286,14 @@ The core job also runs the Python release-preflight unit tests.
 | Core Go and default E2E | Go from `go.mod`; includes Dart stub tests | — | 1 |
 | **Total** | **6** | **2** | **8** |
 
-`.github/workflows/languages.yml` owns the Go/default E2E, Python, Rust, TypeScript, and Kotlin jobs;
-`.github/workflows/swift.yml` owns the three Swift jobs. Each integration job runs the
+`.github/workflows/languages.yml` owns all eight combinations, including Swift. Each integration job runs the
 existing Makefile fixture with simulated releases. Dart currently has stub coverage;
 this matrix does not claim real Dart SDK integration. Swift Intel macOS, Linux arm64,
 and a full OS/toolchain cross-product are outside this routine CI selection.
 The count measures platform/toolchain jobs; each job contains multiple assertions.
+A final `CI passed` job depends on every CI job and fails unless all dependencies
+succeed, including matrix jobs. When adding a CI job, also add its job ID to
+`ci-passed.needs`. Keep manual release jobs outside this workflow.
 Test CLI builds omit optional Go VCS stamping, checkout credentials are not persisted,
 and repository permissions remain read-only.
 All workflow actions are pinned to full commit SHAs, with their original version or
