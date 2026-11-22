@@ -3,6 +3,7 @@ meta:
   function_list:
     - TestBranchProtectionAPIDefaults
     - TestBranchProtectionDrift
+    - TestBranchProtectionExtraApprovals
     - TestBranchProtectionOwnership
     - TestBranchProtectionPlan
     - TestBranchProtectionRequiredPolicy
@@ -10,6 +11,7 @@ meta:
   import_files_list:
     - encoding/json
     - github.com/flarebyte/gh-flarebyte/internal/config
+    - maps
     - reflect
     - slices
     - testing

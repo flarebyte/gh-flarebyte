@@ -65,7 +65,7 @@ func runBranchCommand(args ...string) (Result, string, string) {
 func TestBranchProtectionUpdate(t *testing.T) {
 	f := setupBranchCommand(t, "true")
 	r, out, errOut := runBranchCommand("repo", "update")
-	if r.ExitCode != ExitOK || len(f.writes) != 2 || !strings.Contains(out, "2 ruleset changes") {
+	if r.ExitCode != ExitOK || len(f.writes) != 2 || !strings.Contains(out, "2 ruleset changes") || !strings.Contains(out, "Update complete") {
 		t.Fatalf("enable: %+v %s %s", r, out, errOut)
 	}
 	if f.writes[0].Definition.Name != branchProtectionRulesetName {
@@ -117,9 +117,11 @@ func TestBranchProtectionUpdateOmitted(t *testing.T) {
 }
 
 func TestBranchProtectionUpdateFailure(t *testing.T) {
-	for _, scenario := range []string{"read", "app", "write", "partial", "verify"} {
+	for _, scenario := range []string{"read", "app", "write", "partial", "verify drift", "verify read"} {
 		t.Run(scenario, func(t *testing.T) {
 			f := setupBranchCommand(t, "true")
+			t.Setenv("TERM", "xterm")
+			t.Setenv("NO_COLOR", "")
 			switch scenario {
 			case "read":
 				f.readErr = errors.New("permission denied")
@@ -135,20 +137,71 @@ func TestBranchProtectionUpdateFailure(t *testing.T) {
 					}
 					return apply(repo, change)
 				}
-			case "verify":
+			case "verify drift":
 				applyBranchRulesetChange = func(string, branchRulesetChange) error { return nil }
+			case "verify read":
+				apply := applyBranchRulesetChange
+				applyBranchRulesetChange = func(repo string, change branchRulesetChange) error {
+					f.readErr = errors.New("readback failed")
+					return apply(repo, change)
+				}
 			}
 			r, out, stderr := runBranchCommand("repo", "update")
 			if r.ExitCode != ExitFailure || strings.Contains(out, "Update complete") {
 				t.Fatalf("false success: %+v %s %s", r, out, stderr)
 			}
-			if scenario == "partial" && (!strings.Contains(stderr, "1 branch ruleset changes") || !strings.Contains(stderr, "No rollback")) {
-				t.Fatalf("missing progress: %s", stderr)
+			if scenario == "read" || scenario == "app" {
+				if len(f.writes) > 0 || strings.Contains(stderr, "UPDATE INCOMPLETE") {
+					t.Fatalf("preflight failure reported as incomplete update: %s", stderr)
+				}
+				return
 			}
-			if (scenario == "read" || scenario == "app") && len(f.writes) > 0 {
-				t.Fatal("preflight failure applied changes")
+			for _, want := range []string{"UPDATE INCOMPLETE\n", "no rollback was attempted", "repo audit", "Confirmed changes:"} {
+				if !strings.Contains(stderr, want) {
+					t.Fatalf("missing %q in stderr: %s", want, stderr)
+				}
+			}
+			var details []string
+			switch scenario {
+			case "write":
+				details = []string{"branch ruleset update", "ruleset write failed", "0 branch ruleset changes"}
+			case "partial":
+				details = []string{"branch ruleset update", "CI write failed", "1 branch ruleset changes"}
+			case "verify drift":
+				details = []string{"branch ruleset verification", branchProtectionRulesetName, branchCIRulesetName, "2 branch ruleset changes"}
+			case "verify read":
+				details = []string{"branch ruleset verification", "readback failed", "2 branch ruleset changes"}
+			}
+			for _, want := range details {
+				if !strings.Contains(stderr, want) {
+					t.Fatalf("missing %q in stderr: %s", want, stderr)
+				}
 			}
 		})
+	}
+}
+
+func TestRepoUpdateIncompleteColor(t *testing.T) {
+	f := setupBranchCommand(t, "true")
+	f.writeErr = errors.New("ruleset write failed")
+	cue, err := os.ReadFile(".gh-flarebyte.cue")
+	if err != nil {
+		t.Fatal(err)
+	}
+	cue = append(cue, []byte("\ndevOutput: { color: \"true\" }\n")...)
+	if err := os.WriteFile(".gh-flarebyte.cue", cue, 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	t.Setenv("NO_COLOR", "")
+	_, _, stderr := runBranchCommand("repo", "update")
+	if !strings.HasPrefix(stderr, "\x1b[31mUPDATE INCOMPLETE\x1b[0m\n") {
+		t.Fatalf("expected red headline: %q", stderr)
+	}
+	t.Setenv("NO_COLOR", "1")
+	_, _, stderr = runBranchCommand("repo", "update")
+	if !strings.HasPrefix(stderr, "UPDATE INCOMPLETE\n") {
+		t.Fatalf("expected plain headline: %q", stderr)
 	}
 }
 

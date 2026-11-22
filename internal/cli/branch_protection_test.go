@@ -2,6 +2,7 @@ package cli
 
 import (
 	"encoding/json"
+	"maps"
 	"reflect"
 	"slices"
 	"testing"
@@ -190,17 +191,70 @@ func TestBranchProtectionDrift(t *testing.T) {
 func TestBranchProtectionAPIDefaults(t *testing.T) {
 	remote := testBranchRulesets(t)
 	params := remote[0].Definition.Rules[2].Parameters
-	params["allowed_merge_methods"] = []string{"squash", "rebase", "merge"}
-	params["required_reviewers"] = []any{}
+	if err := json.Unmarshal([]byte(`{
+		"allowed_merge_methods":["squash","rebase","merge"],
+		"required_reviewers":[],
+		"dismissal_restriction":{"allowed_actors":[],"enabled":false},
+		"require_extra_approval_for_unattributed_changes":true
+	}`), &params); err != nil {
+		t.Fatal(err)
+	}
 	remote[1].Definition.Rules[0].Parameters["do_not_enforce_on_create"] = false
 	policy := &config.BranchProtectionConfig{Enabled: true, AllowAdminCIBypass: true}
 	changes, err := planBranchProtection(policy, "owner/repo", remote, 123)
 	if err != nil || len(changes) != 0 {
 		t.Fatalf("API defaults caused drift: %+v %v", changes, err)
 	}
-	params["allowed_merge_methods"] = []string{"squash"}
-	changes, err = planBranchProtection(policy, "owner/repo", remote, 123)
-	if err != nil || len(changes) != 1 {
-		t.Fatalf("merge restriction not detected: %+v %v", changes, err)
+
+	for _, scenario := range []struct {
+		name, key, value string
+	}{
+		{"restricted merge methods", "allowed_merge_methods", `["squash"]`},
+		{"enabled dismissal restriction", "dismissal_restriction", `{"allowed_actors":[],"enabled":true}`},
+		{"inactive dismissal with actors", "dismissal_restriction", `{"allowed_actors":[{"id":1,"type":"Team"}],"enabled":false}`},
+		{"required reviewers", "required_reviewers", `[{"reviewer":{"id":1,"type":"Team"},"file_patterns":["*"],"minimum_approvals":1}]`},
+	} {
+		t.Run(scenario.name, func(t *testing.T) {
+			changed := maps.Clone(params)
+			var value any
+			if err := json.Unmarshal([]byte(scenario.value), &value); err != nil {
+				t.Fatal(err)
+			}
+			changed[scenario.key] = value
+			remote[0].Definition.Rules[2].Parameters = changed
+			changes, err := planBranchProtection(policy, "owner/repo", remote, 123)
+			if err != nil || len(changes) != 1 || changes[0].Operation != "update" {
+				t.Fatalf("expected update: %+v %v", changes, err)
+			}
+		})
+	}
+}
+
+func TestBranchProtectionExtraApprovals(t *testing.T) {
+	for _, count := range []struct {
+		name  string
+		value any
+	}{
+		{"positive count", float64(1)},
+		{"missing count", nil},
+		{"unknown count", "0"},
+	} {
+		t.Run(count.name, func(t *testing.T) {
+			withApproval := testBranchRulesets(t)[0].Definition
+			withoutApproval := testBranchRulesets(t)[0].Definition
+			for _, def := range []branchRulesetDefinition{withApproval, withoutApproval} {
+				params := def.Rules[2].Parameters
+				if count.value == nil {
+					delete(params, "required_approving_review_count")
+				} else {
+					params["required_approving_review_count"] = count.value
+				}
+			}
+			withApproval.Rules[2].Parameters["require_extra_approval_for_unattributed_changes"] = true
+			equal, err := equalBranchRulesets(withApproval, withoutApproval)
+			if err != nil || equal {
+				t.Fatalf("expected extra approval drift: equal=%t err=%v", equal, err)
+			}
+		})
 	}
 }

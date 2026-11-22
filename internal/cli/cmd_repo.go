@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
 
 	"github.com/flarebyte/gh-flarebyte/internal/config"
 )
@@ -109,59 +110,78 @@ func runRepoUpdate(repo string, confirmDeletions, acceptVisibility bool, stdout,
 		return Result{ExitCode: ExitBlockedDeletions, Err: err}
 	}
 
-	settingsUpdated := 0
-	topicsSynced := 0
-	labelsReconciled := 0
-	appliedSettings := false
-	appliedTopics := false
+	var settingsUpdated, topicsChanged, labelsChanged, branchUpdated int
+	incomplete := func(phase string, err error) Result {
+		headline := "UPDATE INCOMPLETE"
+		color := cfg.DevOutput.Color
+		if color == "" || color == "auto" {
+			color = "false"
+			if file, ok := stderr.(*os.File); ok {
+				if info, err := file.Stat(); err == nil && info.Mode()&os.ModeCharDevice != 0 {
+					color = "auto"
+				}
+			}
+		}
+		if useColor(color) {
+			headline = "\x1b[31m" + headline + "\x1b[0m"
+		}
+		_, _ = fmt.Fprintln(stderr, headline)
+		_, _ = fmt.Fprintf(stderr, "Failed during %s: %v\n", phase, err)
+		_, _ = fmt.Fprintf(stderr, "Confirmed changes: %d repo settings, %d topic changes, %d label changes, %d branch ruleset changes.\n", settingsUpdated, topicsChanged, labelsChanged, branchUpdated)
+		_, _ = fmt.Fprintf(stderr, "Changes may remain because no rollback was attempted. Run gh flarebyte repo audit --repo %s before retrying.\n", repo)
+		return Result{ExitCode: ExitFailure, Err: err}
+	}
 
 	if plan.SettingsChanged {
 		if err := applyRepoSettings(repo, plan.SettingsPatch); err != nil {
-			_, _ = fmt.Fprintln(stderr, err.Error())
-			return Result{ExitCode: ExitFailure, Err: err}
+			return incomplete("repository settings update", err)
 		}
 		settingsUpdated = plan.SettingsChangeCount
-		appliedSettings = true
 	}
 	for _, topic := range plan.TopicsToAdd {
 		if err := addRepoTopic(repo, topic); err != nil {
-			return partialUpdateFailure(stderr, err, appliedSettings, appliedTopics)
+			return incomplete("topic update", fmt.Errorf("add topic %q: %w", topic, err))
 		}
+		topicsChanged++
 	}
 	for _, topic := range plan.TopicsToRemove {
 		if err := removeRepoTopic(repo, topic); err != nil {
-			return partialUpdateFailure(stderr, err, appliedSettings, appliedTopics)
+			return incomplete("topic update", fmt.Errorf("remove topic %q: %w", topic, err))
 		}
+		topicsChanged++
 	}
-	if len(plan.TopicsToAdd) > 0 || len(plan.TopicsToRemove) > 0 {
-		appliedTopics = true
-	}
-	topicsSynced = len(cfg.Repository.Topics)
-
 	for _, label := range plan.LabelsToCreate {
 		if err := createRepoLabel(repo, label); err != nil {
-			return partialUpdateFailure(stderr, err, appliedSettings, appliedTopics)
+			return incomplete("label update", fmt.Errorf("create label %q: %w", label.Name, err))
 		}
+		labelsChanged++
 	}
 	for _, label := range plan.LabelsToUpdate {
 		if err := updateRepoLabel(repo, label); err != nil {
-			return partialUpdateFailure(stderr, err, appliedSettings, appliedTopics)
+			return incomplete("label update", fmt.Errorf("update label %q: %w", label.Name, err))
 		}
+		labelsChanged++
 	}
 	for _, label := range plan.LabelsToDelete {
 		if err := deleteRepoLabel(repo, label.Name); err != nil {
-			return partialUpdateFailure(stderr, err, appliedSettings, appliedTopics)
+			return incomplete("label update", fmt.Errorf("delete label %q: %w", label.Name, err))
+		}
+		labelsChanged++
+	}
+	branchUpdated, err = applyBranchProtection(repo, branchChanges, stdout)
+	if err != nil {
+		return incomplete("branch ruleset update", err)
+	}
+	if branchUpdated > 0 {
+		if err := verifyBranchProtection(repo, cfg.Repository.BranchProtection); err != nil {
+			return incomplete("branch ruleset verification", err)
 		}
 	}
-	labelsReconciled = len(cfg.Repository.Labels)
-	branchUpdated, err := reconcileBranchProtection(repo, cfg.Repository.BranchProtection, branchChanges, stdout)
-	if err != nil {
-		return branchProtectionFailure(stderr, fmt.Errorf("update stopped after repository settings/topics/labels reconciliation and %d branch ruleset changes. No rollback was attempted. Rerun repo audit, fix the error, and rerun repo update: %w", branchUpdated, err))
-	}
+
 	if cfg.Repository.BranchProtection != nil {
 		_, _ = fmt.Fprintf(stdout, "Branch protection: %d ruleset changes applied.\n", branchUpdated)
 	}
-	_, _ = fmt.Fprintf(stdout, "Update complete: %d repo settings updated, %d topics synced, %d labels reconciled.\n", settingsUpdated, topicsSynced, labelsReconciled)
+	_, _ = fmt.Fprintf(stdout, "Update complete: %d repo settings updated, %d topics synced, %d labels reconciled.\n", settingsUpdated, len(cfg.Repository.Topics), len(cfg.Repository.Labels))
 	return Result{ExitCode: ExitOK}
 }
 

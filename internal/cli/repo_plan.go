@@ -1,12 +1,10 @@
 // purpose: Compute reconciliation/audit plans between desired config and remote repository state.
-// responsibilities: Derive settings/topic/label diffs; build audit reports; render default cue config; format partial-update failure messages.
+// responsibilities: Derive settings/topic/label diffs; build audit reports; render default cue config.
 // architecture notes: Feature-field drift is only evaluated when the field is explicitly set in config, preserving forward-compatible partial feature support.
 package cli
 
 import (
 	"fmt"
-	"io"
-	"strings"
 
 	"github.com/flarebyte/gh-flarebyte/internal/config"
 )
@@ -137,23 +135,6 @@ func diffStrings(source []string, minus []string) []string {
 		}
 	}
 	return out
-}
-
-func partialUpdateFailure(stderr io.Writer, cause error, settingsApplied bool, topicsApplied bool) Result {
-	parts := make([]string, 0)
-	if settingsApplied {
-		parts = append(parts, "repository settings")
-	}
-	if topicsApplied {
-		parts = append(parts, "topics")
-	}
-	prefix := "Update failed before applying changes."
-	if len(parts) > 0 {
-		prefix = fmt.Sprintf("Update stopped after %s were applied.", strings.Join(parts, " and "))
-	}
-	msg := fmt.Sprintf("%s Label sync failed, and no rollback was attempted. Fix the error and rerun gh flarebyte repo update. Cause: %v", prefix, cause)
-	_, _ = fmt.Fprintln(stderr, msg)
-	return Result{ExitCode: ExitFailure, Err: cause}
 }
 
 func buildAuditReport(repo string, cfg config.Config, remote RepoMetadata) AuditReport {
