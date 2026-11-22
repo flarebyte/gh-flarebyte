@@ -250,11 +250,23 @@ func TestRunRepoUpdatePartialFailureMessage(t *testing.T) {
 		return meta, nil
 	}
 	applyRepoSettings = func(repo string, desired RepoSettingsPatch) error { return nil }
-	addRepoTopic = func(repo string, topic string) error { return errors.New("topic write failed") }
+	topicWrites := 0
+	addRepoTopic = func(repo string, topic string) error {
+		topicWrites++
+		if topicWrites == 1 {
+			return nil
+		}
+		return errors.New("topic write failed")
+	}
 	var out bytes.Buffer
 	var errOut bytes.Buffer
 	result := Run([]string{"repo", "update", "--confirm-deletions"}, &out, &errOut)
-	if result.ExitCode != ExitFailure || !strings.Contains(errOut.String(), "no rollback was attempted") {
+	if result.ExitCode != ExitFailure || strings.Contains(out.String(), "Update complete") {
 		t.Fatalf("unexpected result: code=%d err=%s", result.ExitCode, errOut.String())
+	}
+	for _, want := range []string{"UPDATE INCOMPLETE", "topic update", "topic write failed", "1 repo settings, 1 topic changes, 0 label changes, 0 branch ruleset changes", "no rollback was attempted", "repo audit"} {
+		if !strings.Contains(errOut.String(), want) {
+			t.Fatalf("missing %q in stderr: %s", want, errOut.String())
+		}
 	}
 }

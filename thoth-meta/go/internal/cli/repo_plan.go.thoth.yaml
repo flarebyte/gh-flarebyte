@@ -6,14 +6,11 @@ meta:
     - buildUpdatePlan
     - defaultRepoMetadata
     - diffStrings
-    - partialUpdateFailure
     - renderCueConfig
     - stringSlicesEqual
   import_files_list:
     - fmt
     - github.com/flarebyte/gh-flarebyte/internal/config
-    - io
-    - strings
   language: go
   purpose: Compute reconciliation and audit plans between desired config and remote repository state.
   responsibilities: Derive settings/topic/label diffs; build audit reports; render default cue config; format partial-update failure messages.

@@ -175,6 +175,11 @@ func normalizeBranchRuleParameters(rule branchRule) map[string]any {
 	}
 	switch rule.Type {
 	case "pull_request":
+		removeDefault("dismissal_restriction", `{"allowed_actors":[],"enabled":false}`)
+		// GitHub applies the extra approval only when approvals are required.
+		if count, err := json.Marshal(params["required_approving_review_count"]); err == nil && string(count) == "0" {
+			delete(params, "require_extra_approval_for_unattributed_changes")
+		}
 		removeDefault("required_reviewers", "[]")
 		removeDefault("required_reviewers", "null")
 		data, err := json.Marshal(params["allowed_merge_methods"])

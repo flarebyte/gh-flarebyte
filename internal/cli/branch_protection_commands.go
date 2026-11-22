@@ -3,6 +3,7 @@ package cli
 import (
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/flarebyte/gh-flarebyte/internal/config"
 )
@@ -53,23 +54,29 @@ func branchProtectionFailure(stderr io.Writer, err error) Result {
 	return Result{ExitCode: ExitFailure, Err: err}
 }
 
-func reconcileBranchProtection(repo string, policy *config.BranchProtectionConfig, changes []branchRulesetChange, stdout io.Writer) (int, error) {
+func applyBranchProtection(repo string, changes []branchRulesetChange, stdout io.Writer) (int, error) {
 	completed := 0
 	for _, change := range changes {
 		if err := applyBranchRulesetChange(repo, change); err != nil {
 			return completed, fmt.Errorf("%s ruleset %s: %w", change.Operation, change.Definition.Name, err)
 		}
 		completed++
-		_, _ = fmt.Fprintf(stdout, "Ruleset %s: %s applied.\n", change.Definition.Name, change.Operation)
-	}
-	if completed > 0 {
-		remaining, _, err := loadBranchProtectionPlan(repo, policy)
-		if err != nil {
-			return completed, fmt.Errorf("verify branch protection: %w", err)
-		}
-		if len(remaining) > 0 {
-			return completed, fmt.Errorf("branch protection still differs after update; rerun audit")
-		}
+		_, _ = fmt.Fprintf(stdout, "Ruleset %s: GitHub accepted %s.\n", change.Definition.Name, change.Operation)
 	}
 	return completed, nil
+}
+
+func verifyBranchProtection(repo string, policy *config.BranchProtectionConfig) error {
+	remaining, _, err := loadBranchProtectionPlan(repo, policy)
+	if err != nil {
+		return err
+	}
+	if len(remaining) > 0 {
+		names := make([]string, 0, len(remaining))
+		for _, change := range remaining {
+			names = append(names, change.Definition.Name)
+		}
+		return fmt.Errorf("rulesets still differ after update: %s", strings.Join(names, ", "))
+	}
+	return nil
 }

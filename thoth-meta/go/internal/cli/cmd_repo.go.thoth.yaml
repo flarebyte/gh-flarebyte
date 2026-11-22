@@ -11,6 +11,7 @@ meta:
     - fmt
     - github.com/flarebyte/gh-flarebyte/internal/config
     - io
+    - os
   language: go
   purpose: Implement user-facing repository workflows (init, audit, update, mine) on top of config and GitHub adapters.
   responsibilities: Parse repo command intent; enforce safety gates; orchestrate plan execution; format repo workflow output.
